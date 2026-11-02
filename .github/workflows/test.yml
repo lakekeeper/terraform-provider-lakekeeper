@@ -5,29 +5,35 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
+# New pushes to a PR cancel its older run. Every other run gets its own group,
+# so runs on main are never cancelled or dropped while pending.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
           cache: true
       - run: go mod download
-  
+
       - name: Run Go linter
         run: make lint-golangci
-  
+
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
@@ -39,19 +45,27 @@ jobs:
 
       - name: Run sh linter on examples
         run: make lint-examples-sh
-      
+
+
       - name: Fail if docs are not up to date
         run: make lint-generated
 
   build:
     needs: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     env:
       # renovate: datasource=github-releases depName=goreleaser/goreleaser
       GORELEASER_VERSION: v2.19.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          persist-credentials: false
+      # The snapshot build only checks that GoReleaser succeeds; its artifacts
+      # are never published, so the build cache cannot reach a release.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0 # zizmor: ignore[cache-poisoning]
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -59,16 +73,17 @@ jobs:
         with:
           version: ${{ env.GORELEASER_VERSION }}
           args: release --clean --snapshot --skip sign
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Run unit tests
   test-unit:
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
@@ -77,11 +92,14 @@ jobs:
       - run: make test
         timeout-minutes: 10
 
-  # Run acceptance tests in a matrix with Terraform CLI versions
+  # Connection settings come from the Makefile defaults, which match the
+  # local stack in run/, so CI runs exactly what contributors run locally.
   test-acceptance:
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -92,14 +110,11 @@ jobs:
           - 'v0.10.3'
           - 'v0.10.2'
     env:
-      LAKEKEEPER_ENDPOINT: http://localhost:8181
-      LAKEKEEPER_AUTH_URL: http://localhost:30080/realms/iceberg/protocol/openid-connect/token
-      LAKEKEEPER_CLIENT_ID: lakekeeper-admin
-      LAKEKEEPER_CLIENT_SECRET: KNjaj1saNq5yRidVEMdf1vI09Hm0pQaL
       LAKEKEEPER_VERSION: ${{ matrix.lakekeeper-version }}
-      TF_ACC: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
@@ -109,9 +124,28 @@ jobs:
           terraform_version: v1.17.1
           terraform_wrapper: false
       - run: go mod download
-      - run: make testacc-up
-      - run: |
-          echo "Waiting for Lakekeeper to be healthy"
-          ./scripts/await-healthy.sh
+      - name: Start Lakekeeper
+        run: make testacc-up
       - run: make testacc
         timeout-minutes: 10
+
+  # Single stable check for the "Protect main" ruleset: it passes only if
+  # every job above succeeded, so jobs and matrix entries can change without
+  # touching the ruleset.
+  ci-ok:
+    if: always()
+    needs:
+      - lint
+      - build
+      - test-unit
+      - test-acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check that all jobs succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null
