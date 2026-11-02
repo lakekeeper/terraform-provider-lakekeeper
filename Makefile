@@ -26,7 +26,7 @@ fmt: tool-terraform ## Format files and fix issues.
 	$(GOBIN)/terraform fmt -recursive -list ./examples ./playground
 	go run mvdan.cc/sh/v3/cmd/shfmt -l -s -w ./examples
 
-lint: lint-golangci lint-examples-tf lint-examples-sh lint-generated
+lint: lint-golangci lint-examples-tf lint-examples-sh lint-actions lint-generated
 
 lint-golangci: ## Run golangci-lint linter (same as fmt but without modifying files).
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --build-tags acceptance
@@ -36,6 +36,23 @@ lint-examples-tf: tool-terraform ## Run terraform linter on examples (same as fm
 
 lint-examples-sh: ## Run shell linter on examples (same as fmt but without modifying files).
 	go run mvdan.cc/sh/v3/cmd/shfmt -l -s -d ./examples
+
+# actionlint is not a go.mod tool: its YAML dependency conflicts with golangci-lint's.
+# renovate: datasource=go depName=github.com/rhysd/actionlint
+ACTIONLINT_VERSION ?= v1.7.12
+# renovate: datasource=pypi depName=zizmor
+ZIZMOR_VERSION ?= 1.31.1
+
+lint-actions: lint-actionlint lint-zizmor ## Lint GitHub Actions workflows with actionlint and zizmor.
+
+lint-actionlint: ## Lint GitHub Actions workflows with actionlint.
+	go run github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
+
+lint-zizmor: ## Audit GitHub Actions workflows with zizmor (requires uv).
+	uvx zizmor@$(ZIZMOR_VERSION) .
+
+zizmor-version: ## Print the pinned zizmor version (used by CI).
+	@echo $(ZIZMOR_VERSION)
 
 lint-generated: generate ## Check that "make generate" was called. Note this only works if the git workspace is clean.
 	@echo "Checking git status"

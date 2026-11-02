@@ -11,7 +11,7 @@ A Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/), an Apache Ic
 ```sh
 make reviewable    # Run before committing: build + fmt + generate + test
 make test          # Unit tests; RUN=TestName to select one
-make lint          # Lint without modifying files (what CI checks)
+make lint          # Lint without modifying files (what CI checks; needs uv for zizmor)
 make generate      # Regenerate docs/
 ```
 

@@ -64,6 +64,8 @@ CI fails when `docs/` is out of date.
 
 Formatting and linting are enforced by `gofmt`, [`golangci-lint`](https://golangci-lint.run/), `terraform fmt`, and `shfmt`. `make fmt` applies all of them; `make lint` checks without changing files. Keep changes consistent with the surrounding code.
 
+GitHub Actions workflows in `.github/workflows/` are checked with [`actionlint`](https://github.com/rhysd/actionlint) and [`zizmor`](https://docs.zizmor.sh/). Run `make lint-actions` after changing them; it needs [`uv`](https://docs.astral.sh/uv/) for zizmor. CI also runs zizmor's online audits (e.g. known-vulnerable actions); set `GH_TOKEN` to run them locally too.
+
 ## Commits and branches
 
 - Commits and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `fix: handle empty role list` or `feat(warehouse): support GCS`. CI checks the PR title, and [release-please](https://github.com/googleapis/release-please) derives versions and `CHANGELOG.md` from it.

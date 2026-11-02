@@ -46,6 +46,19 @@ jobs:
       - name: Run sh linter on examples
         run: make lint-examples-sh
 
+      - name: Run actionlint on workflows
+        run: make lint-actionlint
+
+      - name: Read zizmor version from Makefile
+        id: zizmor
+        run: echo "version=$(make -s zizmor-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Run zizmor on workflows
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          version: ${{ steps.zizmor.outputs.version }}
+          advanced-security: false
+          annotations: true
 
       - name: Fail if docs are not up to date
         run: make lint-generated
