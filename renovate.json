@@ -3,7 +3,10 @@
   "extends": [
     "config:recommended",
     ":automergeMinor",
-    ":automergePatch"
+    ":automergePatch",
+    "customManagers:makefileVersions",
+    "customManagers:githubActionsVersions",
+    "helpers:pinGitHubActionDigests"
   ],
   "packageRules": [
     {

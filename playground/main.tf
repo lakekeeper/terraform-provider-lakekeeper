@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     lakekeeper = {
-      source = "baptistegh/lakekeeper"
+      source = "lakekeeper/lakekeeper"
     }
   }
 }

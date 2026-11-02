@@ -1,9 +1,7 @@
 # Terraform Provider for Lakekeeper
 
-[![docs](https://img.shields.io/static/v1?label=Docs&message=terraform-provider-lakekeeper&color=5c4ee5)](https://registry.terraform.io/providers/baptistegh/lakekeeper/latest/docs)
-[![docs](https://img.shields.io/badge/status-preview-orange)](https://github.com/baptistegh/terraform-provider-lakekeeper/releases)
-[![Nightly Acceptance Tests](https://github.com/baptistegh/terraform-provider-lakekeeper/actions/workflows/nightly.yml/badge.svg)](https://github.com/baptistegh/terraform-provider-lakekeeper/actions/workflows/nightly.yml)
-[![Tests](https://github.com/baptistegh/terraform-provider-lakekeeper/actions/workflows/test.yml/badge.svg)](https://github.com/baptistegh/terraform-provider-lakekeeper/actions/workflows/test.yml)
+[![docs](https://img.shields.io/static/v1?label=Docs&message=terraform-provider-lakekeeper&color=5c4ee5)](https://registry.terraform.io/providers/lakekeeper/lakekeeper/latest/docs)
+![status: preview](https://img.shields.io/badge/status-preview-orange)
 
 Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/).
 
@@ -16,7 +14,7 @@ Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/).
 >
 > **🚧 This project is currently in _preview_ and under active development. It is _not production-ready_ and should not be used in production environments.**
 >
-> 💬 We welcome [feedback, bug reports, and contributions](https://github.com/baptistegh/terraform-provider-lakekeeper/issues) during this preview phase.
+> 💬 We welcome [feedback, bug reports, and contributions](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues) during this preview phase.
 > Please report issues or share your experience to help us improve the provider before its stable release.
 
 ## Table of Contents
@@ -30,15 +28,13 @@ Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/).
     - [Overview](#overview)
     - [Setup Instructions](#setup-instructions)
   - [Development](#development)
-    - [Local Environment](#local-environment)
-    - [Tests](#tests)
     - [Releases](#releases)
 
 ## Documentation
 
-All documentation for this provider can be found on the Terraform Registry: <https://registry.terraform.io/providers/baptistegh/lakekeeper/latest/docs>.
+All documentation for this provider can be found on the Terraform Registry: <https://registry.terraform.io/providers/lakekeeper/lakekeeper/latest/docs>.
 
-The provider is also available from [OpenTofu registry](https://search.opentofu.org/provider/baptistegh/lakekeeper/latest).
+The provider is also available from [OpenTofu registry](https://search.opentofu.org/provider/lakekeeper/lakekeeper/latest).
 
 ## Installation
 
@@ -48,7 +44,7 @@ This provider can be installed automatically by using the `terraform` configurat
 terraform {
   required_providers {
     lakekeeper = {
-      source = "baptistegh/lakekeeper"
+      source = "lakekeeper/lakekeeper"
     }
   }
 }
@@ -67,7 +63,7 @@ The following Lakekeeper versions are used when running acceptance tests in CI:
 
 _The provider should be compatible with Lakekeeper >= v0.9.3._
 
-_Acceptance tests are executed using Terraform v1.9.8._
+_Acceptance tests in CI are executed using Terraform v1.17.1._
 
 ## Playground
 
@@ -117,26 +113,12 @@ Feel free to modify `playground/main.tf` to customize the structure according to
 
 ## Development
 
-This project requires Go 1.24 and Terraform >= 1.9.8.
-
-After cloning the repository, you can build the project by running `make build`
-
-### Local Environment
-
-You can spin up a local developer environment via [Docker Compose](https://docs.docker.com/compose/) by running `make testacc-up`. This will spin up a few containers for Lakekeeper, Keycloak, PostgreSQL and OpenFGA, which can be used for testing the provider.
-
-To stop the environment you can use the `make clean`.
-
-### Tests
-
-Every resource supported by this provider will have a reasonable amount of acceptance test coverage.
-
-You can run acceptance tests against a Lakekeeper instance by running `make testacc`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites, the local test environment, and how to submit changes.
 
 ### Releases
 
-This provider uses [GoReleaser](https://goreleaser.com/]) to build and publish releases. Each release published to GitHub contains binary files for Linux, macOS (darwin), and Windows, as configured within the [`.goreleaser.yml`](https://github.com/baptistegh/terraform-provider-lakekeeper/blob/main/.goreleaser.yml) file.
+This provider uses [GoReleaser](https://goreleaser.com/]) to build and publish releases. Each release published to GitHub contains binary files for Linux, macOS (darwin), and Windows, as configured within the [`.goreleaser.yml`](https://github.com/lakekeeper/terraform-provider-lakekeeper/blob/main/.goreleaser.yml) file.
 
 Each release also contains a `terraform-provider-lakekeeper_${RELEASE_VERSION}_SHA256SUMS` file that can be used to check integrity.
 
-You can find the [list of releases](https://github.com/baptistegh/terraform-provider-lakekeeper/releases) and the [changelog](https://github.com/baptistegh/terraform-provider-lakekeeper/blob/main/CHANGELOG.md) for each version.
+You can find the [list of releases](https://github.com/lakekeeper/terraform-provider-lakekeeper/releases) and the [changelog](https://github.com/lakekeeper/terraform-provider-lakekeeper/blob/main/CHANGELOG.md) for each version.

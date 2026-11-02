@@ -1,0 +1,133 @@
+name: Pull Request
+
+# pull_request_target gives fork PRs a token that can comment and label.
+# This workflow never checks out or runs code from the pull request; it
+# only reads the PR title from the event payload.
+on: # zizmor: ignore[dangerous-triggers]
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      # Squash merges use the PR title as the commit message on main, and
+      # release-please derives versions and the changelog from it.
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        id: lint
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            build
+            chore
+            ci
+            docs
+            feat
+            fix
+            perf
+            refactor
+            revert
+            style
+            test
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            must not start with an uppercase letter.
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: steps.lint.outcome == 'failure'
+        with:
+          header: pr-title
+          recreate: true
+          message: |
+            ### 🚨 PR title needs formatting
+
+            The PR title becomes the commit message on `main`, so it must follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+            ~~~~
+            ${{ steps.lint.outputs.error_message }}
+            ~~~~
+
+            Examples:
+
+            * `feat: support GCS storage profiles`
+            * `fix(warehouse): handle empty role list`
+            * `feat!: rename warehouse attribute` (breaking change)
+
+            Allowed types: `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`.
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: steps.lint.outcome == 'success'
+        with:
+          header: pr-title
+          delete: true
+
+      # Only the "!" before the colon marks a breaking change: the PR body is
+      # not part of the squash commit, so a BREAKING CHANGE footer there would
+      # never reach release-please.
+      - name: Detect breaking change
+        id: breaking
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          re='^[a-z]+(\([^)]*\))?!:'
+          if [[ "$PR_TITLE" =~ $re ]]; then
+            echo "breaking=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "breaking=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Add breaking-change label
+        if: steps.breaking.outputs.breaking == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr edit "$PR_NUMBER" --add-label breaking-change
+
+      - name: Remove breaking-change label
+        if: steps.breaking.outputs.breaking == 'false' && contains(github.event.pull_request.labels.*.name, 'breaking-change')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr edit "$PR_NUMBER" --remove-label breaking-change
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: steps.breaking.outputs.breaking == 'true'
+        with:
+          header: breaking-change
+          recreate: true
+          message: |
+            ### ⚠️ This pull request introduces a breaking change
+
+            Before merging, make sure that:
+
+            - [ ] the documentation and examples (`examples/`, `playground/`) are updated
+            - [ ] the PR body describes who is affected and how to migrate
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: steps.breaking.outputs.breaking == 'false'
+        with:
+          header: breaking-change
+          delete: true
+
+      - name: Fail on invalid title
+        if: steps.lint.outcome == 'failure'
+        run: exit 1
