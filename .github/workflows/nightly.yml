@@ -3,25 +3,31 @@ name: Nightly Acceptance Tests
 on:
   schedule:
     - cron: '0 5 * * *'
+  workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
+# Overlapping scheduled and manual runs queue up, so only one of them reports
+# at a time and no duplicate nightly-failure issue is opened.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
+  # Connection settings come from the Makefile defaults, which match the
+  # local stack in run/.
   test-acceptance:
     name: Acceptance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     env:
-      LAKEKEEPER_ENDPOINT: http://localhost:8181
-      LAKEKEEPER_AUTH_URL: http://localhost:30080/realms/iceberg/protocol/openid-connect/token
-      LAKEKEEPER_CLIENT_ID: lakekeeper-admin
-      LAKEKEEPER_CLIENT_SECRET: KNjaj1saNq5yRidVEMdf1vI09Hm0pQaL
       LAKEKEEPER_VERSION: latest-main
-      TF_ACC: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
@@ -31,10 +37,41 @@ jobs:
           terraform_version: v1.17.1
           terraform_wrapper: false
       - run: go mod download
-      - name: Starting Lakekeeper instance (and third parties)
+      - name: Start Lakekeeper
         run: make testacc-up
-      - run: |
-          echo "Waiting for Lakekeeper to be healthy"
-          ./scripts/await-healthy.sh
       - run: make testacc
         timeout-minutes: 10
+
+  # Keeps one open issue labelled nightly-failure while the nightly run on
+  # main is red, and closes it once it is green again.
+  report:
+    needs: test-acceptance
+    if: always() && github.ref == 'refs/heads/main' && needs.test-acceptance.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RESULT: ${{ needs.test-acceptance.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open, update or close the nightly-failure issue
+        run: |
+          issue=$(gh issue list --label nightly-failure --state open --limit 1 --json number --jq '.[0].number // empty')
+
+          if [ "$RESULT" = "success" ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --comment "The nightly acceptance tests pass again: $RUN_URL"
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "The nightly acceptance tests are still failing: $RUN_URL"
+          else
+            gh issue create \
+              --title "Nightly acceptance tests are failing" \
+              --label nightly-failure \
+              --body "The nightly acceptance tests against Lakekeeper \`latest-main\` failed: $RUN_URL
+
+          This issue is updated by every failing nightly run and closed automatically once the tests pass again."
+          fi
