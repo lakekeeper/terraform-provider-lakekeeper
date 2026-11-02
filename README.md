@@ -1,6 +1,6 @@
 # Terraform Provider for Lakekeeper
 
-[![docs](https://img.shields.io/static/v1?label=Docs&message=terraform-provider-lakekeeper&color=5c4ee5)](https://registry.terraform.io/providers/baptistegh/lakekeeper/latest/docs)
+[![docs](https://img.shields.io/static/v1?label=Docs&message=terraform-provider-lakekeeper&color=5c4ee5)](https://registry.terraform.io/providers/lakekeeper/lakekeeper/latest/docs)
 ![status: preview](https://img.shields.io/badge/status-preview-orange)
 
 Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/).
@@ -34,9 +34,9 @@ Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/).
 
 ## Documentation
 
-All documentation for this provider can be found on the Terraform Registry: <https://registry.terraform.io/providers/baptistegh/lakekeeper/latest/docs>.
+All documentation for this provider can be found on the Terraform Registry: <https://registry.terraform.io/providers/lakekeeper/lakekeeper/latest/docs>.
 
-The provider is also available from [OpenTofu registry](https://search.opentofu.org/provider/baptistegh/lakekeeper/latest).
+The provider is also available from [OpenTofu registry](https://search.opentofu.org/provider/lakekeeper/lakekeeper/latest).
 
 ## Installation
 
@@ -46,7 +46,7 @@ This provider can be installed automatically by using the `terraform` configurat
 terraform {
   required_providers {
     lakekeeper = {
-      source = "baptistegh/lakekeeper"
+      source = "lakekeeper/lakekeeper"
     }
   }
 }
