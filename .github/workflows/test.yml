@@ -16,21 +16,17 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
           cache: true
-      - uses: mfinelli/setup-shfmt@v4
-
       - run: go mod download
   
       - name: Run Go linter
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: latest
+        run: make lint-golangci
   
       - name: Install Terraform CLI
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
@@ -42,7 +38,7 @@ jobs:
         run: terraform fmt -recursive -check -diff ./examples ./playground
 
       - name: Run sh linter on examples
-        run: shfmt -l -s -d ./examples
+        run: make lint-examples-sh
       
       - name: Fail if docs are not up to date
         run: make lint-generated
@@ -50,6 +46,9 @@ jobs:
   build:
     needs: lint
     runs-on: ubuntu-latest
+    env:
+      # renovate: datasource=github-releases depName=goreleaser/goreleaser
+      GORELEASER_VERSION: v2.19.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -58,7 +57,7 @@ jobs:
           cache: true
       - uses: goreleaser/goreleaser-action@v7
         with:
-          version: latest
+          version: ${{ env.GORELEASER_VERSION }}
           args: release --clean --snapshot --skip sign
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

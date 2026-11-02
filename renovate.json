@@ -4,7 +4,8 @@
     "config:recommended",
     ":automergeMinor",
     ":automergePatch",
-    "customManagers:makefileVersions"
+    "customManagers:makefileVersions",
+    "customManagers:githubActionsVersions"
   ],
   "packageRules": [
     {
