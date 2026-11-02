@@ -5,7 +5,8 @@
     ":automergeMinor",
     ":automergePatch",
     "customManagers:makefileVersions",
-    "customManagers:githubActionsVersions"
+    "customManagers:githubActionsVersions",
+    "helpers:pinGitHubActionDigests"
   ],
   "packageRules": [
     {
