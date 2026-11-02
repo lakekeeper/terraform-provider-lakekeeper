@@ -122,3 +122,4 @@ This provider uses [GoReleaser](https://goreleaser.com/]) to build and publish r
 Each release also contains a `terraform-provider-lakekeeper_${RELEASE_VERSION}_SHA256SUMS` file that can be used to check integrity.
 
 You can find the [list of releases](https://github.com/lakekeeper/terraform-provider-lakekeeper/releases) and the [changelog](https://github.com/lakekeeper/terraform-provider-lakekeeper/blob/main/CHANGELOG.md) for each version.
+Just minor test
