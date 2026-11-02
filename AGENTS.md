@@ -2,78 +2,49 @@
 
 Guidance for coding agents working in this repository.
 
-## Project Overview
+## Project overview
 
-This is a Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/), an Apache Iceberg REST catalog. It is built using the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) (not the older SDKv2). The provider authenticates via OIDC client credentials and manages Lakekeeper resources: warehouses, projects, roles, users, namespaces, and permission assignments at server/project/warehouse/role levels.
+A Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/), an Apache Iceberg REST catalog, built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) (SDKv2 APIs do not apply here). It authenticates via OIDC client credentials and manages warehouses, projects, roles, users, namespaces, and permission assignments at server, project, warehouse, role, and namespace level.
 
 ## Commands
 
 ```sh
-make build         # Build provider binary into ./bin/
-make test          # Run unit tests (no external dependencies)
-make fmt           # Format Go + Terraform + shell files, and fix lint issues
-make lint          # Lint without modifying files
-make generate      # Re-generate docs from templates (required before committing doc changes)
 make reviewable    # Run before committing: build + fmt + generate + test
+make test          # Unit tests; RUN=TestName to select one
+make lint          # Lint without modifying files (what CI checks)
+make generate      # Regenerate docs/
 ```
 
-### Running a single test
+The `Makefile` has the full target list.
+
+## Testing
+
+Almost every test file carries `//go:build acceptance` and runs only against a live Lakekeeper, so `make test` covers just the few untagged unit tests. Changes to resource behaviour are verified with acceptance tests:
 
 ```sh
-# Unit test
-RUN=TestFunctionName make test
-
-# Acceptance test (requires testacc-up first)
-RUN=TestAccFunctionName make testacc
+make testacc-up                     # Lakekeeper + Keycloak + PostgreSQL + OpenFGA via Docker Compose
+RUN=TestAccName make testacc        # TF_ACC=1, LAKEKEEPER_* env defaults point at the local stack
+make testacc-down                   # Tear down, removing volumes
 ```
 
-### Acceptance tests
-
-```sh
-make testacc-up    # Start Lakekeeper + Keycloak + PostgreSQL + OpenFGA via Docker Compose
-make testacc       # Run acceptance tests against local instance (sets TF_ACC=1)
-make testacc-down  # Tear down, removing volumes
-```
-
-Acceptance tests are tagged with `//go:build acceptance`. Env vars used: `LAKEKEEPER_ENDPOINT`, `LAKEKEEPER_AUTH_URL`, `LAKEKEEPER_CLIENT_ID`, `LAKEKEEPER_CLIENT_SECRET`.
+- New acceptance test files start with `//go:build acceptance`; pure unit tests stay untagged so `make test` picks them up.
+- Shared acceptance fixtures (clients, test warehouses, storage profiles) live in `internal/provider/testutil/`.
 
 ## Architecture
 
-### Code layout
+All provider code lives in `internal/provider/`: one `resource_*.go` or `datasource_*.go` file per Terraform type, each with its `_test.go`.
 
-```
-internal/provider/
-  provider.go          # Provider schema, configuration, client construction
-  registry.go          # registerResource / registerDataSource helpers + splitInternalID / DiffTypedStrings utilities
-  resource_*.go        # One file per Terraform resource
-  datasource_*.go      # One file per Terraform data source
-  warehouse_sdk.go     # Model↔SDK conversion helpers for the warehouse resource
-  api/config.go        # OIDC + TLS client construction (wraps go-lakekeeper client)
-  sdk/                 # Reusable schema fragments and model types (storage profiles, credentials, delete profiles, assignments)
-```
+- **Registration**: each resource and data source registers itself via `registerResource` / `registerDataSource` in an `init()` (`registry.go`). Adding the file is the whole wiring.
+- **Upstream client**: all API calls go through `r.client`, a `*lakekeeper.Client` from [`github.com/baptistegh/go-lakekeeper`](https://github.com/baptistegh/go-lakekeeper), injected via `Configure`. Client construction (OIDC, TLS) is in `api/config.go`.
+- **Internal IDs**: composite resources store a `/`-joined ID in `id`, which is also the import ID (warehouse: `project_id/warehouse_id`; namespace: `project_id/warehouse_name/name`). `splitInternalID` in `registry.go` parses the two-part form.
+- **SDK layer**: `sdk/` holds schema fragments and model types shared between resources and data sources (storage profiles for S3/ADLS/GCS, storage credentials, delete profiles, assignments), along with their model↔`go-lakekeeper` conversions. The warehouse resource's own conversions are in `warehouse_sdk.go`.
 
-### Registration pattern
+## Documentation
 
-Every resource and data source calls `registerResource` / `registerDataSource` in an `init()` function. The provider's `Resources()` and `DataSources()` methods return `allResources` / `allDataSources` from `registry.go`. No manual wiring needed when adding a new resource — just add the `init()` call.
-
-### Internal IDs
-
-Composite resources (assignments, namespaces) use a `/`-separated compound internal ID stored in `id` (e.g. `project_id/role_id`). The `splitInternalID` helper in `registry.go` parses these. Warehouse IDs use `:` as a separator (`project_id:warehouse_id`).
-
-### SDK layer (`internal/provider/sdk/`)
-
-Shared schema fragments for complex nested types (storage profiles for S3/ADLS/GCS, storage credentials, delete profiles, assignments) live here so they can be reused across resources and data sources. Conversion between Terraform models and the upstream `go-lakekeeper` SDK types happens in `warehouse_sdk.go` and within each `sdk/` file.
-
-### Upstream client
-
-The provider wraps `github.com/baptistegh/go-lakekeeper`, a typed Go client for the Lakekeeper management API. All API calls go through `r.client` (a `*lakekeeper.Client`) injected via `Configure`.
-
-### Documentation
-
-Docs are generated with `tfplugindocs` from `//go:generate` directives and templates in `templates/`. Run `make generate` after changing schema descriptions. The `lint-generated` target fails CI if docs are stale.
+`docs/` is generated by `tfplugindocs` (`tools/tools.go`) from schema descriptions, `templates/`, and `examples/`. Edit those sources, then run `make generate`. CI runs `make lint-generated`, which fails on stale docs and only works on a clean git workspace.
 
 ## Commits and branches
 
-- [Conventional Commits](https://www.conventionalcommits.org/), parsed by release-please for versioning and `CHANGELOG.md`. Use only `feat`, `fix`, `docs`, `chore`: the only types release-please is configured for.
-- Branches: `type/name`, using the commit types above (e.g. `fix/role-list-pagination`).
+- Commits and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/) (CI checks the PR title); release-please derives versions and `CHANGELOG.md` from them. A `!` marks a breaking change (e.g. `feat!: ...`).
+- Branches: `type/name`, using the commit type (e.g. `fix/role-list-pagination`).
 - `CHANGELOG.md` and `.release-please-manifest.json` belong to release-please; leave them untouched.
