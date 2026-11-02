@@ -5,7 +5,7 @@ We want to make contributing to this project as easy and smooth as possible.
 ## Reporting Issues
 
 If you encounter a bug or have a feature request, please report it on the
-[issue tracker](https://github.com/baptistegh/terraform-provider-lakekeeper/issues).
+[issue tracker](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues).
 
 If you already plan to fix the issue yourself, it's not necessary to open a separate issue beforehand — you can directly open a merge request (MR) with a description of the problem you're addressing.
 
