@@ -2,6 +2,10 @@
 
 Thanks for helping improve the Terraform provider for Lakekeeper. This guide covers everything from setting up your machine to getting a pull request merged.
 
+## Getting help
+
+For questions, ideas, or help with a contribution, join the [Lakekeeper Discord](https://discord.gg/jkAGG8p93B).
+
 ## Reporting issues
 
 Report bugs and feature requests on the [issue tracker](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues). For bugs, include the provider and Lakekeeper versions, a minimal Terraform configuration, and the expected and actual behaviour.
