@@ -28,8 +28,6 @@ Terraform provider for [Lakekeeper](https://docs.lakekeeper.io/).
     - [Overview](#overview)
     - [Setup Instructions](#setup-instructions)
   - [Development](#development)
-    - [Local Environment](#local-environment)
-    - [Tests](#tests)
     - [Releases](#releases)
 
 ## Documentation
@@ -115,21 +113,7 @@ Feel free to modify `playground/main.tf` to customize the structure according to
 
 ## Development
 
-This project requires Go 1.24 and Terraform >= 1.9.8.
-
-After cloning the repository, you can build the project by running `make build`
-
-### Local Environment
-
-You can spin up a local developer environment via [Docker Compose](https://docs.docker.com/compose/) by running `make testacc-up`. This will spin up a few containers for Lakekeeper, Keycloak, PostgreSQL and OpenFGA, which can be used for testing the provider.
-
-To stop the environment you can use the `make clean`.
-
-### Tests
-
-Every resource supported by this provider will have a reasonable amount of acceptance test coverage.
-
-You can run acceptance tests against a Lakekeeper instance by running `make testacc`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites, the local test environment, and how to submit changes.
 
 ### Releases
 
