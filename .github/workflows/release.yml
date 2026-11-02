@@ -8,15 +8,16 @@ on:
     tags:
       - 'v*'
 
-# Releases need permissions to read and write the repository contents.
-# GitHub considers creating releases and uploading assets as writing contents.
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   goreleaser:
     name: Release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Creating releases and uploading assets counts as writing contents.
+      contents: write
     env:
       # renovate: datasource=github-releases depName=goreleaser/goreleaser
       GORELEASER_VERSION: v2.19.0
@@ -25,10 +26,13 @@ jobs:
         with:
           # Allow goreleaser to access older tag information.
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
-          cache: true
+          # No build cache in the release job, so a poisoned cache from
+          # another workflow cannot end up in released binaries.
+          cache: false
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         id: import_gpg
