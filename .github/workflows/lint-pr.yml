@@ -44,7 +44,7 @@ jobs:
               * `docs: documentation`
               * `chore(deps): update dependencies`
 
-              We only use types: `feat`, `fix`, `docs`, `chore`, `test` and `ci`.
+              Allowed types: `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`.
       
       - if: ${{ steps.check.outputs.success == 'false'}}
         name: Fail on invalid title
