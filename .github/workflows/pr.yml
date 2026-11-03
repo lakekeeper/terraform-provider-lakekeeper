@@ -45,10 +45,6 @@ jobs:
             revert
             style
             test
-          subjectPattern: ^(?![A-Z]).+$
-          subjectPatternError: |
-            The subject "{subject}" found in the pull request title "{title}"
-            must not start with an uppercase letter.
 
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: steps.lint.outcome == 'failure'

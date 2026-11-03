@@ -68,7 +68,7 @@ GitHub Actions workflows in `.github/workflows/` are checked with [`actionlint`]
 
 ## Commits and branches
 
-- Commits and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `fix: handle empty role list` or `feat(warehouse): support GCS`. CI checks the PR title, and [release-please](https://github.com/googleapis/release-please) derives versions and `CHANGELOG.md` from it.
+- Commits and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `fix: handle empty role list` or `feat(warehouse): support GCS`. Start the description with a lowercase letter, use the imperative mood, and leave off the trailing period; this is convention, not checked by CI. CI checks the PR title's format, and [release-please](https://github.com/googleapis/release-please) derives versions and `CHANGELOG.md` from it.
 - Mark a breaking change with `!` (e.g. `feat!: rename warehouse attribute`) and describe the migration in the PR.
 - Name branches `type/short-description` using the commit type, e.g. `fix/role-list-pagination`.
 - `CHANGELOG.md` and `.release-please-manifest.json` are maintained by release-please; leave them untouched.
