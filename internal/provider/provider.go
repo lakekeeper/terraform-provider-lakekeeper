@@ -7,13 +7,13 @@ import (
 
 	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // Ensure LakekeeperProvider satisfies various provider interfaces.

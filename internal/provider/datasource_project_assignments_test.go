@@ -8,9 +8,9 @@ import (
 
 	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/testutil"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 )
 
 func TestAccDataLakekeeperProjectAssignments_basic(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 
 	managementv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1"
 	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/credential"

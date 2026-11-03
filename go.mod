@@ -1,4 +1,4 @@
-module github.com/baptistegh/terraform-provider-lakekeeper
+module github.com/lakekeeper/terraform-provider-lakekeeper
 
 go 1.26.0
 

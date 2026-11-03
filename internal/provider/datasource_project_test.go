@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/testutil"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 )
 
 func TestAccDataLakekeeperProject_basic(t *testing.T) {
