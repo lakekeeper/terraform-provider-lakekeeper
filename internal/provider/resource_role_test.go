@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/testutil"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"

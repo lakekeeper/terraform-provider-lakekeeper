@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider"
 )
 
 var (

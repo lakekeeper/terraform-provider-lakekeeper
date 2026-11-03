@@ -13,7 +13,7 @@ import (
 	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/baptistegh/go-lakekeeper/pkg/core"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/sdk"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/sdk"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"

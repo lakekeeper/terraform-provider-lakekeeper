@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/sdk"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/sdk"
 )
 
 // Ensure the implementation satisfies the expected interfaces.

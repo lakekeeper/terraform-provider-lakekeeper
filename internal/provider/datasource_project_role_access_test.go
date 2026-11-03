@@ -9,11 +9,11 @@ import (
 
 	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/testutil"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 )
 
 func TestAccDataLakekeeperProjectRoleAccess_basic(t *testing.T) {

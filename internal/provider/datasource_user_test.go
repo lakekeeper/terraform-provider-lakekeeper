@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/baptistegh/terraform-provider-lakekeeper/internal/provider/testutil"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 )
 
 func TestAccDataLakekeeperUser_basic(t *testing.T) {
