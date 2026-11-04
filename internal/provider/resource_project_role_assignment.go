@@ -6,8 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -18,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces
@@ -42,7 +41,7 @@ func (r *lakekeeperProjectRoleAssignmentResource) Metadata(ctx context.Context, 
 
 // lakekeeperProjectRoleAssignmentResource defines the resource implementation.
 type lakekeeperProjectRoleAssignmentResource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // lakekeeperProjectRoleAssignmentResourceModel describes the resource data model.
@@ -83,26 +82,26 @@ func (r *lakekeeperProjectRoleAssignmentResource) Schema(ctx context.Context, re
 				ElementType: types.StringType,
 				MarkdownDescription: "List of project assignments for this role. values can be " +
 					fmt.Sprintf("`%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s`",
-						permissionv1.AdminProjectAssignment,
-						permissionv1.SecurityAdminProjectAssignment,
-						permissionv1.DataAdminProjectAssignment,
-						permissionv1.RoleCreatorProjectAssignment,
-						permissionv1.DescribeProjectAssignment,
-						permissionv1.SelectProjectAssignment,
-						permissionv1.CreateProjectAssignment,
-						permissionv1.ModifyProjectAssignment,
+						api.ProjectAssignmentAdmin,
+						api.ProjectAssignmentSecurityAdmin,
+						api.ProjectAssignmentDataAdmin,
+						api.ProjectAssignmentRoleCreator,
+						api.ProjectAssignmentDescribe,
+						api.ProjectAssignmentSelect,
+						api.ProjectAssignmentCreate,
+						api.ProjectAssignmentModify,
 					),
 				Required: true,
 				Validators: []validator.Set{setvalidator.ValueStringsAre(
 					stringvalidator.OneOf(
-						string(permissionv1.AdminProjectAssignment),
-						string(permissionv1.SecurityAdminProjectAssignment),
-						string(permissionv1.DataAdminProjectAssignment),
-						string(permissionv1.RoleCreatorProjectAssignment),
-						string(permissionv1.DescribeProjectAssignment),
-						string(permissionv1.SelectProjectAssignment),
-						string(permissionv1.CreateProjectAssignment),
-						string(permissionv1.ModifyProjectAssignment)),
+						api.ProjectAssignmentAdmin,
+						api.ProjectAssignmentSecurityAdmin,
+						api.ProjectAssignmentDataAdmin,
+						api.ProjectAssignmentRoleCreator,
+						api.ProjectAssignmentDescribe,
+						api.ProjectAssignmentSelect,
+						api.ProjectAssignmentCreate,
+						api.ProjectAssignmentModify),
 				)},
 			},
 		},
@@ -135,7 +134,7 @@ func (r *lakekeeperProjectRoleAssignmentResource) Create(ctx context.Context, re
 
 	id := fmt.Sprintf("%s/%s", projectID, roleID)
 
-	var opts []*permissionv1.ProjectAssignment
+	var opts []api.Assignment
 
 	for _, v := range plan.Assignments.Elements() {
 		s, ok := v.(types.String)
@@ -144,18 +143,10 @@ func (r *lakekeeperProjectRoleAssignmentResource) Create(ctx context.Context, re
 			return
 		}
 
-		opts = append(opts, &permissionv1.ProjectAssignment{
-			Assignee: permissionv1.UserOrRole{
-				Value: plan.RoleID.ValueString(),
-				Type:  permissionv1.RoleType,
-			},
-			Assignment: permissionv1.ProjectAssignmentType(s.ValueString()),
-		})
+		opts = append(opts, api.Assignment{Assignee: api.RoleAssignee(plan.RoleID.ValueString()), Assignment: s.ValueString()})
 	}
 
-	_, err := r.client.PermissionV1().ProjectPermission().Update(ctx, projectID, &permissionv1.UpdateProjectPermissionsOptions{
-		Writes: opts,
-	})
+	err := r.client.UpdateProjectAssignments(ctx, projectID, opts, nil)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to write project assignment, %s", err.Error()))
 		return
@@ -182,16 +173,16 @@ func (r *lakekeeperProjectRoleAssignmentResource) Read(ctx context.Context, req 
 
 	projectID, roleID := splitInternalID(state.ID)
 
-	assignments, _, err := r.client.PermissionV1().ProjectPermission().GetAssignments(ctx, projectID, nil)
+	assignments, err := r.client.GetProjectAssignments(ctx, projectID)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read project assignments, %s", err.Error()))
 		return
 	}
 
 	var elems []attr.Value
-	for _, v := range assignments.Assignments {
-		if v.Assignee.Value == roleID && v.Assignee.Type == permissionv1.RoleType {
-			elems = append(elems, types.StringValue(string(v.Assignment)))
+	for _, v := range assignments {
+		if v.Assignee.ID == roleID && v.Assignee.Type == api.AssigneeTypeRole {
+			elems = append(elems, types.StringValue(v.Assignment))
 		}
 	}
 
@@ -235,33 +226,18 @@ func (r *lakekeeperProjectRoleAssignmentResource) Update(ctx context.Context, re
 
 	added, removed := DiffTypedStrings(stateAssignments, planAssignments)
 
-	var writes []*permissionv1.ProjectAssignment
-	var deletes []*permissionv1.ProjectAssignment
+	var writes []api.Assignment
+	var deletes []api.Assignment
 
 	for _, v := range added {
-		writes = append(writes, &permissionv1.ProjectAssignment{
-			Assignee: permissionv1.UserOrRole{
-				Type:  permissionv1.RoleType,
-				Value: plan.RoleID.ValueString(),
-			},
-			Assignment: permissionv1.ProjectAssignmentType(v.ValueString()),
-		})
+		writes = append(writes, api.Assignment{Assignee: api.RoleAssignee(plan.RoleID.ValueString()), Assignment: v.ValueString()})
 	}
 
 	for _, v := range removed {
-		deletes = append(deletes, &permissionv1.ProjectAssignment{
-			Assignee: permissionv1.UserOrRole{
-				Type:  permissionv1.RoleType,
-				Value: plan.RoleID.ValueString(),
-			},
-			Assignment: permissionv1.ProjectAssignmentType(v.ValueString()),
-		})
+		deletes = append(deletes, api.Assignment{Assignee: api.RoleAssignee(plan.RoleID.ValueString()), Assignment: v.ValueString()})
 	}
 
-	if _, err := r.client.PermissionV1().ProjectPermission().Update(ctx, plan.ProjectID.ValueString(), &permissionv1.UpdateProjectPermissionsOptions{
-		Writes:  writes,
-		Deletes: deletes,
-	}); err != nil {
+	if err := r.client.UpdateProjectAssignments(ctx, plan.ProjectID.ValueString(), writes, deletes); err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to update project assignment, %v", err.Error()))
 		return
 	}
@@ -283,7 +259,7 @@ func (r *lakekeeperProjectRoleAssignmentResource) Delete(ctx context.Context, re
 	}
 
 	var assignments []types.String
-	var deletes []*permissionv1.ProjectAssignment
+	var deletes []api.Assignment
 
 	resp.Diagnostics.Append(state.Assignments.ElementsAs(ctx, &assignments, false)...)
 	if resp.Diagnostics.HasError() {
@@ -291,18 +267,10 @@ func (r *lakekeeperProjectRoleAssignmentResource) Delete(ctx context.Context, re
 	}
 
 	for _, v := range assignments {
-		deletes = append(deletes, &permissionv1.ProjectAssignment{
-			Assignee: permissionv1.UserOrRole{
-				Value: state.RoleID.ValueString(),
-				Type:  permissionv1.RoleType,
-			},
-			Assignment: permissionv1.ProjectAssignmentType(v.ValueString()),
-		})
+		deletes = append(deletes, api.Assignment{Assignee: api.RoleAssignee(state.RoleID.ValueString()), Assignment: v.ValueString()})
 	}
 
-	if _, err := r.client.PermissionV1().ProjectPermission().Update(ctx, state.ProjectID.ValueString(), &permissionv1.UpdateProjectPermissionsOptions{
-		Deletes: deletes,
-	}); err != nil {
+	if err := r.client.UpdateProjectAssignments(ctx, state.ProjectID.ValueString(), nil, deletes); err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete project assignment, %v", err.Error()))
 	}
 

@@ -3,12 +3,12 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -72,7 +72,7 @@ func TestExistingNamespaceRead(t *testing.T) {
 			}))
 			defer server.Close()
 			ctx := context.Background()
-			client, err := lakekeeper.NewClient(ctx, "test", server.URL, lakekeeper.WithoutRetries())
+			client, err := api.NewStaticTokenClient(ctx, server.URL, "test")
 			if err != nil {
 				t.Fatal(err)
 			}

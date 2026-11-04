@@ -12,7 +12,7 @@ import (
 )
 
 func TestAccDataLakekeeperServerInfo_basic(t *testing.T) {
-	server, _, err := testutil.TestLakekeeperClient.ServerV1().Info(t.Context())
+	server, err := testutil.TestLakekeeperClient.GetServerInfo(t.Context())
 	if err != nil {
 		t.Fatalf("could not get server info, %s", err.Error())
 	}

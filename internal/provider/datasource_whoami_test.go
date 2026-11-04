@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccDataLakekeeperWhoami_basic(t *testing.T) {
-	user, _, err := testutil.TestLakekeeperClient.UserV1().Whoami(t.Context())
+	user, err := testutil.TestLakekeeperClient.Whoami(t.Context())
 	if err != nil {
 		t.Fatalf("could not get current user, %s", err.Error())
 	}

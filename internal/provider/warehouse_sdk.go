@@ -4,17 +4,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/sdk"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	managementv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1"
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/profile"
 )
 
-func (m *lakekeeperWarehouseResourceModel) toWarehouseCreateRequest() (*managementv1.CreateWarehouseOptions, error) {
-	req := managementv1.CreateWarehouseOptions{
+func (m *lakekeeperWarehouseResourceModel) toWarehouseCreateRequest() (*api.CreateWarehouseRequest, error) {
+	req := api.CreateWarehouseRequest{
 		Name: m.Name.ValueString(),
 	}
 
@@ -27,17 +25,17 @@ func (m *lakekeeperWarehouseResourceModel) toWarehouseCreateRequest() (*manageme
 		return nil, err
 	}
 
-	storage, err := s.AsSDK()
+	storage, err := s.ToAPI()
 	if err != nil {
 		return nil, err
 	}
-	req.StorageProfile = storage.AsProfile()
+	req.StorageProfile = storage
 
-	creds, err := s.CredentialAsSDK()
+	creds, err := s.CredentialToAPI()
 	if err != nil {
 		return nil, err
 	}
-	req.StorageCredential = creds.AsCredential()
+	req.StorageCredential = creds
 
 	if m.DeleteProfile != nil {
 		settings, err := m.DeleteProfileSettings()
@@ -48,7 +46,7 @@ func (m *lakekeeperWarehouseResourceModel) toWarehouseCreateRequest() (*manageme
 			return nil, errors.New("delete profile is empty")
 		}
 
-		req.DeleteProfile = settings.AsProfile()
+		req.DeleteProfile = settings
 	}
 
 	return &req, nil
@@ -57,7 +55,7 @@ func (m *lakekeeperWarehouseResourceModel) toWarehouseCreateRequest() (*manageme
 // TODO: refactor RefreshFromSettings on datasource and resource
 // because these functions are almost identical
 
-func (m *lakekeeperWarehouseResourceModel) RefreshFromSettings(w *managementv1.Warehouse, plan *lakekeeperWarehouseResourceModel) diag.Diagnostics {
+func (m *lakekeeperWarehouseResourceModel) RefreshFromSettings(w *api.Warehouse, plan *lakekeeperWarehouseResourceModel) diag.Diagnostics {
 	m.ID = types.StringValue(w.ProjectID + "/" + w.ID)
 	m.WarehouseID = types.StringValue(w.ID)
 	m.ProjectID = types.StringValue(w.ProjectID)
@@ -68,7 +66,7 @@ func (m *lakekeeperWarehouseResourceModel) RefreshFromSettings(w *managementv1.W
 	diags := diag.Diagnostics{}
 	const errorMessage = "Error refreshing warehouse state"
 
-	if w.StorageProfile.StorageSettings == nil {
+	if w.StorageProfile == nil {
 		diags.AddError(errorMessage, "Storage profile must be defined")
 		return diags
 	}
@@ -92,7 +90,7 @@ func (m *lakekeeperWarehouseResourceModel) RefreshFromSettings(w *managementv1.W
 		oldProfile = nil
 	}
 
-	storageProfile, err := sdk.StorageProfileModelFromSDK(w.StorageProfile)
+	storageProfile, err := sdk.StorageProfileModelFromAPI(w.StorageProfile)
 	if err != nil {
 		diags.AddError(errorMessage, err.Error())
 		return diags
@@ -124,28 +122,28 @@ func (m *lakekeeperWarehouseResourceModel) RefreshFromSettings(w *managementv1.W
 		diags.AddError(errorMessage, "Incorrect storage profile type")
 	}
 
-	if w.DeleteProfile == nil || w.DeleteProfile.DeleteProfileSettings == nil {
+	if w.DeleteProfile == nil {
 		m.DeleteProfile = nil
 	} else {
-		switch deleteProfile := w.DeleteProfile.DeleteProfileSettings.(type) {
-		case *profile.TabularDeleteProfileSoft:
+		switch w.DeleteProfile.Type {
+		case api.DeleteProfileTypeSoft:
 			m.DeleteProfile = &sdk.DeleteProfileModel{
 				Type:              types.StringValue("soft"),
-				ExpirationSeconds: types.Int32Value(deleteProfile.ExpirationSeconds),
+				ExpirationSeconds: types.Int32Value(w.DeleteProfile.ExpirationSeconds),
 			}
-		case *profile.TabularDeleteProfileHard:
+		case api.DeleteProfileTypeHard:
 			m.DeleteProfile = &sdk.DeleteProfileModel{
 				Type: types.StringValue("hard"),
 			}
 		default:
-			diags.AddError(errorMessage, fmt.Sprintf("Incorrect delete profile type: %T, valid: [soft,hard]", deleteProfile))
+			diags.AddError(errorMessage, fmt.Sprintf("Incorrect delete profile type: %s, valid: [soft,hard]", w.DeleteProfile.Type))
 		}
 	}
 
 	return diags
 }
 
-func (m *lakekeeperWarehouseDataSourceModel) RefreshDataSourceFromSettings(w *managementv1.Warehouse) diag.Diagnostics {
+func (m *lakekeeperWarehouseDataSourceModel) RefreshDataSourceFromSettings(w *api.Warehouse) diag.Diagnostics {
 	m.ID = types.StringValue(w.ProjectID + "/" + w.ID)
 	m.WarehouseID = types.StringValue(w.ID)
 	m.ProjectID = types.StringValue(w.ProjectID)
@@ -156,12 +154,12 @@ func (m *lakekeeperWarehouseDataSourceModel) RefreshDataSourceFromSettings(w *ma
 	diags := diag.Diagnostics{}
 	const errorMessage = "Error refreshing warehouse state"
 
-	if w.StorageProfile.StorageSettings == nil {
+	if w.StorageProfile == nil {
 		diags.AddError(errorMessage, "Storage profile must be defined")
 		return diags
 	}
 
-	storageProfile, err := sdk.StorageProfileModelFromSDK(w.StorageProfile)
+	storageProfile, err := sdk.StorageProfileModelFromAPI(w.StorageProfile)
 	if err != nil {
 		diags.AddError(errorMessage, err.Error())
 		return diags
@@ -189,41 +187,41 @@ func (m *lakekeeperWarehouseDataSourceModel) RefreshDataSourceFromSettings(w *ma
 		diags.AddError(errorMessage, fmt.Sprintf("Incorrect storage profile type, got %T", storageProfile))
 	}
 
-	if w.DeleteProfile == nil || w.DeleteProfile.DeleteProfileSettings == nil {
+	if w.DeleteProfile == nil {
 		m.DeleteProfile = nil
 	} else {
-		switch deleteProfile := w.DeleteProfile.DeleteProfileSettings.(type) {
-		case *profile.TabularDeleteProfileSoft:
+		switch w.DeleteProfile.Type {
+		case api.DeleteProfileTypeSoft:
 			m.DeleteProfile = &sdk.DeleteProfileModel{
 				Type:              types.StringValue("soft"),
-				ExpirationSeconds: types.Int32Value(deleteProfile.ExpirationSeconds),
+				ExpirationSeconds: types.Int32Value(w.DeleteProfile.ExpirationSeconds),
 			}
-		case *profile.TabularDeleteProfileHard:
+		case api.DeleteProfileTypeHard:
 			m.DeleteProfile = &sdk.DeleteProfileModel{
 				Type: types.StringValue("hard"),
 			}
 		default:
-			diags.AddError(errorMessage, fmt.Sprintf("Incorrect delete profile type: %T, valid: [soft,hard]", deleteProfile))
+			diags.AddError(errorMessage, fmt.Sprintf("Incorrect delete profile type: %s, valid: [soft,hard]", w.DeleteProfile.Type))
 		}
 	}
 
 	return diags
 }
 
-func (m *lakekeeperWarehouseResourceModel) DeleteProfileSettings() (profile.DeleteProfileSettings, error) {
+func (m *lakekeeperWarehouseResourceModel) DeleteProfileSettings() (*api.DeleteProfile, error) {
 	if m.DeleteProfile == nil {
 		return nil, nil
 	}
 
 	if m.DeleteProfile.Type.IsNull() || m.DeleteProfile.Type.IsUnknown() {
-		return profile.NewTabularDeleteProfileHard(), nil
+		return &api.DeleteProfile{Type: api.DeleteProfileTypeHard}, nil
 	}
 
 	switch m.DeleteProfile.Type.ValueString() {
 	case "soft":
-		return profile.NewTabularDeleteProfileSoft(m.DeleteProfile.ExpirationSeconds.ValueInt32()), nil
+		return &api.DeleteProfile{Type: api.DeleteProfileTypeSoft, ExpirationSeconds: m.DeleteProfile.ExpirationSeconds.ValueInt32()}, nil
 	case "hard":
-		return profile.NewTabularDeleteProfileHard(), nil
+		return &api.DeleteProfile{Type: api.DeleteProfileTypeHard}, nil
 	default:
 		return nil, fmt.Errorf("incorrect delete profile definition, type must be [soft,hard]")
 	}

@@ -1,5 +1,22 @@
 version: "2"
 linters:
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        # Only the client layer in internal/provider/api may use the Lakekeeper
+        # Go SDK. Everything else goes through *api.Client and the api types,
+        # so an SDK switch or upgrade only touches that package.
+        lakekeeper-sdk:
+          files:
+            - "$all"
+            - "!**/internal/provider/api/*.go"
+          deny:
+            - pkg: github.com/baptistegh/go-lakekeeper
+              desc: use the client layer in internal/provider/api instead
+            - pkg: github.com/lakekeeper/go-lakekeeper
+              desc: use the client layer in internal/provider/api instead
   exclusions:
     generated: lax
     presets:

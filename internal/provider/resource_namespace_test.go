@@ -68,7 +68,7 @@ func testAccCheckLakekeeperNamespaceDestroy(s *terraform.State) error {
 
 		ctx := context.Background()
 
-		cat, err := testutil.TestLakekeeperClient.CatalogV1(ctx, projectID, warehouseName)
+		cat, err := testutil.TestLakekeeperClient.Catalog(ctx, projectID, warehouseName)
 		if err != nil {
 			return fmt.Errorf("could not create the Iceberg Catalog client, %w", err)
 		}

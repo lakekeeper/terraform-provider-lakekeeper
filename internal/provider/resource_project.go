@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	managementv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1"
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -15,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces
@@ -39,7 +38,7 @@ func (r *lakekeeperProjectResource) Metadata(ctx context.Context, req resource.M
 
 // lakekeeperProjectResource defines the resource implementation.
 type lakekeeperProjectResource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // lakekeeperProjectResourceModel describes the resource data model.
@@ -95,17 +94,13 @@ func (r *lakekeeperProjectResource) Create(ctx context.Context, req resource.Cre
 
 	name := state.Name.ValueString()
 
-	opts := managementv1.CreateProjectOptions{
-		Name: name,
-	}
-
-	project, _, err := r.client.ProjectV1().Create(ctx, &opts)
+	projectID, err := r.client.CreateProject(ctx, name)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to create project %s, %v", name, err.Error()))
 		return
 	}
 
-	state.ID = types.StringValue(project.ID)
+	state.ID = types.StringValue(projectID)
 
 	// Log the creation of the resource
 	tflog.Debug(ctx, "created an application", map[string]any{
@@ -128,7 +123,7 @@ func (r *lakekeeperProjectResource) Read(ctx context.Context, req resource.ReadR
 
 	id := state.ID.ValueString()
 
-	project, _, err := r.client.ProjectV1().Get(ctx, id)
+	project, err := r.client.GetProject(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read project %s, %v", id, err.Error()))
 		return
@@ -158,11 +153,7 @@ func (r *lakekeeperProjectResource) Update(ctx context.Context, req resource.Upd
 			"newName": plan.Name.ValueString(),
 		})
 
-		opts := managementv1.RenameProjectOptions{
-			NewName: plan.Name.ValueString(),
-		}
-
-		_, err := r.client.ProjectV1().Rename(ctx, state.ID.ValueString(), &opts)
+		err := r.client.RenameProject(ctx, state.ID.ValueString(), plan.Name.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to rename project %s, %v", state.ID.ValueString(), err.Error()))
 			return
@@ -187,7 +178,7 @@ func (r *lakekeeperProjectResource) Delete(ctx context.Context, req resource.Del
 
 	id := state.ID.ValueString()
 
-	_, err := r.client.ProjectV1().Delete(ctx, id)
+	err := r.client.DeleteProject(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete project %s, %v", id, err))
 		return

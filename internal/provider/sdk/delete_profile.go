@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/profile"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -17,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/terraform-community-providers/terraform-plugin-framework-utils/modifiers"
 )
 
@@ -47,10 +47,10 @@ func DeleteProfileResourceSchema() rschema.SingleNestedAttribute {
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(string(profile.HardDeleteProfileType), string(profile.SoftDeleteProfileType)),
+					stringvalidator.OneOf(api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft),
 				},
 				Default:             stringdefault.StaticString("hard"),
-				MarkdownDescription: fmt.Sprintf("Type of the delete profile. Can be `%s` or `%s`. Default: `%s`", profile.HardDeleteProfileType, profile.SoftDeleteProfileType, profile.HardDeleteProfileType),
+				MarkdownDescription: fmt.Sprintf("Type of the delete profile. Can be `%s` or `%s`. Default: `%s`", api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft, api.DeleteProfileTypeHard),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -75,13 +75,13 @@ func DeleteProfileDatasourceSchema() dschema.SingleNestedAttribute {
 			"type": dschema.StringAttribute{
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(string(profile.HardDeleteProfileType), string(profile.SoftDeleteProfileType)),
+					stringvalidator.OneOf(api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft),
 				},
-				MarkdownDescription: fmt.Sprintf("Type of the delete profile. Can be `%s` or `%s`", profile.HardDeleteProfileType, profile.SoftDeleteProfileType),
+				MarkdownDescription: fmt.Sprintf("Type of the delete profile. Can be `%s` or `%s`", api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft),
 			},
 			"expiration_seconds": dschema.Int32Attribute{
 				Computed:            true,
-				MarkdownDescription: fmt.Sprintf("When the types is `%s`. Entity will be deleted after `expiration_seconds`. Default is `3600`", profile.SoftDeleteProfileType),
+				MarkdownDescription: fmt.Sprintf("When the types is `%s`. Entity will be deleted after `expiration_seconds`. Default is `3600`", api.DeleteProfileTypeSoft),
 			},
 		},
 		Validators: []validator.Object{deleteProfileValidator{}},

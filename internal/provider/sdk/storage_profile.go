@@ -4,18 +4,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/credential"
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/profile"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 type (
 	StorageProfileModel interface {
-		CredentialAsSDK() (credential.CredentialSettings, error)
+		CredentialToAPI() (api.StorageCredential, error)
 		AddCreds(StorageCredsModel) error
 		GetCredentials() (StorageCredsModel, error)
-		AsSDK() (profile.StorageSettings, error)
+		ToAPI() (api.StorageProfile, error)
 		IsEmpty() bool
 	}
 
@@ -118,7 +116,7 @@ var (
 	_ StorageProfileDataSourceModel = (*GCSStorageProfileDataSourceModel)(nil)
 )
 
-func (m *S3StorageProfileModel) AsSDK() (profile.StorageSettings, error) {
+func (m *S3StorageProfileModel) ToAPI() (api.StorageProfile, error) {
 	if m.Bucket.IsNull() || m.Bucket.IsUnknown() {
 		return nil, errors.New("bucket is required")
 	}
@@ -127,66 +125,25 @@ func (m *S3StorageProfileModel) AsSDK() (profile.StorageSettings, error) {
 		return nil, errors.New("region is required")
 	}
 
-	opt := []profile.S3StorageSettingsOptions{}
-
-	if m.KeyPrefix.ValueString() != "" {
-		opt = append(opt, profile.WithS3KeyPrefix(m.KeyPrefix.ValueString()))
-	}
-
-	if m.AllowAlternativeProtocols.ValueBool() {
-		opt = append(opt, profile.WithS3AlternativeProtocols())
-	}
-
-	if m.AssumeRoleARN.ValueString() != "" {
-		opt = append(opt, profile.WithAssumeRoleARN(m.AssumeRoleARN.ValueString()))
-	}
-
-	if m.AWSKMSKeyARN.ValueString() != "" {
-		opt = append(opt, profile.WithAWSKMSKeyARN(m.AWSKMSKeyARN.ValueString()))
-	}
-
-	if m.Endpoint.ValueString() != "" {
-		opt = append(opt, profile.WithEndpoint(m.Endpoint.ValueString()))
-	}
-
-	if m.Flavor.ValueString() != "" {
-		opt = append(opt, profile.WithFlavor(profile.S3Flavor(m.Flavor.ValueString())))
-	}
-
-	if m.PathStyleAccess.ValueBool() {
-		opt = append(opt, profile.WithPathStyleAccess())
-	}
-
-	if m.PushS3DeleteDisabled.ValueBool() {
-		opt = append(opt, profile.WithPushS3DeleteDisabled(m.PushS3DeleteDisabled.ValueBool()))
-	}
-
-	if m.RemoteSigningURLStyle.ValueString() != "" {
-		opt = append(opt, profile.WithRemoteSigningURLStyle(profile.RemoteSigningURLStyle(m.RemoteSigningURLStyle.ValueString())))
-	}
-
-	if m.STSEnabled.ValueBool() {
-		opt = append(opt, profile.WithSTSEnabled())
-	}
-
-	if m.STSRoleARN.ValueString() != "" {
-		opt = append(opt, profile.WithSTSRoleARN(m.STSRoleARN.ValueString()))
-	}
-
-	if m.STSTokenValiditySeconds.ValueInt64() != 0 {
-		opt = append(opt, profile.WithSTSTokenValiditySeconds(m.STSTokenValiditySeconds.ValueInt64()))
-	}
-
-	sp := profile.NewS3StorageSettings(
-		m.Bucket.ValueString(),
-		m.Region.ValueString(),
-		opt...,
-	)
-
-	return sp, nil
+	return &api.S3StorageProfile{
+		Bucket:                    m.Bucket.ValueString(),
+		Region:                    m.Region.ValueString(),
+		STSEnabled:                m.STSEnabled.ValueBool(),
+		KeyPrefix:                 knownString(m.KeyPrefix),
+		AllowAlternativeProtocols: knownBool(m.AllowAlternativeProtocols),
+		AssumeRoleARN:             knownString(m.AssumeRoleARN),
+		AWSKMSKeyARN:              knownString(m.AWSKMSKeyARN),
+		Endpoint:                  knownString(m.Endpoint),
+		Flavor:                    knownString(m.Flavor),
+		PathStyleAccess:           knownBool(m.PathStyleAccess),
+		PushS3DeleteDisabled:      knownBool(m.PushS3DeleteDisabled),
+		RemoteSigningURLStyle:     knownString(m.RemoteSigningURLStyle),
+		STSRoleARN:                knownString(m.STSRoleARN),
+		STSTokenValiditySeconds:   knownInt64(m.STSTokenValiditySeconds),
+	}, nil
 }
 
-func (m *S3StorageProfileModel) CredentialAsSDK() (credential.CredentialSettings, error) {
+func (m *S3StorageProfileModel) CredentialToAPI() (api.StorageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
@@ -196,7 +153,7 @@ func (m *S3StorageProfileModel) CredentialAsSDK() (credential.CredentialSettings
 		return nil, err
 	}
 
-	return storage.AsSDK()
+	return storage.ToAPI()
 }
 
 func (m *S3StorageProfileModel) IsEmpty() bool {
@@ -227,7 +184,7 @@ func (m *S3StorageProfileModel) GetCredentials() (StorageCredsModel, error) {
 	return OnlyOneStorageCredential(m.Credential.AccessKey, m.Credential.AWSSystemIdentity, m.Credential.CloudflareR2)
 }
 
-func (m *ADLSStorageProfileModel) AsSDK() (profile.StorageSettings, error) {
+func (m *ADLSStorageProfileModel) ToAPI() (api.StorageProfile, error) {
 	if m.AccountName.IsNull() || m.AccountName.IsUnknown() {
 		return nil, errors.New("account_name is required")
 	}
@@ -236,65 +193,20 @@ func (m *ADLSStorageProfileModel) AsSDK() (profile.StorageSettings, error) {
 		return nil, errors.New("filesystem is required")
 	}
 
-	opt := []profile.ADLSStorageSettingsOptions{}
-
-	if m.AuthorityHost.ValueString() != "" {
-		opt = append(opt, profile.WithAuthorityHost(m.AuthorityHost.ValueString()))
-	}
-
-	if m.Host.ValueString() != "" {
-		opt = append(opt, profile.WithHost(m.Host.ValueString()))
-	}
-
-	if m.KeyPrefix.ValueString() != "" {
-		opt = append(opt, profile.WithADLSKeyPrefix(m.KeyPrefix.ValueString()))
-	}
-
-	if m.SASTokenValiditySeconds.ValueInt64() != 0 {
-		opt = append(opt, profile.WithSASTokenValiditySeconds(m.SASTokenValiditySeconds.ValueInt64()))
-	}
-
-	if m.AllowAlternativeProtocols.ValueBool() {
-		opt = append(opt, profile.WithADLSAlternativeProtocols())
-	}
-
-	sp := profile.NewADLSStorageSettings(
-		m.AccountName.ValueString(),
-		m.Filesystem.ValueString(),
-		opt...,
-	)
-
-	// NewADLSStorageSettings injects client-side defaults for several optional
-	// fields (host = "dfs.core.windows.net", authority_host =
-	// "https://login.microsoftonline.com", sas_token_validity_seconds = 3600).
-	// The Lakekeeper server, like the UI, expects these to be omitted unless
-	// explicitly set: it stores null and applies its own defaults at runtime.
-	// Sending the injected defaults instead breaks in field-specific ways:
-	//   - host: a non-empty host becomes CloudLocation::Custom, which reuses the
-	//     dfs URI for the blob service client and breaks the blob-only "Get User
-	//     Delegation Key" SAS minting (400 InvalidUri from the Windows-Azure-HDFS
-	//     endpoint) for azure_system_identity and client_credentials.
-	//   - authority_host: treated as immutable, so updating a warehouse stored
-	//     with null fails ("Field `authority_host` cannot be updated to prevent
-	//     loss of data").
-	//   - sas_token_validity_seconds: Optional+Computed stored as null, so a sent
-	//     3600 triggers a "provider produced inconsistent result" error.
-	// Mirror the UI and omit each value when the user has not set it explicitly,
-	// letting the server apply its defaults.
-	if m.Host.ValueString() == "" {
-		sp.Host = nil
-	}
-	if m.AuthorityHost.ValueString() == "" {
-		sp.AuthorityHost = nil
-	}
-	if m.SASTokenValiditySeconds.IsNull() || m.SASTokenValiditySeconds.IsUnknown() {
-		sp.SASTokenValiditySeconds = nil
-	}
-
-	return sp, nil
+	// Unset optional fields stay nil so the client omits them and the server
+	// applies its own defaults; see api.ADLSStorageProfile.
+	return &api.ADLSStorageProfile{
+		AccountName:               m.AccountName.ValueString(),
+		Filesystem:                m.Filesystem.ValueString(),
+		Host:                      knownString(m.Host),
+		AuthorityHost:             knownString(m.AuthorityHost),
+		KeyPrefix:                 knownString(m.KeyPrefix),
+		SASTokenValiditySeconds:   knownInt64(m.SASTokenValiditySeconds),
+		AllowAlternativeProtocols: knownBool(m.AllowAlternativeProtocols),
+	}, nil
 }
 
-func (m *ADLSStorageProfileModel) CredentialAsSDK() (credential.CredentialSettings, error) {
+func (m *ADLSStorageProfileModel) CredentialToAPI() (api.StorageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
@@ -304,7 +216,7 @@ func (m *ADLSStorageProfileModel) CredentialAsSDK() (credential.CredentialSettin
 		return nil, err
 	}
 
-	return storage.AsSDK()
+	return storage.ToAPI()
 }
 
 func (m *GCSStorageProfileModel) IsEmpty() bool {
@@ -333,26 +245,18 @@ func (m *GCSStorageProfileModel) GetCredentials() (StorageCredsModel, error) {
 	return OnlyOneStorageCredential(m.Credential.ServiceAccountKey, m.Credential.SystemIdentity)
 }
 
-func (m *GCSStorageProfileModel) AsSDK() (profile.StorageSettings, error) {
+func (m *GCSStorageProfileModel) ToAPI() (api.StorageProfile, error) {
 	if m.Bucket.IsNull() || m.Bucket.IsUnknown() {
 		return nil, errors.New("bucket is required")
 	}
 
-	opt := []profile.GCSStorageSettingsOptions{}
-
-	if m.KeyPrefix.ValueString() != "" {
-		opt = append(opt, profile.WithGCSKeyPrefix(m.KeyPrefix.ValueString()))
-	}
-
-	sp := profile.NewGCSStorageSettings(
-		m.Bucket.ValueString(),
-		opt...,
-	)
-
-	return sp, nil
+	return &api.GCSStorageProfile{
+		Bucket:    m.Bucket.ValueString(),
+		KeyPrefix: knownString(m.KeyPrefix),
+	}, nil
 }
 
-func (m *GCSStorageProfileModel) CredentialAsSDK() (credential.CredentialSettings, error) {
+func (m *GCSStorageProfileModel) CredentialToAPI() (api.StorageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
@@ -362,7 +266,7 @@ func (m *GCSStorageProfileModel) CredentialAsSDK() (credential.CredentialSetting
 		return nil, err
 	}
 
-	return creds.AsSDK()
+	return creds.ToAPI()
 }
 
 func (m *ADLSStorageProfileModel) IsEmpty() bool {
@@ -447,18 +351,12 @@ func (m *GCSStorageProfileDataSourceModel) FromResourceModel(s StorageProfileMod
 	return nil
 }
 
-func StorageProfileModelFromSDK(sp profile.StorageProfile) (StorageProfileModel, error) {
-	if sp.StorageSettings == nil {
+func StorageProfileModelFromAPI(sp api.StorageProfile) (StorageProfileModel, error) {
+	switch cfg := sp.(type) {
+	case nil:
 		return nil, errors.New("storage profile is empty")
-	}
-
-	switch sp.StorageSettings.GetStorageFamily() {
-	case profile.StorageFamilyS3:
-		cfg, ok := sp.AsS3()
-		if !ok {
-			return nil, errors.New("invalid storage profile")
-		}
-		sp := &S3StorageProfileModel{
+	case *api.S3StorageProfile:
+		return &S3StorageProfileModel{
 			Bucket:                    types.StringValue(cfg.Bucket),
 			Region:                    types.StringValue(cfg.Region),
 			STSEnabled:                types.BoolValue(cfg.STSEnabled),
@@ -471,28 +369,10 @@ func StorageProfileModelFromSDK(sp profile.StorageProfile) (StorageProfileModel,
 			AWSKMSKeyARN:              types.StringPointerValue(cfg.AWSKMSKeyARN),
 			Endpoint:                  types.StringPointerValue(cfg.Endpoint),
 			PathStyleAccess:           types.BoolPointerValue(cfg.PathStyleAccess),
-		}
-
-		var f *string
-		if cfg.Flavor != nil {
-			f = core.Ptr(string(*cfg.Flavor))
-		}
-
-		var style *string
-		if cfg.RemoteSigningURLStyle != nil {
-			style = core.Ptr(string(*cfg.RemoteSigningURLStyle))
-		}
-
-		sp.Flavor = types.StringPointerValue(f)
-		sp.RemoteSigningURLStyle = types.StringPointerValue(style)
-
-		return sp, nil
-	case profile.StorageFamilyADLS:
-		cfg, ok := sp.AsADLS()
-		if !ok {
-			return nil, errors.New("invalid storage profile")
-		}
-
+			Flavor:                    types.StringPointerValue(cfg.Flavor),
+			RemoteSigningURLStyle:     types.StringPointerValue(cfg.RemoteSigningURLStyle),
+		}, nil
+	case *api.ADLSStorageProfile:
 		return &ADLSStorageProfileModel{
 			AccountName:               types.StringValue(cfg.AccountName),
 			Filesystem:                types.StringValue(cfg.Filesystem),
@@ -502,12 +382,7 @@ func StorageProfileModelFromSDK(sp profile.StorageProfile) (StorageProfileModel,
 			SASTokenValiditySeconds:   types.Int64PointerValue(cfg.SASTokenValiditySeconds),
 			AllowAlternativeProtocols: types.BoolPointerValue(cfg.AllowAlternativeProtocols),
 		}, nil
-	case profile.StorageFamilyGCS:
-		cfg, ok := sp.AsGCS()
-		if !ok {
-			return nil, errors.New("invalid storage profile")
-		}
-
+	case *api.GCSStorageProfile:
 		return &GCSStorageProfileModel{
 			Bucket:    types.StringValue(cfg.Bucket),
 			KeyPrefix: types.StringPointerValue(cfg.KeyPrefix),
@@ -534,4 +409,28 @@ func OnlyOneStorageProfile(args ...StorageProfileModel) (StorageProfileModel, er
 	}
 
 	return selected, nil
+}
+
+// knownString returns nil for a null or unknown value.
+func knownString(v types.String) *string {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	return new(v.ValueString())
+}
+
+// knownBool returns nil for a null or unknown value.
+func knownBool(v types.Bool) *bool {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	return new(v.ValueBool())
+}
+
+// knownInt64 returns nil for a null or unknown value.
+func knownInt64(v types.Int64) *int64 {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	return new(v.ValueInt64())
 }
