@@ -66,6 +66,10 @@ Formatting and linting are enforced by `gofmt`, [`golangci-lint`](https://golang
 
 GitHub Actions workflows in `.github/workflows/` are checked with [`actionlint`](https://github.com/rhysd/actionlint) and [`zizmor`](https://docs.zizmor.sh/). Run `make lint-actions` after changing them; it needs [`uv`](https://docs.astral.sh/uv/) for zizmor. CI also runs zizmor's online audits (e.g. known-vulnerable actions); set `GH_TOKEN` to run them locally too.
 
+### Knowledge graph (optional)
+
+If you use a coding agent, `make graph` builds a [graphify](https://github.com/safishamsi/graphify) knowledge graph of the code into `graphify-out/` (needs `uv`). It runs locally, costs no API tokens, and takes a few seconds; rerun it to refresh the graph after changes. `graphify-out/` is gitignored, so never commit it. `.graphifyignore` lists files the graph skips.
+
 ## Commits and branches
 
 - Commits and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `fix: handle empty role list` or `feat(warehouse): support GCS`. Start the description with a lowercase letter, use the imperative mood, and leave off the trailing period; this is convention, not checked by CI. CI checks the PR title's format, and [release-please](https://github.com/googleapis/release-please) derives versions and `CHANGELOG.md` from it.

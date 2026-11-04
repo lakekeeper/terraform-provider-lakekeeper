@@ -103,6 +103,12 @@ tool-terraform:
 	@# See https://github.com/hashicorp/terraform/issues/30356
 	@[ -f $(GOBIN)/terraform ] || { mkdir -p tmp; cd tmp; rm -rf terraform; git clone --branch $(TERRAFORM_VERSION) --depth 1 https://github.com/hashicorp/terraform.git; cd terraform; GOBIN=$(GOBIN) go install; cd ../..; rm -rf tmp; }
 
+# renovate: datasource=pypi depName=graphifyy
+GRAPHIFY_VERSION ?= 0.9.102
+
+graph: ## Build or update the local graphify knowledge graph in graphify-out/ (optional, requires uv).
+	uvx --from 'graphifyy[terraform]==$(GRAPHIFY_VERSION)' graphify update .
+
 clean: playground-destroy testacc-down
 	go clean -testcache
 	rm -rf bin/

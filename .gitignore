@@ -36,3 +36,6 @@ website/vendor
 
 # playground
 playground/.terraform.lock.hcl
+
+# graphify knowledge graph (local only, built with `make graph`)
+graphify-out/
