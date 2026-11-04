@@ -1,0 +1,13 @@
+# Files graphify (https://github.com/safishamsi/graphify) skips when building
+# the optional local knowledge graph (`make graph`). Same syntax as .gitignore.
+
+# Boilerplate and release-please-managed files: little signal, extra tokens.
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+MAINTAINERS.md
+.github/pull_request_template.md
+.release-please-manifest.json
+
+# Agent instructions, not provider code.
+CLAUDE.md
+.claude/skills/verify/SKILL.md

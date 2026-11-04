@@ -103,6 +103,18 @@ tool-terraform:
 	@# See https://github.com/hashicorp/terraform/issues/30356
 	@[ -f $(GOBIN)/terraform ] || { mkdir -p tmp; cd tmp; rm -rf terraform; git clone --branch $(TERRAFORM_VERSION) --depth 1 https://github.com/hashicorp/terraform.git; cd terraform; GOBIN=$(GOBIN) go install; cd ../..; rm -rf tmp; }
 
+# renovate: datasource=pypi depName=graphifyy
+GRAPHIFY_VERSION ?= 0.9.102
+
+GRAPHIFY = uvx --from 'graphifyy[terraform]==$(GRAPHIFY_VERSION)' graphify
+
+graph: ## Rebuild the graphify knowledge graph in graphify-out/ (optional, requires uv).
+	PYTHONHASHSEED=0 $(GRAPHIFY) update .
+
+graph-setup: ## Register the graphify merge driver for graphify-out/graph.json in this clone (requires uv).
+	git config merge.graphify.name "graphify graph.json union merge"
+	git config merge.graphify.driver "$(GRAPHIFY) merge-driver %O %A %B"
+
 clean: playground-destroy testacc-down
 	go clean -testcache
 	rm -rf bin/
