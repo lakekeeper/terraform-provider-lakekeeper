@@ -68,7 +68,10 @@ GitHub Actions workflows in `.github/workflows/` are checked with [`actionlint`]
 
 ### Knowledge graph (optional)
 
-If you use a coding agent, `make graph` builds a [graphify](https://github.com/safishamsi/graphify) knowledge graph of the code into `graphify-out/` (needs `uv`). It runs locally, costs no API tokens, and takes a few seconds; rerun it to refresh the graph after changes. `graphify-out/` is gitignored, so never commit it. `.graphifyignore` lists files the graph skips.
+If you use a coding agent, the [graphify](https://github.com/safishamsi/graphify) knowledge graph of the code in `graphify-out/graph.json` gives it a map of the repository. The graph is committed and shared, following graphify's [shared team graph](https://docs.graphify.com/cookbooks/shared-team-graph) recipe; the other files in `graphify-out/` are gitignored and rebuilt locally. `.graphifyignore` lists files the graph skips.
+
+- `make graph` rebuilds the graph (needs `uv`). It runs locally, costs no API tokens, and takes a few seconds. Rerun it after code changes and commit the updated `graph.json` with them.
+- `make graph-setup` registers graphify's union merge driver in your clone, once. `.gitattributes` routes `graph.json` through it, so two branches that both changed the graph merge without a conflict.
 
 ## Commits and branches
 

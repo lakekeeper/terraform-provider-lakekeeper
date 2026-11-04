@@ -37,5 +37,6 @@ website/vendor
 # playground
 playground/.terraform.lock.hcl
 
-# graphify knowledge graph (local only, built with `make graph`)
-graphify-out/
+# graphify knowledge graph: only graph.json is shared, the rest is rebuilt locally
+graphify-out/*
+!graphify-out/graph.json
