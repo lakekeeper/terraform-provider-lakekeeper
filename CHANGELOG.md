@@ -1,6 +1,24 @@
 # Changelog
 
 
+## [0.5.0](https://github.com/lakekeeper/terraform-provider-lakekeeper/compare/v0.4.12...v0.5.0) (2026-11-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* move provider to lakekeeper org and prepare repo for contributors ([#1](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/1))
+
+### Features
+
+* move provider to lakekeeper org and prepare repo for contributors ([#1](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/1)) ([c387698](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/c38769884d9c7d1fb256b13b0d58bdf29708467d))
+
+
+### Miscellaneous Chores
+
+* **deps:** update dependency terraform to v1.17.1 ([#332](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/332)) ([fe1d9ef](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/fe1d9efd4ce3177a9840ce6204d8cf23ef29ee90))
+* rename Go module to github.com/lakekeeper/terraform-provider-lakekeeper ([#4](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/4)) ([fe005ae](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/fe005aea3efa67cce4b8656b1ce7ccea3d493c2c))
+* stop enforcing lowercase PR title subjects ([#3](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/3)) ([7bbdaae](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/7bbdaae9a2de61d0135c50242d160b6accc6cbae))
+
 ## [0.4.12](https://github.com/baptistegh/terraform-provider-lakekeeper/compare/v0.4.11...v0.4.12) (2026-10-24)
 
 
