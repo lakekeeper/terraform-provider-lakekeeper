@@ -45,6 +45,7 @@ type assigneeKind string
 
 const (
 	roleAssignee assigneeKind = "role"
+	userAssignee assigneeKind = "user"
 )
 
 // grantTypes converts go-lakekeeper's typed grant type constants to plain strings.

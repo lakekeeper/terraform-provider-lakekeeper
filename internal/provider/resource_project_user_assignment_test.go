@@ -10,7 +10,6 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -122,13 +121,50 @@ func TestAccLakekeeperProjectUserAssignment_basic(t *testing.T) {
 	})
 }
 
+func TestAccLakekeeperProjectUserAssignment_userIDWithSlash(t *testing.T) {
+	project := testutil.CreateProject(t)
+
+	userID := fmt.Sprintf("oidc~%s/%s", acctest.RandString(8), acctest.RandString(8))
+	user := testutil.CreateUser(t, userID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperProjectUserAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_project_user_assignment" "test" {
+						project_id = "%s"
+						user_id = "%s"
+						assignments = ["describe"]
+					}
+				`, project.ID, user.ID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_project_user_assignment.test", "id", project.ID+"/"+userID),
+					resource.TestCheckResourceAttr("lakekeeper_project_user_assignment.test", "user_id", userID),
+					resource.TestCheckResourceAttr("lakekeeper_project_user_assignment.test", "assignments.#", "1"),
+				),
+			},
+			{
+				ResourceName:      "lakekeeper_project_user_assignment.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckLakekeeperProjectUserAssignmentDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_project_user_assignment" {
 			continue
 		}
 
-		projectID, userID := splitInternalID(types.StringValue(rs.Primary.ID))
+		parts, err := projectUserAssignment.parseID(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		projectID, userID := parts[0], parts[1]
 
 		assignments, err := testutil.TestLakekeeperClient.GetProjectAssignments(context.Background(), projectID)
 		if err != nil {

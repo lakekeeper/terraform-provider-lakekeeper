@@ -34,3 +34,16 @@ func uuidAttribute(name, description string) assignmentAttribute {
 func roleIDAttribute(name, description string) assignmentAttribute {
 	return uuidAttribute(name, description)
 }
+
+// userIDValidator follows Lakekeeper's user ID rule: <idp>~<subject>, with text
+// on both sides of the first '~', at most 127 characters after it and no
+// control characters. A '/' is allowed.
+var userIDValidator = stringvalidator.RegexMatches(
+	regexp.MustCompile(`^[^~\p{Cc}]+~[^\p{Cc}]{1,127}$`),
+	"must be in the form <idp>~<subject>, with at most 127 characters after '~' and no control characters",
+)
+
+// userIDAttribute is an identity attribute holding a user ID, used as assignee.
+func userIDAttribute(name, description string) assignmentAttribute {
+	return assignmentAttribute{Name: name, Description: description, Validators: []validator.String{userIDValidator}}
+}
