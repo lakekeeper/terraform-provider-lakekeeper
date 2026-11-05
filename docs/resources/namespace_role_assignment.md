@@ -3,18 +3,24 @@
 page_title: "lakekeeper_namespace_role_assignment Resource - terraform-provider-lakekeeper"
 subcategory: ""
 description: |-
-  Manages all direct namespace permissions for one role. Other roles and users are preserved. Use one resource per namespace-role pair and import existing grants before managing them.
-  Requires Lakekeeper's OpenFGA authorization backend. Namespace grants apply to descendants according to Lakekeeper's authorization model.
-  Updates revoke obsolete permissions before adding new ones. A failed write can leave partial progress; refresh and reapply. Failed reads and deletes return errors and preserve state. A missing permissions endpoint is an error, including with allow-all.
+  Manages the direct grants of one role on the namespace. Grants that other users and roles hold on the namespace are left untouched. Use one resource per namespace and role.
+  Create fails if the role already holds any direct grant on the namespace. Bring existing grants under Terraform with terraform import first, using the ID {{project_id}}/{{namespace_id}}/{{role_id}}.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+  Requires Lakekeeper's OpenFGA authorization backend. Namespace grants apply to descendants according to Lakekeeper's authorization model. A missing permissions endpoint is an error, including with allow-all.
+  Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_namespace_assignments
 ---
 
 # lakekeeper_namespace_role_assignment (Resource)
 
-Manages all direct namespace permissions for one role. Other roles and users are preserved. Use one resource per namespace-role pair and import existing grants before managing them.
+Manages the direct grants of one role on the namespace. Grants that other users and roles hold on the namespace are left untouched. Use one resource per namespace and role.
 
-Requires Lakekeeper's OpenFGA authorization backend. Namespace grants apply to descendants according to Lakekeeper's authorization model.
+Create fails if the role already holds any direct grant on the namespace. Bring existing grants under Terraform with `terraform import` first, using the ID `{{project_id}}/{{namespace_id}}/{{role_id}}`.
 
-Updates revoke obsolete permissions before adding new ones. A failed write can leave partial progress; refresh and reapply. Failed reads and deletes return errors and preserve state. A missing permissions endpoint is an error, including with allow-all.
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+
+Requires Lakekeeper's OpenFGA authorization backend. Namespace grants apply to descendants according to Lakekeeper's authorization model. A missing permissions endpoint is an error, including with allow-all.
+
+**Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_namespace_assignments)
 
 ## Example Usage
 
@@ -32,14 +38,14 @@ resource "lakekeeper_namespace_role_assignment" "readers" {
 
 ### Required
 
-- `assignments` (Set of String) Direct permissions for this role. An empty set revokes them. Removing this resource revokes its permissions.
-- `namespace_id` (String) Namespace UUID, available as lakekeeper_namespace.example.namespace_id.
-- `project_id` (String) Project containing both the namespace and role.
-- `role_id` (String) Role UUID.
+- `assignments` (Set of String) The direct grants of the role on the namespace. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `modify`. An empty set revokes all of them.
+- `namespace_id` (String) The ID of the namespace, available as `lakekeeper_namespace.<name>.namespace_id`.
+- `project_id` (String) The ID of the project containing both the namespace and the role.
+- `role_id` (String) The ID of the role.
 
 ### Read-Only
 
-- `id` (String) project_id/namespace_id/role_id
+- `id` (String) The internal ID of this resource, in the form `{{project_id}}/{{namespace_id}}/{{role_id}}`.
 
 ## Import
 

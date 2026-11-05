@@ -15,6 +15,7 @@ import (
 // testHTTPRequest is one request recorded by testAdapterServer.
 type testHTTPRequest struct {
 	method, path string
+	header       http.Header
 	body         map[string]any
 }
 
@@ -24,7 +25,7 @@ func testAdapterServer(t *testing.T, status int, body string) (*lakekeeper.Clien
 	t.Helper()
 	requests := &[]testHTTPRequest{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req := testHTTPRequest{method: r.Method, path: r.URL.Path}
+		req := testHTTPRequest{method: r.Method, path: r.URL.Path, header: r.Header.Clone()}
 		if raw, _ := io.ReadAll(r.Body); len(raw) > 0 {
 			if err := json.Unmarshal(raw, &req.body); err != nil {
 				t.Errorf("request body is not JSON: %s", raw)
