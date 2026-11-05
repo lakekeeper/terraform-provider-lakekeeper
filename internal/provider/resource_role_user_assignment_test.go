@@ -11,7 +11,6 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -108,7 +107,7 @@ func TestAccLakekeeperRoleUserAssignment_basic(t *testing.T) {
 						assignments = ["ownership"]
 					}
 				`, project.ID, role.ID, user.ID),
-				ExpectError: regexp.MustCompile("Attribute role_id must be a role UUID and NOT include the project UUID"),
+				ExpectError: regexp.MustCompile("Attribute role_id must be a UUID"),
 			},
 			// delete all assignments
 			{
@@ -136,22 +135,60 @@ func TestAccLakekeeperRoleUserAssignment_basic(t *testing.T) {
 	})
 }
 
+func TestAccLakekeeperRoleUserAssignment_userIDWithSlash(t *testing.T) {
+	project := testutil.CreateProject(t)
+	role := testutil.CreateRole(t, project.ID)
+
+	userID := fmt.Sprintf("oidc~%s/%s", acctest.RandString(8), acctest.RandString(8))
+	user := testutil.CreateUser(t, userID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperRoleUserAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_role_user_assignment" "test" {
+						role_id = "%s"
+						user_id = "%s"
+						assignments = ["assignee"]
+					}
+				`, role.ID, user.ID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_role_user_assignment.test", "id", role.ID+"/"+userID),
+					resource.TestCheckResourceAttr("lakekeeper_role_user_assignment.test", "user_id", userID),
+					resource.TestCheckResourceAttr("lakekeeper_role_user_assignment.test", "assignments.#", "1"),
+				),
+			},
+			{
+				ResourceName:      "lakekeeper_role_user_assignment.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckLakekeeperRoleUserAssignmentDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_role_user_assignment" {
 			continue
 		}
 
-		roleID, userID := splitInternalID(types.StringValue(rs.Primary.ID))
+		parts, err := roleUserAssignment.parseID(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		roleID, userID := parts[0], parts[1]
 
 		assignments, err := testutil.TestLakekeeperClient.GetRoleAssignments(context.Background(), roleID)
 		if err != nil {
-			return fmt.Errorf("could not list project assignments to check destroy, %w", err)
+			return fmt.Errorf("could not list role assignments to check destroy, %w", err)
 		}
 
 		for _, v := range assignments {
 			if v.Assignee.ID == userID && v.Assignee.Type == api.AssigneeTypeUser {
-				return fmt.Errorf("project assignment still exists")
+				return fmt.Errorf("role assignment still exists")
 			}
 		}
 	}

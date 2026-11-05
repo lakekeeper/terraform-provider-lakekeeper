@@ -11,7 +11,6 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
@@ -105,7 +104,7 @@ func TestAccLakekeeperRoleRoleAssignment_basic(t *testing.T) {
 						assignments = ["ownership"]
 					}
 				`, project.ID, role.ID, assignee.ID),
-				ExpectError: regexp.MustCompile("Attribute role_id must be a role UUID and NOT include the project UUID"),
+				ExpectError: regexp.MustCompile("Attribute role_id must be a UUID"),
 			},
 			{
 				Config: fmt.Sprintf(`				
@@ -115,7 +114,7 @@ func TestAccLakekeeperRoleRoleAssignment_basic(t *testing.T) {
 						assignments = ["ownership"]
 					}
 				`, role.ID, project.ID, assignee.ID),
-				ExpectError: regexp.MustCompile("Attribute assignee_id must be a role UUID and NOT include the project UUID"),
+				ExpectError: regexp.MustCompile("Attribute assignee_id must be a UUID"),
 			},
 			// delete all assignments
 			{
@@ -143,22 +142,49 @@ func TestAccLakekeeperRoleRoleAssignment_basic(t *testing.T) {
 	})
 }
 
+// Lakekeeper rejects assigning a role to itself; the provider surfaces its message.
+func TestAccLakekeeperRoleRoleAssignment_selfAssignment(t *testing.T) {
+	project := testutil.CreateProject(t)
+	role := testutil.CreateRole(t, project.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperRoleRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_role_role_assignment" "test" {
+						role_id = "%s"
+						assignee_id = "%s"
+						assignments = ["assignee"]
+					}
+				`, role.ID, role.ID),
+				ExpectError: regexp.MustCompile(`(?s)Unable to create role grants of the role.*Cannot assign\s+\S+\s+to\s+itself`),
+			},
+		},
+	})
+}
+
 func testAccCheckLakekeeperRoleRoleAssignmentDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_role_role_assignment" {
 			continue
 		}
 
-		roleID, assigneeID := splitInternalID(types.StringValue(rs.Primary.ID))
+		parts, err := roleRoleAssignment.parseID(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		roleID, assigneeID := parts[0], parts[1]
 
 		assignments, err := testutil.TestLakekeeperClient.GetRoleAssignments(context.Background(), roleID)
 		if err != nil {
-			return fmt.Errorf("could not list project assignments to check destroy, %w", err)
+			return fmt.Errorf("could not list role assignments to check destroy, %w", err)
 		}
 
 		for _, v := range assignments {
 			if v.Assignee.ID == assigneeID && v.Assignee.Type == api.AssigneeTypeRole {
-				return fmt.Errorf("project assignment still exists")
+				return fmt.Errorf("role assignment still exists")
 			}
 		}
 	}

@@ -3,13 +3,19 @@
 page_title: "lakekeeper_role_user_assignment Resource - terraform-provider-lakekeeper"
 subcategory: ""
 description: |-
-  The lakekeeper_role_role_assignment resource allows to manage the lifecycle of a user assignement to a role.
+  Manages the direct grants of one user on the role. Grants that other users and roles hold on the role are left untouched. Use one resource per role and user.
+  Create fails if the user already holds any direct grant on the role. Bring existing grants under Terraform with terraform import first, using the ID {{role_id}}/{{user_id}}.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments
 ---
 
 # lakekeeper_role_user_assignment (Resource)
 
-The `lakekeeper_role_role_assignment` resource allows to manage the lifecycle of a user assignement to a role.
+Manages the direct grants of one user on the role. Grants that other users and roles hold on the role are left untouched. Use one resource per role and user.
+
+Create fails if the user already holds any direct grant on the role. Bring existing grants under Terraform with `terraform import` first, using the ID `{{role_id}}/{{user_id}}`.
+
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
 
 **Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments)
 
@@ -28,13 +34,13 @@ resource "lakekeeper_role_user_assignment" "data_analysts" {
 
 ### Required
 
-- `assignments` (Set of String) List of role assignments for this user. values can be `ownership` or `assignee`
-- `role_id` (String) The ID of the role.
-- `user_id` (String) The ID of the user to assign to this role.
+- `assignments` (Set of String) The direct grants of the user on the role. Allowed values: `ownership`, `assignee`. An empty set revokes all of them.
+- `role_id` (String) The ID of the role the grants are on.
+- `user_id` (String) The ID of the user, in the form `<idp>~<subject>`.
 
 ### Read-Only
 
-- `id` (String) The internal ID of this resource. In the form: <role_id>:<user_id>
+- `id` (String) The internal ID of this resource, in the form `{{role_id}}/{{user_id}}`.
 
 ## Import
 
