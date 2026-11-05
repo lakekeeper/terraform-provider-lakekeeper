@@ -6,8 +6,6 @@ import (
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
-const warehouseIDAttributeName = "warehouse_id"
-
 // warehouseScopeAdapter is the scope adapter for warehouses. It wraps the api
 // client's warehouse assignment methods and reads the warehouse from
 // scope[warehouseIDAttributeName].

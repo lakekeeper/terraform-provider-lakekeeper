@@ -107,25 +107,7 @@ func TestRoleAssignmentLifecycle(t *testing.T) {
 		{"user", roleUserAssignment, userAssignee, []string{testRoleScope, testRoleUser}},
 	} {
 		assignee := tc.identity[1]
-		// Grants of other assignees on the role, including one of the other
-		// kind with the same ID, must never change.
-		others := []assignmentGrant{
-			role("11111111-2222-3333-4444-555555555555", "assignee"),
-			{AssigneeKind: "user", AssigneeID: "oidc~bob", Type: "ownership"},
-		}
-		if tc.kind == roleAssignee {
-			others = append(others, assignmentGrant{AssigneeKind: userAssignee, AssigneeID: assignee, Type: "assignee"})
-		} else {
-			others = append(others, assignmentGrant{AssigneeKind: roleAssignee, AssigneeID: assignee, Type: "assignee"})
-		}
-		assertOthers := func(t *testing.T, m *memoryScopeAdapter) {
-			t.Helper()
-			for _, g := range others {
-				if !slices.Contains(m.grants, g) {
-					t.Fatalf("grant of another assignee was removed: %+v", g)
-				}
-			}
-		}
+		others := testOtherGrants(tc.kind, assignee, "assignee")
 
 		t.Run(tc.name+"/create, update, delete", func(t *testing.T) {
 			m := newMemoryScopeAdapter(others...)
@@ -158,7 +140,7 @@ func TestRoleAssignmentLifecycle(t *testing.T) {
 			if got := m.grantsOf(tc.kind, assignee); len(got) != 0 {
 				t.Fatalf("left grants %v", got)
 			}
-			assertOthers(t, m)
+			assertOtherGrantsUntouched(t, m, others, tc.kind, assignee)
 		})
 
 		t.Run(tc.name+"/create refuses existing grants", func(t *testing.T) {
@@ -177,7 +159,7 @@ func TestRoleAssignmentLifecycle(t *testing.T) {
 			if !resp.Diagnostics.HasError() || resp.State.Raw.IsNull() {
 				t.Fatalf("diags %v, state %v", resp.Diagnostics, resp.State.Raw)
 			}
-			assertOthers(t, m)
+			assertOtherGrantsUntouched(t, m, others, tc.kind, assignee)
 		})
 	}
 }

@@ -3,7 +3,7 @@
 page_title: "lakekeeper_server_role_assignment Resource - terraform-provider-lakekeeper"
 subcategory: ""
 description: |-
-  Manages the direct grants of one role on the server. Grants that other users and roles hold on the server are left untouched. Use one resource per server and role.
+  Manages the direct grants of one role on the server. Grants that other users and roles hold on the server are left untouched. Use one resource per role.
   Create fails if the role already holds any direct grant on the server. Bring existing grants under Terraform with terraform import first, using the ID {{role_id}}.
   Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_server_assignments
@@ -11,7 +11,7 @@ description: |-
 
 # lakekeeper_server_role_assignment (Resource)
 
-Manages the direct grants of one role on the server. Grants that other users and roles hold on the server are left untouched. Use one resource per server and role.
+Manages the direct grants of one role on the server. Grants that other users and roles hold on the server are left untouched. Use one resource per role.
 
 Create fails if the role already holds any direct grant on the server. Bring existing grants under Terraform with `terraform import` first, using the ID `{{role_id}}`.
 

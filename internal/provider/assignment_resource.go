@@ -56,6 +56,7 @@ func (r *assignmentResource) Schema(_ context.Context, _ resource.SchemaRequest,
 }
 
 func (r *assignmentResource) schema() schema.Schema {
+	assigneeNoun, scopeNoun := r.desc.nouns()
 	attrs := map[string]schema.Attribute{
 		"id": schema.StringAttribute{
 			MarkdownDescription: fmt.Sprintf("The internal ID of this resource, in the form `%s`.", r.desc.idFormat()),
@@ -65,7 +66,7 @@ func (r *assignmentResource) schema() schema.Schema {
 		"assignments": schema.SetAttribute{
 			ElementType: types.StringType,
 			MarkdownDescription: fmt.Sprintf("The direct grants of the %s on the %s. Allowed values: %s. An empty set revokes all of them.",
-				r.desc.AssigneeKind, r.desc.ScopeNoun, quotedList(r.desc.GrantTypes)),
+				assigneeNoun, scopeNoun, quotedList(r.desc.GrantTypes)),
 			Required:   true,
 			Validators: []validator.Set{setvalidator.ValueStringsAre(stringvalidator.OneOf(r.desc.GrantTypes...))},
 		},
@@ -83,20 +84,25 @@ func (r *assignmentResource) schema() schema.Schema {
 
 // description is the one template every assignment resource's description comes from.
 func (r *assignmentResource) description() string {
-	kind, scope := r.desc.AssigneeKind, r.desc.ScopeNoun
+	kind, scope := r.desc.nouns()
+	// Without a scope attribute (the server) there is one scope, so one resource per assignee.
+	per := kind
+	if r.desc.Scope.Name != "" {
+		per = scope + " and " + kind
+	}
 	text := fmt.Sprintf("Manages the direct grants of one %[1]s on the %[2]s. "+
-		"Grants that other users and roles hold on the %[2]s are left untouched. Use one resource per %[2]s and %[1]s.\n\n"+
+		"Grants that other users and roles hold on the %[2]s are left untouched. Use one resource per %[4]s.\n\n"+
 		"Create fails if the %[1]s already holds any direct grant on the %[2]s. "+
 		"Bring existing grants under Terraform with `terraform import` first, using the ID `%[3]s`.\n\n"+
 		"Every create, update and delete compares the desired grants with the grants Lakekeeper holds, "+
 		"and sends the difference as one request that Lakekeeper applies atomically. "+
 		"Grants changed outside Terraform are corrected on the next apply. "+
 		"Failed reads, writes and deletes report an error and keep the resource in state.",
-		kind, scope, r.desc.idFormat())
+		kind, scope, r.desc.idFormat(), per)
 	if r.desc.Notes != "" {
 		text += "\n\n" + r.desc.Notes
 	}
-	return text + fmt.Sprintf("\n\n**Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_%s_assignments)", scope)
+	return text + fmt.Sprintf("\n\n**Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_%s_assignments)", r.desc.ScopeNoun)
 }
 
 func (r *assignmentResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
@@ -117,11 +123,12 @@ func (r *assignmentResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	if len(current) > 0 {
+		kind, scope := r.desc.nouns()
 		resp.Diagnostics.AddError(
-			fmt.Sprintf("The %s already holds grants on the %s", r.desc.AssigneeKind, r.desc.ScopeNoun),
+			fmt.Sprintf("The %s already holds grants on the %s", kind, scope),
 			fmt.Sprintf("The %s already holds direct grants on the %s: %s. "+
 				"To manage them with Terraform, import the assignment first: terraform import <resource address> %q",
-				r.desc.AssigneeKind, r.desc.ScopeNoun, quotedList(current), buildAssignmentID(target.values)),
+				kind, scope, quotedList(current), buildAssignmentID(target.values)),
 		)
 		return
 	}

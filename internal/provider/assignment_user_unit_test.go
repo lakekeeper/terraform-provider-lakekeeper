@@ -90,21 +90,6 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 	// A role with the same ID as the user is a different assignee and must never change.
 	sameIDRole := role(slashUser, "select")
 	others := append(otherGrants(), sameIDRole)
-	assertOthers := func(t *testing.T, m *memoryScopeAdapter) {
-		t.Helper()
-		for _, g := range others {
-			if !slices.Contains(m.grants, g) {
-				t.Fatalf("grant of another assignee was removed: %+v", g)
-			}
-		}
-		for _, a := range m.applies {
-			for _, g := range append(slices.Clone(a.revokes), a.grants...) {
-				if g.AssigneeKind != userAssignee || g.AssigneeID != slashUser {
-					t.Fatalf("request touched another assignee: %+v", g)
-				}
-			}
-		}
-	}
 
 	t.Run("create grants the user and keeps the slash in the ID", func(t *testing.T) {
 		m := newMemoryScopeAdapter(others...)
@@ -121,7 +106,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 		if len(m.applies) != 1 || !reflect.DeepEqual(m.applies[0].scope, assignmentScope{"project_id": "p"}) {
 			t.Fatalf("applies %+v", m.applies)
 		}
-		assertOthers(t, m)
+		assertOtherGrantsUntouched(t, m, others, userAssignee, slashUser)
 		assertUserState(t, resp.State, "p/"+slashUser, "p", slashUser, "describe", "select")
 	})
 
@@ -168,7 +153,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 		if !reflect.DeepEqual(a.revokes, []assignmentGrant{user(slashUser, "describe")}) || !reflect.DeepEqual(a.grants, []assignmentGrant{user(slashUser, "modify")}) {
 			t.Fatalf("revokes %v grants %v", a.revokes, a.grants)
 		}
-		assertOthers(t, m)
+		assertOtherGrantsUntouched(t, m, others, userAssignee, slashUser)
 		assertUserState(t, resp.State, "p/"+slashUser, "p", slashUser, "modify", "select")
 	})
 
@@ -187,7 +172,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 		if len(m.applies) != 1 || !resp.State.Raw.IsNull() {
 			t.Fatalf("writes %d, state %v", len(m.applies), resp.State.Raw)
 		}
-		assertOthers(t, m)
+		assertOtherGrantsUntouched(t, m, others, userAssignee, slashUser)
 	})
 
 	t.Run("failed delete keeps state", func(t *testing.T) {

@@ -3,22 +3,22 @@
 page_title: "lakekeeper_role_role_assignment Resource - terraform-provider-lakekeeper"
 subcategory: ""
 description: |-
-  Manages the direct grants of one role on the role. Grants that other users and roles hold on the role are left untouched. Use one resource per role and role.
-  Create fails if the role already holds any direct grant on the role. Bring existing grants under Terraform with terraform import first, using the ID {{role_id}}/{{assignee_id}}.
+  Manages the direct grants of one assignee role on the scope role. Grants that other users and roles hold on the scope role are left untouched. Use one resource per scope role and assignee role.
+  Create fails if the assignee role already holds any direct grant on the scope role. Bring existing grants under Terraform with terraform import first, using the ID {{role_id}}/{{assignee_id}}.
   Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
-  Here the grants are on the role in role_id, and the role in assignee_id holds them. Lakekeeper rejects assigning a role to itself.
+  Lakekeeper rejects assigning a role to itself.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments
 ---
 
 # lakekeeper_role_role_assignment (Resource)
 
-Manages the direct grants of one role on the role. Grants that other users and roles hold on the role are left untouched. Use one resource per role and role.
+Manages the direct grants of one assignee role on the scope role. Grants that other users and roles hold on the scope role are left untouched. Use one resource per scope role and assignee role.
 
-Create fails if the role already holds any direct grant on the role. Bring existing grants under Terraform with `terraform import` first, using the ID `{{role_id}}/{{assignee_id}}`.
+Create fails if the assignee role already holds any direct grant on the scope role. Bring existing grants under Terraform with `terraform import` first, using the ID `{{role_id}}/{{assignee_id}}`.
 
 Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
 
-Here the grants are on the role in `role_id`, and the role in `assignee_id` holds them. Lakekeeper rejects assigning a role to itself.
+Lakekeeper rejects assigning a role to itself.
 
 **Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments)
 
@@ -37,9 +37,9 @@ resource "lakekeeper_role_role_assignment" "data_analysts" {
 
 ### Required
 
-- `assignee_id` (String) The ID of the role that receives the grants.
-- `assignments` (Set of String) The direct grants of the role on the role. Allowed values: `ownership`, `assignee`. An empty set revokes all of them.
-- `role_id` (String) The ID of the role the grants are on.
+- `assignee_id` (String) The ID of the assignee role, which holds the grants.
+- `assignments` (Set of String) The direct grants of the assignee role on the scope role. Allowed values: `ownership`, `assignee`. An empty set revokes all of them.
+- `role_id` (String) The ID of the scope role, which the grants are on.
 
 ### Read-Only
 

@@ -20,9 +20,8 @@ import (
 // the HTTP shape is covered by the server adapter's own test.
 
 const (
-	testServerRole      = "cb6ee351-68ff-4299-87f2-876964f6d8dd"
-	testServerOtherRole = "4a8f0a43-6c9e-4b8e-9f0b-5d0b8c1e2f33"
-	testServerUser      = "oidc~team/alice"
+	testServerRole = "cb6ee351-68ff-4299-87f2-876964f6d8dd"
+	testServerUser = "oidc~team/alice"
 )
 
 // testServerCase is one server assignment resource under test.
@@ -50,36 +49,6 @@ func testServerCases() []testServerCase {
 			accepted: []string{testServerUser, "kubernetes~sa", "oidc~a~b"},
 			rejected: []string{"", "alice", "~alice", "oidc~", "oidc~a\nb"},
 		},
-	}
-}
-
-// testServerOtherGrants are held by other principals on the server and must
-// never change. They include the same ID with the other assignee kind.
-func testServerOtherGrants(tc testServerCase) []assignmentGrant {
-	other := userAssignee
-	if tc.kind == userAssignee {
-		other = roleAssignee
-	}
-	return []assignmentGrant{
-		role(testServerOtherRole, "operator"),
-		user("oidc~bob", "admin"),
-		{AssigneeKind: other, AssigneeID: tc.assignee, Type: "admin"},
-	}
-}
-
-func assertServerOtherGrantsUntouched(t *testing.T, tc testServerCase, m *memoryScopeAdapter) {
-	t.Helper()
-	for _, g := range testServerOtherGrants(tc) {
-		if !slices.Contains(m.grants, g) {
-			t.Fatalf("grant of another principal was removed: %+v", g)
-		}
-	}
-	for _, a := range m.applies {
-		for _, g := range append(slices.Clone(a.revokes), a.grants...) {
-			if g.AssigneeKind != tc.kind || g.AssigneeID != tc.assignee {
-				t.Fatalf("request changed another principal: %+v", g)
-			}
-		}
 	}
 }
 
@@ -145,12 +114,13 @@ func TestServerAssignmentSchema(t *testing.T) {
 func TestServerAssignmentLifecycle(t *testing.T) {
 	for _, tc := range testServerCases() {
 		identity := []string{tc.assignee}
+		others := testOtherGrants(tc.kind, tc.assignee, "operator")
 		grant := func(g string) assignmentGrant {
 			return assignmentGrant{AssigneeKind: tc.kind, AssigneeID: tc.assignee, Type: g}
 		}
 
 		t.Run(tc.typeName+"/create grants on the server with an empty scope", func(t *testing.T) {
-			m := newMemoryScopeAdapter(testServerOtherGrants(tc)...)
+			m := newMemoryScopeAdapter(others...)
 			r := newTestAssignmentResourceFor(tc.desc, m)
 			resp := testCreateFor(t, r, identity, "operator", "admin")
 			if resp.Diagnostics.HasError() {
@@ -162,7 +132,7 @@ func TestServerAssignmentLifecycle(t *testing.T) {
 			if got := m.grantsOf(tc.kind, tc.assignee); !reflect.DeepEqual(got, []string{"admin", "operator"}) {
 				t.Fatalf("server grants %v", got)
 			}
-			assertServerOtherGrantsUntouched(t, tc, m)
+			assertOtherGrantsUntouched(t, m, others, tc.kind, tc.assignee)
 			assertStateFor(t, r, resp.State, identity, "admin", "operator")
 			if id := testStateValuesOf(t, r, resp.State).id; id != tc.assignee {
 				t.Fatalf("id %q, want the bare assignee ID", id)
@@ -170,7 +140,7 @@ func TestServerAssignmentLifecycle(t *testing.T) {
 		})
 
 		t.Run(tc.typeName+"/create refuses existing grants", func(t *testing.T) {
-			m := newMemoryScopeAdapter(append(testServerOtherGrants(tc), grant("operator"))...)
+			m := newMemoryScopeAdapter(append(others, grant("operator"))...)
 			r := newTestAssignmentResourceFor(tc.desc, m)
 			resp := testCreateFor(t, r, identity, "admin")
 			if !resp.Diagnostics.HasError() || len(m.applies) != 0 || !resp.State.Raw.IsNull() {
@@ -195,7 +165,7 @@ func TestServerAssignmentLifecycle(t *testing.T) {
 		})
 
 		t.Run(tc.typeName+"/update replaces grants in one request", func(t *testing.T) {
-			m := newMemoryScopeAdapter(append(testServerOtherGrants(tc), grant("operator"))...)
+			m := newMemoryScopeAdapter(append(others, grant("operator"))...)
 			r := newTestAssignmentResourceFor(tc.desc, m)
 			resp := testUpdateFor(t, r, testStateFor(t, r, identity, "operator"), identity, "admin")
 			if resp.Diagnostics.HasError() || len(m.applies) != 1 {
@@ -204,11 +174,11 @@ func TestServerAssignmentLifecycle(t *testing.T) {
 			if got := m.grantsOf(tc.kind, tc.assignee); !reflect.DeepEqual(got, []string{"admin"}) {
 				t.Fatalf("server grants %v", got)
 			}
-			assertServerOtherGrantsUntouched(t, tc, m)
+			assertOtherGrantsUntouched(t, m, others, tc.kind, tc.assignee)
 		})
 
 		t.Run(tc.typeName+"/read refreshes from the server", func(t *testing.T) {
-			m := newMemoryScopeAdapter(append(testServerOtherGrants(tc), grant("admin"))...)
+			m := newMemoryScopeAdapter(append(others, grant("admin"))...)
 			r := newTestAssignmentResourceFor(tc.desc, m)
 			resp := testRead(t, r, testStateFor(t, r, identity, "operator"))
 			if resp.Diagnostics.HasError() {
@@ -223,7 +193,7 @@ func TestServerAssignmentLifecycle(t *testing.T) {
 				name = "/failed delete keeps state"
 			}
 			t.Run(tc.typeName+name, func(t *testing.T) {
-				m := newMemoryScopeAdapter(append(testServerOtherGrants(tc), grant("admin"))...)
+				m := newMemoryScopeAdapter(append(others, grant("admin"))...)
 				if fail {
 					m.applyErr = errTestWrite
 				}
@@ -235,7 +205,7 @@ func TestServerAssignmentLifecycle(t *testing.T) {
 				if !fail && len(m.grantsOf(tc.kind, tc.assignee)) != 0 {
 					t.Fatalf("left grants %v", m.grantsOf(tc.kind, tc.assignee))
 				}
-				assertServerOtherGrantsUntouched(t, tc, m)
+				assertOtherGrantsUntouched(t, m, others, tc.kind, tc.assignee)
 			})
 		}
 	}

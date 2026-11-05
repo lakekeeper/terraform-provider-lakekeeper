@@ -12,13 +12,12 @@ func init() {
 var roleRoleAssignment = assignmentDescriptor{
 	TypeName:     "role_role_assignment",
 	ScopeNoun:    "role",
-	Scope:        uuidAttribute(roleIDAttributeName, "The ID of the role the grants are on."),
+	Scope:        uuidAttribute(roleIDAttributeName, "The ID of the scope role, which the grants are on."),
 	AssigneeKind: roleAssignee,
-	Assignee:     uuidAttribute("assignee_id", "The ID of the role that receives the grants."),
+	Assignee:     uuidAttribute("assignee_id", "The ID of the assignee role, which holds the grants."),
 	GrantTypes:   roleGrantTypes,
-	Notes: "Here the grants are on the role in `role_id`, and the role in `assignee_id` holds them. " +
-		"Lakekeeper rejects assigning a role to itself.",
-	NewAdapter: newRoleScopeAdapter,
+	Notes:        "Lakekeeper rejects assigning a role to itself.",
+	NewAdapter:   newRoleScopeAdapter,
 }
 
 // roleGrantTypes lists the grant types at the role scope, shared by the role

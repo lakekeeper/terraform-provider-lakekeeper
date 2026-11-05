@@ -51,17 +51,6 @@ func testWarehouseAssignments() []testWarehouseAssignment {
 	}
 }
 
-// testWHOtherGrants are held by other assignees on the warehouse, including a
-// role and a user whose ID equals the managed assignee's of the other kind.
-func testWHOtherGrants() []assignmentGrant {
-	return []assignmentGrant{
-		role("4a8f0a43-6c9e-4b8e-9f0b-5d0b8c1e2f33", "select"),
-		user("oidc~bob", "select"),
-		role(testWHUser, "describe"),
-		user(testWHRole, "describe"),
-	}
-}
-
 func (tc testWarehouseAssignment) identity() []string {
 	return []string{testWHWarehouse, tc.assignee.AssigneeID}
 }
@@ -70,22 +59,6 @@ func (tc testWarehouseAssignment) grant(t string) assignmentGrant {
 	g := tc.assignee
 	g.Type = t
 	return g
-}
-
-func assertWHOtherGrantsUntouched(t *testing.T, tc testWarehouseAssignment, m *memoryScopeAdapter) {
-	t.Helper()
-	for _, g := range testWHOtherGrants() {
-		if !slices.Contains(m.grants, g) {
-			t.Fatalf("grant of another assignee was removed: %+v", g)
-		}
-	}
-	for _, a := range m.applies {
-		for _, g := range append(slices.Clone(a.revokes), a.grants...) {
-			if g.AssigneeKind != tc.assignee.AssigneeKind || g.AssigneeID != tc.assignee.AssigneeID {
-				t.Fatalf("request changed another assignee: %+v", g)
-			}
-		}
-	}
 }
 
 func TestWarehouseAssignmentSchema(t *testing.T) {
@@ -154,9 +127,10 @@ func TestWarehouseAssignmentSchema(t *testing.T) {
 
 func TestWarehouseAssignmentLifecycle(t *testing.T) {
 	for _, tc := range testWarehouseAssignments() {
+		others := testOtherGrants(tc.assignee.AssigneeKind, tc.assignee.AssigneeID, "select")
 		t.Run(tc.typeName, func(t *testing.T) {
 			t.Run("create grants on the warehouse scope", func(t *testing.T) {
-				m := newMemoryScopeAdapter(testWHOtherGrants()...)
+				m := newMemoryScopeAdapter(others...)
 				r := newTestAssignmentResourceFor(tc.desc, m)
 				resp := testCreateFor(t, r, tc.identity(), "ownership", "select")
 				if resp.Diagnostics.HasError() {
@@ -171,12 +145,12 @@ func TestWarehouseAssignmentLifecycle(t *testing.T) {
 				if got := m.grantsOf(tc.assignee.AssigneeKind, tc.assignee.AssigneeID); !reflect.DeepEqual(got, []string{"ownership", "select"}) {
 					t.Fatalf("server grants %v", got)
 				}
-				assertWHOtherGrantsUntouched(t, tc, m)
+				assertOtherGrantsUntouched(t, m, others, tc.assignee.AssigneeKind, tc.assignee.AssigneeID)
 				assertStateFor(t, r, resp.State, tc.identity(), "ownership", "select")
 			})
 
 			t.Run("create refuses existing grants", func(t *testing.T) {
-				m := newMemoryScopeAdapter(append(testWHOtherGrants(), tc.grant("describe"))...)
+				m := newMemoryScopeAdapter(append(others, tc.grant("describe"))...)
 				r := newTestAssignmentResourceFor(tc.desc, m)
 				resp := testCreateFor(t, r, tc.identity(), "select")
 				if !resp.Diagnostics.HasError() || len(m.applies) != 0 || !resp.State.Raw.IsNull() {
@@ -185,7 +159,7 @@ func TestWarehouseAssignmentLifecycle(t *testing.T) {
 			})
 
 			t.Run("update reconciles in one request", func(t *testing.T) {
-				m := newMemoryScopeAdapter(append(testWHOtherGrants(), tc.grant("ownership"))...)
+				m := newMemoryScopeAdapter(append(others, tc.grant("ownership"))...)
 				r := newTestAssignmentResourceFor(tc.desc, m)
 				resp := testUpdateFor(t, r, testStateFor(t, r, tc.identity(), "ownership"), tc.identity(), "select", "modify")
 				if resp.Diagnostics.HasError() || len(m.applies) != 1 {
@@ -194,7 +168,7 @@ func TestWarehouseAssignmentLifecycle(t *testing.T) {
 				if got := m.grantsOf(tc.assignee.AssigneeKind, tc.assignee.AssigneeID); !reflect.DeepEqual(got, []string{"modify", "select"}) {
 					t.Fatalf("server grants %v", got)
 				}
-				assertWHOtherGrantsUntouched(t, tc, m)
+				assertOtherGrantsUntouched(t, m, others, tc.assignee.AssigneeKind, tc.assignee.AssigneeID)
 				assertStateFor(t, r, resp.State, tc.identity(), "modify", "select")
 			})
 
@@ -204,7 +178,7 @@ func TestWarehouseAssignmentLifecycle(t *testing.T) {
 					name = "failed delete keeps state"
 				}
 				t.Run(name, func(t *testing.T) {
-					m := newMemoryScopeAdapter(append(testWHOtherGrants(), tc.grant("select"))...)
+					m := newMemoryScopeAdapter(append(others, tc.grant("select"))...)
 					if fail {
 						m.applyErr = errTestWrite
 					}
@@ -216,7 +190,7 @@ func TestWarehouseAssignmentLifecycle(t *testing.T) {
 					if !fail && len(m.grantsOf(tc.assignee.AssigneeKind, tc.assignee.AssigneeID)) != 0 {
 						t.Fatal("grants left after delete")
 					}
-					assertWHOtherGrantsUntouched(t, tc, m)
+					assertOtherGrantsUntouched(t, m, others, tc.assignee.AssigneeKind, tc.assignee.AssigneeID)
 				})
 			}
 		})

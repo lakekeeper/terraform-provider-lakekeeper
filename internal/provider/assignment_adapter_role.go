@@ -6,10 +6,6 @@ import (
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
-// roleIDAttributeName is the role scope's identity attribute, read by the role
-// scope adapter.
-const roleIDAttributeName = "role_id"
-
 // roleScopeAdapter is the scope adapter for roles. It wraps the api client's
 // role assignment methods and reads the role from scope[roleIDAttributeName].
 type roleScopeAdapter struct{ client *api.Client }

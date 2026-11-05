@@ -14,9 +14,14 @@ import (
 // Identity validators for assignment resources, taken from Lakekeeper's server rules.
 
 // Names of identity attributes that scope adapters read from assignmentScope.
+// roleIDAttributeName names the role scope; an assignee role_id attribute
+// (e.g. on the server or warehouse role assignment) is not read by an adapter
+// and spells its name out.
 const (
 	projectIDAttributeName   = "project_id"
+	warehouseIDAttributeName = "warehouse_id"
 	namespaceIDAttributeName = "namespace_id"
+	roleIDAttributeName      = "role_id"
 )
 
 var uuidValidator = stringvalidator.RegexMatches(
