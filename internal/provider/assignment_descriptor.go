@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // assignmentDescriptor declares one assignment resource. The shared assignment
@@ -29,7 +30,7 @@ type assignmentDescriptor struct {
 	// Notes is optional text appended to the generated description.
 	Notes string
 	// NewAdapter builds the scope adapter from the configured Lakekeeper client.
-	NewAdapter func(*lakekeeper.Client) scopeAdapter
+	NewAdapter func(*api.Client) scopeAdapter
 }
 
 // assignmentAttribute is one identity attribute of an assignment resource.
@@ -41,21 +42,13 @@ type assignmentAttribute struct {
 }
 
 // assigneeKind is the kind of assignee as it crosses the scope adapter seam.
+// Its values are the api assignee types.
 type assigneeKind string
 
 const (
-	roleAssignee assigneeKind = "role"
-	userAssignee assigneeKind = "user"
+	roleAssignee assigneeKind = api.AssigneeTypeRole
+	userAssignee assigneeKind = api.AssigneeTypeUser
 )
-
-// stringValues converts go-lakekeeper's typed constants, e.g. grant types, to plain strings.
-func stringValues[T ~string](values []T) []string {
-	out := make([]string, len(values))
-	for i, v := range values {
-		out[i] = string(v)
-	}
-	return out
-}
 
 // identity returns the identity attributes in ID order: extra parts, scope, assignee.
 func (d assignmentDescriptor) identity() []assignmentAttribute {

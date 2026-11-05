@@ -50,6 +50,8 @@ func TestNamespaceScopeAdapterListGrants(t *testing.T) {
 		{"grant without assignee", 200, `{"assignments":[{"type":"select"}]}`},
 		{"grant with role and user", 200, `{"assignments":[{"type":"select","role":"r1","user":"oidc~a"}]}`},
 		{"grant without type", 200, `{"assignments":[{"role":"r1"}]}`},
+		{"grant with empty type", 200, `{"assignments":[{"type":"","role":"r1"}]}`},
+		{"grant with empty assignee", 200, `{"assignments":[{"type":"select","role":""}]}`},
 		{"not JSON", 200, `oops`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -90,11 +92,12 @@ func TestNamespaceScopeAdapterApplyGrants(t *testing.T) {
 	}
 
 	t.Run("one side empty", func(t *testing.T) {
+		// The api layer omits an empty side; Lakekeeper treats it as empty.
 		client, requests := testAdapterServer(t, 204, ``)
 		if err := newNamespaceScopeAdapter(client).ApplyGrants(ctx, scope, nil, grants); err != nil {
 			t.Fatal(err)
 		}
-		want := map[string]any{"deletes": []any{}, "writes": []any{map[string]any{"type": "modify", "user": "oidc~a/b"}}}
+		want := map[string]any{"writes": []any{map[string]any{"type": "modify", "user": "oidc~a/b"}}}
 		if body := (*requests)[0].body; !reflect.DeepEqual(body, want) {
 			t.Fatalf("body %v", body)
 		}

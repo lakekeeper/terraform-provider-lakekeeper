@@ -1,9 +1,5 @@
 package provider
 
-import (
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
-)
-
 func init() {
 	registerResource(newAssignmentResource(projectUserAssignment))
 }
@@ -15,6 +11,6 @@ var projectUserAssignment = assignmentDescriptor{
 	Scope:        projectIDAttribute("The ID of the project."),
 	AssigneeKind: userAssignee,
 	Assignee:     userIDAttribute("user_id", "The ID of the user, in the form `<idp>~<subject>`."),
-	GrantTypes:   stringValues(permissionv1.ValidProjectAssignmentTypes),
+	GrantTypes:   projectGrantTypes,
 	NewAdapter:   newProjectScopeAdapter,
 }

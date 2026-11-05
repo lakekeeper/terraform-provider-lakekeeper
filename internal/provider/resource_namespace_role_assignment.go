@@ -12,7 +12,7 @@ var namespaceRoleAssignment = assignmentDescriptor{
 	Scope:        uuidAttribute(namespaceIDAttributeName, "The ID of the namespace, available as `lakekeeper_namespace.<name>.namespace_id`."),
 	AssigneeKind: roleAssignee,
 	Assignee:     uuidAttribute("role_id", "The ID of the role."),
-	// go-lakekeeper has no namespace grant type constants.
+	// The api package has no namespace grant type constants.
 	GrantTypes: []string{"ownership", "pass_grants", "manage_grants", "describe", "select", "create", "modify"},
 	Notes: "Requires Lakekeeper's OpenFGA authorization backend. " +
 		"Namespace grants apply to descendants according to Lakekeeper's authorization model. " +

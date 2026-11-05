@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // testHTTPRequest is one request recorded by testAdapterServer.
@@ -20,8 +20,8 @@ type testHTTPRequest struct {
 }
 
 // testAdapterServer serves one canned response to every request, records the
-// requests, and returns a go-lakekeeper client for it with retries disabled.
-func testAdapterServer(t *testing.T, status int, body string) (*lakekeeper.Client, *[]testHTTPRequest) {
+// requests, and returns an api client for it with retries disabled.
+func testAdapterServer(t *testing.T, status int, body string) (*api.Client, *[]testHTTPRequest) {
 	t.Helper()
 	requests := &[]testHTTPRequest{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +37,7 @@ func testAdapterServer(t *testing.T, status int, body string) (*lakekeeper.Clien
 		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(server.Close)
-	client, err := lakekeeper.NewClient(context.Background(), "test", server.URL, lakekeeper.WithoutRetries())
+	client, err := api.NewStaticTokenClient(context.Background(), server.URL, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,10 +112,44 @@ func TestProjectScopeAdapterApplyGrants(t *testing.T) {
 		t.Fatalf("body %v", r.body)
 	}
 
-	for _, status := range []int{404, 409, 500} {
+	for _, status := range []int{403, 404, 409, 500} {
 		client, _ := testAdapterServer(t, status, `{"error":{"code":409,"message":"conflict","type":"Conflict"}}`)
 		if err := newProjectScopeAdapter(client).ApplyGrants(ctx, scope, revokes, grants); err == nil {
 			t.Fatalf("status %d accepted", status)
+		}
+	}
+}
+
+// grantsFromAPI rejects assignments the api layer decoded but the module cannot
+// reconcile. An unknown assignee type cannot come through the api methods
+// today, so it is tested here directly.
+func TestGrantsFromAPI(t *testing.T) {
+	grants, err := grantsFromAPI("project", []api.Assignment{
+		{Assignee: api.RoleAssignee("r1"), Assignment: "select"},
+		{Assignee: api.UserAssignee("oidc~a/b"), Assignment: "modify"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []assignmentGrant{{AssigneeKind: roleAssignee, AssigneeID: "r1", Type: "select"}, {AssigneeKind: userAssignee, AssigneeID: "oidc~a/b", Type: "modify"}}
+	if !reflect.DeepEqual(grants, want) {
+		t.Fatalf("grants %+v", grants)
+	}
+	if !reflect.DeepEqual(grantsToAPI(want), []api.Assignment{
+		{Assignee: api.RoleAssignee("r1"), Assignment: "select"},
+		{Assignee: api.UserAssignee("oidc~a/b"), Assignment: "modify"},
+	}) {
+		t.Fatalf("grantsToAPI does not round-trip: %+v", grantsToAPI(want))
+	}
+
+	for name, a := range map[string]api.Assignment{
+		"unknown assignee type": {Assignee: api.Assignee{Type: "group", ID: "g1"}, Assignment: "select"},
+		"empty assignee type":   {Assignee: api.Assignee{ID: "r1"}, Assignment: "select"},
+		"empty grant type":      {Assignee: api.RoleAssignee("r1")},
+		"empty assignee ID":     {Assignee: api.RoleAssignee(""), Assignment: "select"},
+	} {
+		if grants, err := grantsFromAPI("project", []api.Assignment{a}); err == nil {
+			t.Errorf("accepted %s: %+v", name, grants)
 		}
 	}
 }

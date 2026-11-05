@@ -218,3 +218,81 @@ func TestNamespaceAssignmentsWireFormat(t *testing.T) {
 		t.Fatalf("body %v, want %v", body, wantBody)
 	}
 }
+
+// cannedServer answers every request with status and body, and returns a
+// client for it.
+func cannedServer(t *testing.T, status int, body string) *Client {
+	t.Helper()
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(s.Close)
+	c, err := NewStaticTokenClient(t.Context(), s.URL, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func TestGetAssignmentsRejectsMalformedResponses(t *testing.T) {
+	for _, tc := range []struct{ name, body string }{
+		{"no assignments list", `{"project-id":"p"}`},
+		{"null assignments list", `{"assignments":null}`},
+		{"neither role nor user", `{"assignments":[{"type":"select"}]}`},
+		{"role and user", `{"assignments":[{"type":"select","role":"r1","user":"oidc~a"}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := cannedServer(t, http.StatusOK, tc.body)
+			if got, err := c.GetProjectAssignments(t.Context(), "p"); err == nil {
+				t.Errorf("GetProjectAssignments accepted it: %+v", got)
+			}
+			if got, err := c.GetNamespaceAssignments(t.Context(), "p", "n"); err == nil {
+				t.Errorf("GetNamespaceAssignments accepted it: %+v", got)
+			}
+		})
+	}
+
+	c := cannedServer(t, http.StatusOK, `{"assignments":[]}`)
+	if got, err := c.GetProjectAssignments(t.Context(), "p"); err != nil || got == nil || len(got) != 0 {
+		t.Errorf("GetProjectAssignments with an empty list: %+v, %v", got, err)
+	}
+	if got, err := c.GetNamespaceAssignments(t.Context(), "p", "n"); err != nil || got == nil || len(got) != 0 {
+		t.Errorf("GetNamespaceAssignments with an empty list: %+v, %v", got, err)
+	}
+}
+
+func TestUserIDIsPathEscaped(t *testing.T) {
+	var paths []string
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.EscapedPath())
+		if r.Method == http.MethodDelete {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"oidc~a/b","name":"n","user-type":"human","created-at":"2025-01-01T00:00:00Z","last-updated-with":"create-endpoint"}`))
+	}))
+	defer s.Close()
+	ctx := t.Context()
+	c, err := NewStaticTokenClient(ctx, s.URL, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := c.GetUser(ctx, "oidc~a/b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.ID != "oidc~a/b" {
+		t.Errorf("user ID %q", u.ID)
+	}
+	if err := c.DeleteUser(ctx, "oidc~a/b"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"GET /management/v1/user/oidc~a%2Fb", "DELETE /management/v1/user/oidc~a%2Fb"}
+	if !reflect.DeepEqual(paths, want) {
+		t.Errorf("paths %q, want %q", paths, want)
+	}
+}

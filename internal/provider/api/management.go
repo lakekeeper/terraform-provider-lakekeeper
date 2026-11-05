@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/url"
 
 	managementv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1"
 )
@@ -203,9 +204,10 @@ func (c *Client) ProvisionUser(ctx context.Context, req ProvisionUserRequest) (*
 	return userFromSDK(u), nil
 }
 
-// GetUser returns a user.
+// GetUser returns a user. The ID may contain "/".
 func (c *Client) GetUser(ctx context.Context, id string) (*User, error) {
-	u, resp, err := c.sdk.UserV1().Get(ctx, id)
+	// The SDK puts the ID into the path unescaped; it keeps an escaped path as given.
+	u, resp, err := c.sdk.UserV1().Get(ctx, url.PathEscape(id))
 	if err != nil {
 		return nil, wrapErr(resp, err)
 	}
@@ -221,8 +223,8 @@ func (c *Client) Whoami(ctx context.Context) (*User, error) {
 	return userFromSDK(u), nil
 }
 
-// DeleteUser deletes a user.
+// DeleteUser deletes a user. The ID may contain "/".
 func (c *Client) DeleteUser(ctx context.Context, id string) error {
-	resp, err := c.sdk.UserV1().Delete(ctx, id)
+	resp, err := c.sdk.UserV1().Delete(ctx, url.PathEscape(id))
 	return wrapErr(resp, err)
 }

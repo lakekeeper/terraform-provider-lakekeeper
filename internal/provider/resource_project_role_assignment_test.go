@@ -137,12 +137,9 @@ func TestAccLakekeeperProjectRoleAssignment_existingGrants(t *testing.T) {
 	project := testutil.CreateProject(t)
 	role := testutil.CreateRole(t, project.ID)
 
-	_, err := testutil.TestLakekeeperClient.PermissionV1().ProjectPermission().Update(t.Context(), project.ID, &permissionv1.UpdateProjectPermissionsOptions{
-		Writes: []*permissionv1.ProjectAssignment{{
-			Assignee:   permissionv1.UserOrRole{Type: permissionv1.RoleType, Value: role.ID},
-			Assignment: permissionv1.DescribeProjectAssignment,
-		}},
-	})
+	err := testutil.TestLakekeeperClient.UpdateProjectAssignments(t.Context(), project.ID, []api.Assignment{
+		{Assignee: api.RoleAssignee(role.ID), Assignment: api.ProjectAssignmentDescribe},
+	}, nil)
 	if err != nil {
 		t.Fatalf("could not grant describe to the role: %v", err)
 	}

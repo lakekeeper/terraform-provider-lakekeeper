@@ -1,7 +1,7 @@
 package provider
 
 import (
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 func init() {
@@ -15,6 +15,19 @@ var projectRoleAssignment = assignmentDescriptor{
 	Scope:        projectIDAttribute("The ID of the project."),
 	AssigneeKind: roleAssignee,
 	Assignee:     uuidAttribute("role_id", "The ID of the role."),
-	GrantTypes:   stringValues(permissionv1.ValidProjectAssignmentTypes),
+	GrantTypes:   projectGrantTypes,
 	NewAdapter:   newProjectScopeAdapter,
+}
+
+// projectGrantTypes lists the grant types at the project scope, shared by the
+// project role and user assignment resources.
+var projectGrantTypes = []string{
+	api.ProjectAssignmentAdmin,
+	api.ProjectAssignmentSecurityAdmin,
+	api.ProjectAssignmentDataAdmin,
+	api.ProjectAssignmentRoleCreator,
+	api.ProjectAssignmentDescribe,
+	api.ProjectAssignmentSelect,
+	api.ProjectAssignmentCreate,
+	api.ProjectAssignmentModify,
 }
