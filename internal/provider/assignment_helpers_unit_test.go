@@ -121,3 +121,39 @@ func assertStateFor(t *testing.T, r *assignmentResource, state tfsdk.State, iden
 		t.Fatalf("state %+v, want %+v", s, want)
 	}
 }
+
+// testOtherAssigneeRole is a role that never is the managed assignee.
+const testOtherAssigneeRole = "11111111-2222-3333-4444-555555555555"
+
+// testOtherGrants are grants of other assignees on the scope, which the
+// managed assignee (kind, id) must never change: another role, another user,
+// and the managed assignee's ID with the other assignee kind.
+func testOtherGrants(kind assigneeKind, id, grantType string) []assignmentGrant {
+	other := userAssignee
+	if kind == userAssignee {
+		other = roleAssignee
+	}
+	return []assignmentGrant{
+		role(testOtherAssigneeRole, grantType),
+		user("oidc~bob", grantType),
+		{AssigneeKind: other, AssigneeID: id, Type: grantType},
+	}
+}
+
+// assertOtherGrantsUntouched checks that every grant in others is still held,
+// and that no write request touched an assignee other than (kind, id).
+func assertOtherGrantsUntouched(t *testing.T, m *memoryScopeAdapter, others []assignmentGrant, kind assigneeKind, id string) {
+	t.Helper()
+	for _, g := range others {
+		if !slices.Contains(m.grants, g) {
+			t.Fatalf("grant of another assignee was removed: %+v", g)
+		}
+	}
+	for _, a := range m.applies {
+		for _, g := range append(slices.Clone(a.revokes), a.grants...) {
+			if g.AssigneeKind != kind || g.AssigneeID != id {
+				t.Fatalf("request changed another assignee: %+v", g)
+			}
+		}
+	}
+}

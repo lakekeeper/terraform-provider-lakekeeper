@@ -3,13 +3,19 @@
 page_title: "lakekeeper_warehouse_role_assignment Resource - terraform-provider-lakekeeper"
 subcategory: ""
 description: |-
-  The lakekeeper_warehouse_role_assignment resource allows to manage the lifecycle of a role assignement to a warehouse.
+  Manages the direct grants of one role on the warehouse. Grants that other users and roles hold on the warehouse are left untouched. Use one resource per warehouse and role.
+  Create fails if the role already holds any direct grant on the warehouse. Bring existing grants under Terraform with terraform import first, using the ID {{warehouse_id}}/{{role_id}}.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_warehouse_assignments
 ---
 
 # lakekeeper_warehouse_role_assignment (Resource)
 
-The `lakekeeper_warehouse_role_assignment` resource allows to manage the lifecycle of a role assignement to a warehouse.
+Manages the direct grants of one role on the warehouse. Grants that other users and roles hold on the warehouse are left untouched. Use one resource per warehouse and role.
+
+Create fails if the role already holds any direct grant on the warehouse. Bring existing grants under Terraform with `terraform import` first, using the ID `{{warehouse_id}}/{{role_id}}`.
+
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
 
 **Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_warehouse_assignments)
 
@@ -28,13 +34,13 @@ resource "lakekeeper_warehouse_role_assignment" "s3" {
 
 ### Required
 
-- `assignments` (Set of String) List of assignments the role has on this warehouse. values can be `ownership` `pass_grants` `manage_grants` `describe` `select` `create` `modify`
-- `role_id` (String) The ID of the role to assign to the warehouse.
+- `assignments` (Set of String) The direct grants of the role on the warehouse. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `modify`. An empty set revokes all of them.
+- `role_id` (String) The ID of the role.
 - `warehouse_id` (String) The ID of the warehouse.
 
 ### Read-Only
 
-- `id` (String) The internal ID of this resource. In the form: `{{warehouse_id}}/{{role_id}}`
+- `id` (String) The internal ID of this resource, in the form `{{warehouse_id}}/{{role_id}}`.
 
 ## Import
 

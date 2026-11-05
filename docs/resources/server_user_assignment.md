@@ -3,13 +3,19 @@
 page_title: "lakekeeper_server_user_assignment Resource - terraform-provider-lakekeeper"
 subcategory: ""
 description: |-
-  The lakekeeper_server_assignment resource allows to manage the lifecycle of a user assignement to the server.
+  Manages the direct grants of one user on the server. Grants that other users and roles hold on the server are left untouched. Use one resource per user.
+  Create fails if the user already holds any direct grant on the server. Bring existing grants under Terraform with terraform import first, using the ID {{user_id}}.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_server_assignments
 ---
 
 # lakekeeper_server_user_assignment (Resource)
 
-The `lakekeeper_server_assignment` resource allows to manage the lifecycle of a user assignement to the server.
+Manages the direct grants of one user on the server. Grants that other users and roles hold on the server are left untouched. Use one resource per user.
+
+Create fails if the user already holds any direct grant on the server. Bring existing grants under Terraform with `terraform import` first, using the ID `{{user_id}}`.
+
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
 
 **Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_server_assignments)
 
@@ -27,12 +33,12 @@ resource "lakekeeper_server_user_assignment" "john_doe" {
 
 ### Required
 
-- `assignments` (Set of String) List of server assignments for this user. values can be `admin` or `operator`
-- `user_id` (String) The ID of the user.
+- `assignments` (Set of String) The direct grants of the user on the server. Allowed values: `admin`, `operator`. An empty set revokes all of them.
+- `user_id` (String) The ID of the user, in the form `<idp>~<subject>`.
 
 ### Read-Only
 
-- `id` (String) The internal ID of this resource. Same as `{{user_id}}`
+- `id` (String) The internal ID of this resource, in the form `{{user_id}}`.
 
 ## Import
 

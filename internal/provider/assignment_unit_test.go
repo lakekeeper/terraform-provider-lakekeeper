@@ -128,7 +128,7 @@ func TestAssignmentCreate(t *testing.T) {
 		if got := m.grantsOf(roleAssignee, "target"); !reflect.DeepEqual(got, []string{"describe", "select"}) {
 			t.Fatalf("server grants %v", got)
 		}
-		assertOtherGrantsUntouched(t, m)
+		assertOtherGrantsUntouched(t, m, otherGrants(), roleAssignee, "target")
 		if len(m.applies) != 1 {
 			t.Fatalf("want one write request, got %d", len(m.applies))
 		}
@@ -227,7 +227,7 @@ func TestAssignmentUpdate(t *testing.T) {
 		if !reflect.DeepEqual(a.revokes, []assignmentGrant{role("target", "describe")}) || !reflect.DeepEqual(a.grants, []assignmentGrant{role("target", "modify")}) {
 			t.Fatalf("revokes %v grants %v", a.revokes, a.grants)
 		}
-		assertOtherGrantsUntouched(t, m)
+		assertOtherGrantsUntouched(t, m, otherGrants(), roleAssignee, "target")
 		assertState(t, testStateOf(t, resp.State), "p/target", "p", "target", "modify", "select")
 	})
 
@@ -250,7 +250,7 @@ func TestAssignmentUpdate(t *testing.T) {
 		if got := m.grantsOf(roleAssignee, "target"); len(got) != 0 {
 			t.Fatalf("left grants %v", got)
 		}
-		assertOtherGrantsUntouched(t, m)
+		assertOtherGrantsUntouched(t, m, otherGrants(), roleAssignee, "target")
 		assertState(t, testStateOf(t, resp.State), "p/target", "p", "target")
 	})
 
@@ -286,7 +286,7 @@ func TestAssignmentDelete(t *testing.T) {
 		if got := m.grantsOf(roleAssignee, "target"); len(got) != 0 {
 			t.Fatalf("left grants %v", got)
 		}
-		assertOtherGrantsUntouched(t, m)
+		assertOtherGrantsUntouched(t, m, otherGrants(), roleAssignee, "target")
 		if len(m.applies) != 1 || !resp.State.Raw.IsNull() {
 			t.Fatalf("writes %d, state %v", len(m.applies), resp.State.Raw)
 		}
@@ -506,22 +506,6 @@ func assertState(t *testing.T, s testStateValues, id, project, roleID string, gr
 	}
 	if !reflect.DeepEqual(s.grants, grants) {
 		t.Fatalf("state grants %v, want %v", s.grants, grants)
-	}
-}
-
-func assertOtherGrantsUntouched(t *testing.T, m *memoryScopeAdapter) {
-	t.Helper()
-	for _, g := range otherGrants() {
-		if !slices.Contains(m.grants, g) {
-			t.Fatalf("grant of another assignee was removed: %+v", g)
-		}
-	}
-	for _, a := range m.applies {
-		for _, g := range append(slices.Clone(a.revokes), a.grants...) {
-			if g.AssigneeKind != roleAssignee || g.AssigneeID != "target" {
-				t.Fatalf("request touched another assignee: %+v", g)
-			}
-		}
 	}
 }
 

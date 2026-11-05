@@ -11,7 +11,6 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
@@ -192,7 +191,11 @@ func testAccCheckLakekeeperProjectRoleAssignmentDestroy(s *terraform.State) erro
 			continue
 		}
 
-		projectID, roleID := splitInternalID(types.StringValue(rs.Primary.ID))
+		parts, err := projectRoleAssignment.parseID(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		projectID, roleID := parts[0], parts[1]
 
 		assignments, err := testutil.TestLakekeeperClient.GetProjectAssignments(context.Background(), projectID)
 		if err != nil {

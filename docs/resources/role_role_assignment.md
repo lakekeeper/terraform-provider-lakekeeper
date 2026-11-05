@@ -3,13 +3,22 @@
 page_title: "lakekeeper_role_role_assignment Resource - terraform-provider-lakekeeper"
 subcategory: ""
 description: |-
-  The lakekeeper_role_role_assignment resource allows to manage the lifecycle of a role assignement to a role.
+  Manages the direct grants of one assignee role on the scope role. Grants that other users and roles hold on the scope role are left untouched. Use one resource per scope role and assignee role.
+  Create fails if the assignee role already holds any direct grant on the scope role. Bring existing grants under Terraform with terraform import first, using the ID {{role_id}}/{{assignee_id}}.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+  Lakekeeper rejects assigning a role to itself.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments
 ---
 
 # lakekeeper_role_role_assignment (Resource)
 
-The `lakekeeper_role_role_assignment` resource allows to manage the lifecycle of a role assignement to a role.
+Manages the direct grants of one assignee role on the scope role. Grants that other users and roles hold on the scope role are left untouched. Use one resource per scope role and assignee role.
+
+Create fails if the assignee role already holds any direct grant on the scope role. Bring existing grants under Terraform with `terraform import` first, using the ID `{{role_id}}/{{assignee_id}}`.
+
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+
+Lakekeeper rejects assigning a role to itself.
 
 **Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments)
 
@@ -28,13 +37,13 @@ resource "lakekeeper_role_role_assignment" "data_analysts" {
 
 ### Required
 
-- `assignee_id` (String) The ID of the role to assign to the role.
-- `assignments` (Set of String) List of role assignments for this role. values can be `ownership` or `assignee`
-- `role_id` (String) The ID of the role.
+- `assignee_id` (String) The ID of the assignee role, which holds the grants.
+- `assignments` (Set of String) The direct grants of the assignee role on the scope role. Allowed values: `ownership`, `assignee`. An empty set revokes all of them.
+- `role_id` (String) The ID of the scope role, which the grants are on.
 
 ### Read-Only
 
-- `id` (String) The internal ID of this resource. In the form: <role_id>:<assignee_id>
+- `id` (String) The internal ID of this resource, in the form `{{role_id}}/{{assignee_id}}`.
 
 ## Import
 

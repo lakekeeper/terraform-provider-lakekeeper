@@ -22,34 +22,17 @@ const (
 	testNSProject   = "p"
 	testNSNamespace = "0e5ad4b6-07a1-4e3c-a5b0-6d0c5e1d5a11"
 	testNSRole      = "cb6ee351-68ff-4299-87f2-876964f6d8dd"
-	testNSOtherRole = "4a8f0a43-6c9e-4b8e-9f0b-5d0b8c1e2f33"
 )
 
 var testNSIdentity = []string{testNSProject, testNSNamespace, testNSRole}
 
-// testNSOtherGrants are held by other principals on the namespace and must never change.
+// testNSOtherGrants are held by other assignees on the namespace and must never change.
 func testNSOtherGrants() []assignmentGrant {
-	return []assignmentGrant{role(testNSOtherRole, "select"), {AssigneeKind: "user", AssigneeID: "oidc~alice", Type: "select"}}
+	return testOtherGrants(roleAssignee, testNSRole, "select")
 }
 
 func newTestNamespaceRoleAssignment(m scopeAdapter) *assignmentResource {
 	return newTestAssignmentResourceFor(namespaceRoleAssignment, m)
-}
-
-func assertNSOtherGrantsUntouched(t *testing.T, m *memoryScopeAdapter) {
-	t.Helper()
-	for _, g := range testNSOtherGrants() {
-		if !slices.Contains(m.grants, g) {
-			t.Fatalf("grant of another principal was removed: %+v", g)
-		}
-	}
-	for _, a := range m.applies {
-		for _, g := range append(slices.Clone(a.revokes), a.grants...) {
-			if g.AssigneeKind != roleAssignee || g.AssigneeID != testNSRole {
-				t.Fatalf("request changed another principal: %+v", g)
-			}
-		}
-	}
 }
 
 func TestNamespaceRoleAssignmentSchema(t *testing.T) {
@@ -137,7 +120,7 @@ func TestNamespaceRoleAssignmentCreate(t *testing.T) {
 		if got := m.grantsOf(roleAssignee, testNSRole); !reflect.DeepEqual(got, []string{"describe", "select"}) {
 			t.Fatalf("server grants %v", got)
 		}
-		assertNSOtherGrantsUntouched(t, m)
+		assertOtherGrantsUntouched(t, m, testNSOtherGrants(), roleAssignee, testNSRole)
 		assertStateFor(t, r, resp.State, testNSIdentity, "describe", "select")
 	})
 
@@ -197,7 +180,7 @@ func TestNamespaceRoleAssignmentReconcile(t *testing.T) {
 			if got := m.grantsOf(roleAssignee, testNSRole); !slices.Equal(got, append([]string{}, want...)) {
 				t.Fatalf("server grants %v, want %v", got, want)
 			}
-			assertNSOtherGrantsUntouched(t, m)
+			assertOtherGrantsUntouched(t, m, testNSOtherGrants(), roleAssignee, testNSRole)
 			if tc.failWrite {
 				return
 			}
@@ -262,7 +245,7 @@ func TestNamespaceRoleAssignmentDelete(t *testing.T) {
 			if !fail && len(m.grantsOf(roleAssignee, testNSRole)) != 0 {
 				t.Fatalf("left grants %v", m.grantsOf(roleAssignee, testNSRole))
 			}
-			assertNSOtherGrantsUntouched(t, m)
+			assertOtherGrantsUntouched(t, m, testNSOtherGrants(), roleAssignee, testNSRole)
 		})
 	}
 }

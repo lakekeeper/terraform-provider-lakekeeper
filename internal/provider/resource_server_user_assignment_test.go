@@ -108,6 +108,36 @@ func TestAccLakekeeperServerUserAssignment_basic(t *testing.T) {
 	})
 }
 
+func TestAccLakekeeperServerUserAssignment_userIDWithSlash(t *testing.T) {
+	userID := fmt.Sprintf("oidc~%s/%s", acctest.RandString(8), acctest.RandString(8))
+	user := testutil.CreateUser(t, userID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperServerUserAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_server_user_assignment" "test" {
+						user_id = "%s"
+						assignments = ["operator"]
+					}
+				`, user.ID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_server_user_assignment.test", "id", userID),
+					resource.TestCheckResourceAttr("lakekeeper_server_user_assignment.test", "user_id", userID),
+					resource.TestCheckResourceAttr("lakekeeper_server_user_assignment.test", "assignments.#", "1"),
+				),
+			},
+			{
+				ResourceName:      "lakekeeper_server_user_assignment.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckLakekeeperServerUserAssignmentDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_server_user_assignment" {

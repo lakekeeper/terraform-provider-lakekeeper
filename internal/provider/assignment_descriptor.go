@@ -15,7 +15,8 @@ import (
 type assignmentDescriptor struct {
 	// TypeName is the resource type name without the provider prefix, e.g. "project_role_assignment".
 	TypeName string
-	// ScopeNoun names the scope in generated descriptions, e.g. "project" or "server".
+	// ScopeNoun names the scope in generated descriptions and the upstream API
+	// link, e.g. "project" or "server".
 	ScopeNoun string
 	// ExtraIDParts are identity attributes that precede the scope in the ID, e.g. project_id for a namespace.
 	ExtraIDParts []assignmentAttribute
@@ -57,6 +58,16 @@ func (d assignmentDescriptor) identity() []assignmentAttribute {
 		attrs = append(attrs, d.Scope)
 	}
 	return append(attrs, d.Assignee)
+}
+
+// nouns returns how generated text names the assignee and the scope. When
+// both are roles, they become "assignee role" and "scope role" to tell them apart.
+func (d assignmentDescriptor) nouns() (assignee, scope string) {
+	assignee, scope = string(d.AssigneeKind), d.ScopeNoun
+	if assignee == scope {
+		return "assignee " + assignee, "scope " + scope
+	}
+	return assignee, scope
 }
 
 // idFormat documents the ID and import format, e.g. "{{project_id}}/{{role_id}}".
