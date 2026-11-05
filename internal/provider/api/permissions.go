@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 )
@@ -55,12 +56,19 @@ func assignmentsToSDK[S any](in []Assignment, mk func(Assignment) *S) []*S {
 	return out
 }
 
-func assignmentsFromSDK[S any](in []*S, get func(*S) Assignment) []Assignment {
+// assignmentsFromSDK converts SDK assignment values. A nil input means the
+// response had no assignments list, which is an error: an empty list must not
+// be mistaken for "no assignments". The SDK already rejects an assignment
+// with neither or both of role and user.
+func assignmentsFromSDK[S any](entity string, in []*S, get func(*S) Assignment) ([]Assignment, error) {
+	if in == nil {
+		return nil, fmt.Errorf("%s assignments response has no assignments list", entity)
+	}
 	out := make([]Assignment, len(in))
 	for i, a := range in {
 		out[i] = get(a)
 	}
-	return out
+	return out, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -76,9 +84,9 @@ func (c *Client) GetServerAssignments(ctx context.Context) ([]Assignment, error)
 	if err != nil {
 		return nil, wrapErr(resp, err)
 	}
-	return assignmentsFromSDK(r.Assignments, func(a *permissionv1.ServerAssignment) Assignment {
+	return assignmentsFromSDK("server", r.Assignments, func(a *permissionv1.ServerAssignment) Assignment {
 		return Assignment{Assignee: assigneeFromSDK(a.Assignee), Assignment: string(a.Assignment)}
-	}), nil
+	})
 }
 
 // UpdateServerAssignments adds writes and removes deletes in one request.
@@ -103,9 +111,9 @@ func (c *Client) GetProjectAssignments(ctx context.Context, projectID string) ([
 	if err != nil {
 		return nil, wrapErr(resp, err)
 	}
-	return assignmentsFromSDK(r.Assignments, func(a *permissionv1.ProjectAssignment) Assignment {
+	return assignmentsFromSDK("project", r.Assignments, func(a *permissionv1.ProjectAssignment) Assignment {
 		return Assignment{Assignee: assigneeFromSDK(a.Assignee), Assignment: string(a.Assignment)}
-	}), nil
+	})
 }
 
 // UpdateProjectAssignments adds writes and removes deletes in one request.
@@ -147,9 +155,9 @@ func (c *Client) GetWarehouseAssignments(ctx context.Context, warehouseID string
 	if err != nil {
 		return nil, wrapErr(resp, err)
 	}
-	return assignmentsFromSDK(r.Assignments, func(a *permissionv1.WarehouseAssignment) Assignment {
+	return assignmentsFromSDK("warehouse", r.Assignments, func(a *permissionv1.WarehouseAssignment) Assignment {
 		return Assignment{Assignee: assigneeFromSDK(a.Assignee), Assignment: string(a.Assignment)}
-	}), nil
+	})
 }
 
 // UpdateWarehouseAssignments adds writes and removes deletes in one request.
@@ -213,9 +221,9 @@ func (c *Client) GetRoleAssignments(ctx context.Context, roleID string) ([]Assig
 	if err != nil {
 		return nil, wrapErr(resp, err)
 	}
-	return assignmentsFromSDK(r.Assignments, func(a *permissionv1.RoleAssignment) Assignment {
+	return assignmentsFromSDK("role", r.Assignments, func(a *permissionv1.RoleAssignment) Assignment {
 		return Assignment{Assignee: assigneeFromSDK(a.Assignee), Assignment: string(a.Assignment)}
-	}), nil
+	})
 }
 
 // UpdateRoleAssignments adds writes and removes deletes in one request.

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -62,9 +63,14 @@ func (c *Client) GetNamespaceAssignments(ctx context.Context, projectID, namespa
 	}
 	out := make([]Assignment, 0, len(*result.Assignments))
 	for _, a := range *result.Assignments {
-		assignee := RoleAssignee(a.Role)
-		if a.User != "" {
+		var assignee Assignee
+		switch {
+		case a.Role != "" && a.User == "":
+			assignee = RoleAssignee(a.Role)
+		case a.User != "" && a.Role == "":
 			assignee = UserAssignee(a.User)
+		default:
+			return nil, fmt.Errorf("namespace assignments response has an assignment without exactly one role or user: %+v", a)
 		}
 		out = append(out, Assignment{Assignee: assignee, Assignment: a.Type})
 	}

@@ -99,3 +99,30 @@ resource "lakekeeper_role_user_assignment" "select_peter" {
 ```
 
 > Peter now has read-only access to the warehouse via the `test-role`.
+
+## Import Existing Grants Before Managing Them
+
+An assignment resource manages all direct grants of one user or role on one object. Grants that other users and roles hold on the same object are left untouched.
+
+If the user or role already holds a direct grant on the object, for example one given in the Lakekeeper UI, creating the assignment resource fails with an error that asks you to import it. This keeps Terraform from silently taking over grants that someone else manages. Import the assignment first, then apply your configuration:
+
+```terraform
+import {
+  to = lakekeeper_project_role_assignment.data_analysts
+  id = "${data.lakekeeper_default_project.default.id}/${lakekeeper_role.select.role_id}"
+}
+
+resource "lakekeeper_project_role_assignment" "data_analysts" {
+  project_id  = data.lakekeeper_default_project.default.id
+  role_id     = lakekeeper_role.select.role_id
+  assignments = ["describe", "select"]
+}
+```
+
+You can also run `terraform import` on the command line:
+
+```shell
+terraform import lakekeeper_project_role_assignment.data_analysts "<project_id>/<role_id>"
+```
+
+After the import, the next apply changes the grants to match your configuration: grants missing from `assignments` are revoked and new ones are granted, in one request. Each resource's documentation lists its import ID format.
