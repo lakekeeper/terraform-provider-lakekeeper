@@ -279,7 +279,7 @@ func TestNamespaceRoleAssignmentImport(t *testing.T) {
 	if s.id != id || !reflect.DeepEqual(s.identity, want) {
 		t.Fatalf("state %+v", s)
 	}
-	for _, bad := range []string{testNSNamespace + "/" + testNSRole, testNSProject + "//" + testNSRole, ""} {
+	for _, bad := range []string{testNSNamespace + "/" + testNSRole, testNSProject + "//" + testNSRole, "", testNSProject + "/not-a-uuid/" + testNSRole, "p.x/" + testNSNamespace + "/" + testNSRole} {
 		if resp := testImport(t, r, bad); !resp.Diagnostics.HasError() {
 			t.Errorf("import %q accepted", bad)
 		}

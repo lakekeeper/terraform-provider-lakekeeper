@@ -29,7 +29,10 @@ func TestAssignmentUserIDValidator(t *testing.T) {
 		{"oidc~a/b", true},
 		{"oidc~a~b", true},
 		{"oidc~" + strings.Repeat("x", 127), true},
-		{"oidc~" + strings.Repeat("ä", 127), true},
+		// Lakekeeper counts the subject in bytes (Rust str::len): 63 two-byte runes plus one byte is 127 bytes.
+		{"oidc~" + strings.Repeat("ä", 63) + "x", true},
+		{"oidc~" + strings.Repeat("ä", 64), false},
+		{"oidc~" + strings.Repeat("ä", 127), false},
 		{"", false},
 		{"no-tilde", false},
 		{"~subject", false},
@@ -38,6 +41,7 @@ func TestAssignmentUserIDValidator(t *testing.T) {
 		{"oidc~a\nb", false},
 		{"oidc~a\x00b", false},
 		{"oi\tdc~a", false},
+		{"oidc~a\u0085b", false}, // C1 control (NEL), also a control character in Rust
 	} {
 		resp := validator.StringResponse{}
 		for _, v := range attr.Validators {
@@ -58,7 +62,7 @@ func user(id, grant string) assignmentGrant {
 }
 
 func TestProjectUserAssignmentSchema(t *testing.T) {
-	r := &assignmentResource{d: projectUserAssignment}
+	r := &assignmentResource{desc: projectUserAssignment}
 	resp := resource.MetadataResponse{}
 	r.Metadata(context.Background(), resource.MetadataRequest{ProviderTypeName: "lakekeeper"}, &resp)
 	if resp.TypeName != "lakekeeper_project_user_assignment" {
@@ -104,7 +108,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 
 	t.Run("create grants the user and keeps the slash in the ID", func(t *testing.T) {
 		m := newMemoryScopeAdapter(others...)
-		r := &assignmentResource{d: projectUserAssignment, adapter: m}
+		r := &assignmentResource{desc: projectUserAssignment, adapter: m}
 		plan := tfsdk.Plan{Schema: testSchema(t, r), Raw: userTestValue(t, r, "", "p", slashUser, "describe", "select")}
 		resp := &resource.CreateResponse{State: testNullState(t, r)}
 		r.Create(context.Background(), resource.CreateRequest{Plan: plan}, resp)
@@ -123,7 +127,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 
 	t.Run("create refuses when the user already holds a grant", func(t *testing.T) {
 		m := newMemoryScopeAdapter(append(slices.Clone(others), user(slashUser, "modify"))...)
-		r := &assignmentResource{d: projectUserAssignment, adapter: m}
+		r := &assignmentResource{desc: projectUserAssignment, adapter: m}
 		plan := tfsdk.Plan{Schema: testSchema(t, r), Raw: userTestValue(t, r, "", "p", slashUser, "select")}
 		resp := &resource.CreateResponse{State: testNullState(t, r)}
 		r.Create(context.Background(), resource.CreateRequest{Plan: plan}, resp)
@@ -137,7 +141,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 
 	t.Run("read keeps only the user's grants", func(t *testing.T) {
 		m := newMemoryScopeAdapter(append(slices.Clone(others), user(slashUser, "modify"))...)
-		r := &assignmentResource{d: projectUserAssignment, adapter: m}
+		r := &assignmentResource{desc: projectUserAssignment, adapter: m}
 		state := userTestState(t, r, "p/"+slashUser, "p", slashUser, "describe")
 		resp := &resource.ReadResponse{State: state}
 		r.Read(context.Background(), resource.ReadRequest{State: state}, resp)
@@ -149,7 +153,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 
 	t.Run("update reconciles against the server in one request", func(t *testing.T) {
 		m := newMemoryScopeAdapter(append(slices.Clone(others), user(slashUser, "select"), user(slashUser, "describe"))...)
-		r := &assignmentResource{d: projectUserAssignment, adapter: m}
+		r := &assignmentResource{desc: projectUserAssignment, adapter: m}
 		state := userTestState(t, r, "p/"+slashUser, "p", slashUser, "select")
 		plan := tfsdk.Plan{Schema: testSchema(t, r), Raw: userTestValue(t, r, "p/"+slashUser, "p", slashUser, "select", "modify")}
 		resp := &resource.UpdateResponse{State: state}
@@ -170,7 +174,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 
 	t.Run("delete revokes only the user's grants", func(t *testing.T) {
 		m := newMemoryScopeAdapter(append(slices.Clone(others), user(slashUser, "select"), user(slashUser, "modify"))...)
-		r := &assignmentResource{d: projectUserAssignment, adapter: m}
+		r := &assignmentResource{desc: projectUserAssignment, adapter: m}
 		state := userTestState(t, r, "p/"+slashUser, "p", slashUser, "select")
 		resp := &resource.DeleteResponse{State: state}
 		r.Delete(context.Background(), resource.DeleteRequest{State: state}, resp)
@@ -189,7 +193,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 	t.Run("failed delete keeps state", func(t *testing.T) {
 		m := newMemoryScopeAdapter(user(slashUser, "select"))
 		m.applyErr = errTestWrite
-		r := &assignmentResource{d: projectUserAssignment, adapter: m}
+		r := &assignmentResource{desc: projectUserAssignment, adapter: m}
 		state := userTestState(t, r, "p/"+slashUser, "p", slashUser, "select")
 		resp := &resource.DeleteResponse{State: state}
 		r.Delete(context.Background(), resource.DeleteRequest{State: state}, resp)
@@ -200,7 +204,7 @@ func TestProjectUserAssignmentLifecycle(t *testing.T) {
 }
 
 func TestProjectUserAssignmentImport(t *testing.T) {
-	r := &assignmentResource{d: projectUserAssignment, adapter: newMemoryScopeAdapter()}
+	r := &assignmentResource{desc: projectUserAssignment, adapter: newMemoryScopeAdapter()}
 	resp := &resource.ImportStateResponse{State: testNullState(t, r)}
 	r.ImportState(context.Background(), resource.ImportStateRequest{ID: "p/" + slashUser}, resp)
 	if resp.Diagnostics.HasError() {
@@ -211,7 +215,7 @@ func TestProjectUserAssignmentImport(t *testing.T) {
 		t.Fatalf("imported id %q project_id %q user_id %q", id, project, userID)
 	}
 
-	for _, bad := range []string{"oidc~alice", "p/", "/" + slashUser, ""} {
+	for _, bad := range []string{"oidc~alice", "p/", "/" + slashUser, "", "p/no-tilde", "p/~alice", "p/oidc~" + strings.Repeat("ä", 64)} {
 		resp := &resource.ImportStateResponse{State: testNullState(t, r)}
 		r.ImportState(context.Background(), resource.ImportStateRequest{ID: bad}, resp)
 		if !resp.Diagnostics.HasError() {

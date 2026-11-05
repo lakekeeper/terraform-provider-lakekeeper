@@ -20,14 +20,14 @@ import (
 // newTestAssignmentResourceFor returns the module for a real descriptor, with
 // the given adapter in place of the one NewAdapter would build.
 func newTestAssignmentResourceFor(d assignmentDescriptor, m scopeAdapter) *assignmentResource {
-	return &assignmentResource{d: d, adapter: m}
+	return &assignmentResource{desc: d, adapter: m}
 }
 
 // testObject builds a resource object for any descriptor. An empty id means
 // unknown, as in a create plan.
 func testObject(t *testing.T, r *assignmentResource, id string, identity []string, grants ...string) tftypes.Value {
 	t.Helper()
-	attrs := r.d.identity()
+	attrs := r.desc.identity()
 	if len(identity) != len(attrs) {
 		t.Fatalf("want %d identity values, got %v", len(attrs), identity)
 	}
@@ -52,7 +52,7 @@ func testObject(t *testing.T, r *assignmentResource, id string, identity []strin
 // testStateFor is the stored state of an existing assignment.
 func testStateFor(t *testing.T, r *assignmentResource, identity []string, grants ...string) tfsdk.State {
 	t.Helper()
-	return tfsdk.State{Schema: testSchema(t, r), Raw: testObject(t, r, r.d.buildID(identity), identity, grants...)}
+	return tfsdk.State{Schema: testSchema(t, r), Raw: testObject(t, r, buildAssignmentID(identity), identity, grants...)}
 }
 
 func testCreateFor(t *testing.T, r *assignmentResource, identity []string, grants ...string) *resource.CreateResponse {
@@ -65,7 +65,7 @@ func testCreateFor(t *testing.T, r *assignmentResource, identity []string, grant
 
 func testUpdateFor(t *testing.T, r *assignmentResource, state tfsdk.State, identity []string, grants ...string) *resource.UpdateResponse {
 	t.Helper()
-	plan := tfsdk.Plan{Schema: testSchema(t, r), Raw: testObject(t, r, r.d.buildID(identity), identity, grants...)}
+	plan := tfsdk.Plan{Schema: testSchema(t, r), Raw: testObject(t, r, buildAssignmentID(identity), identity, grants...)}
 	resp := &resource.UpdateResponse{State: state}
 	r.Update(context.Background(), resource.UpdateRequest{Plan: plan, State: state}, resp)
 	return resp
@@ -82,7 +82,7 @@ func testStateValuesOf(t *testing.T, r *assignmentResource, state tfsdk.State) t
 		t.Fatal(d)
 	}
 	out.id = id.ValueString()
-	for _, a := range r.d.identity() {
+	for _, a := range r.desc.identity() {
 		var v types.String
 		if d := state.GetAttribute(ctx, path.Root(a.Name), &v); d.HasError() {
 			t.Fatal(d)
@@ -107,8 +107,8 @@ func testStateValuesOf(t *testing.T, r *assignmentResource, state tfsdk.State) t
 func assertStateFor(t *testing.T, r *assignmentResource, state tfsdk.State, identity []string, grants ...string) {
 	t.Helper()
 	s := testStateValuesOf(t, r, state)
-	want := testStateValues{id: r.d.buildID(identity), identity: map[string]string{}, grants: slices.Sorted(slices.Values(grants))}
-	for i, a := range r.d.identity() {
+	want := testStateValues{id: buildAssignmentID(identity), identity: map[string]string{}, grants: slices.Sorted(slices.Values(grants))}
+	for i, a := range r.desc.identity() {
 		want.identity[a.Name] = identity[i]
 	}
 	if want.grants == nil {

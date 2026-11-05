@@ -27,7 +27,7 @@ var (
 
 // newAssignmentResource returns a resource constructor for registerResource.
 func newAssignmentResource(d assignmentDescriptor) func() resource.Resource {
-	return func() resource.Resource { return &assignmentResource{d: d} }
+	return func() resource.Resource { return &assignmentResource{desc: d} }
 }
 
 // assignmentResource is the shared assignment module: one Terraform resource
@@ -36,7 +36,7 @@ func newAssignmentResource(d assignmentDescriptor) func() resource.Resource {
 // Every create, update and delete reads the assignee's current direct grants at
 // the scope and sends the difference to the desired set as one request.
 type assignmentResource struct {
-	d       assignmentDescriptor
+	desc    assignmentDescriptor
 	adapter scopeAdapter
 }
 
@@ -48,7 +48,7 @@ type assignmentTarget struct {
 }
 
 func (r *assignmentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_" + r.d.TypeName
+	resp.TypeName = req.ProviderTypeName + "_" + r.desc.TypeName
 }
 
 func (r *assignmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -58,19 +58,19 @@ func (r *assignmentResource) Schema(_ context.Context, _ resource.SchemaRequest,
 func (r *assignmentResource) schema() schema.Schema {
 	attrs := map[string]schema.Attribute{
 		"id": schema.StringAttribute{
-			MarkdownDescription: fmt.Sprintf("The internal ID of this resource, in the form `%s`.", r.d.idFormat()),
+			MarkdownDescription: fmt.Sprintf("The internal ID of this resource, in the form `%s`.", r.desc.idFormat()),
 			Computed:            true,
 			PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 		"assignments": schema.SetAttribute{
 			ElementType: types.StringType,
 			MarkdownDescription: fmt.Sprintf("The direct grants of the %s on the %s. Allowed values: %s. An empty set revokes all of them.",
-				r.d.AssigneeKind, r.d.ScopeNoun, quotedList(r.d.GrantTypes)),
+				r.desc.AssigneeKind, r.desc.ScopeNoun, quotedList(r.desc.GrantTypes)),
 			Required:   true,
-			Validators: []validator.Set{setvalidator.ValueStringsAre(stringvalidator.OneOf(r.d.GrantTypes...))},
+			Validators: []validator.Set{setvalidator.ValueStringsAre(stringvalidator.OneOf(r.desc.GrantTypes...))},
 		},
 	}
-	for _, a := range r.d.identity() {
+	for _, a := range r.desc.identity() {
 		attrs[a.Name] = schema.StringAttribute{
 			MarkdownDescription: a.Description,
 			Required:            true,
@@ -83,7 +83,7 @@ func (r *assignmentResource) schema() schema.Schema {
 
 // description is the one template every assignment resource's description comes from.
 func (r *assignmentResource) description() string {
-	kind, scope := r.d.AssigneeKind, r.d.ScopeNoun
+	kind, scope := r.desc.AssigneeKind, r.desc.ScopeNoun
 	text := fmt.Sprintf("Manages the direct grants of one %[1]s on the %[2]s. "+
 		"Grants that other users and roles hold on the %[2]s are left untouched. Use one resource per %[2]s and %[1]s.\n\n"+
 		"Create fails if the %[1]s already holds any direct grant on the %[2]s. "+
@@ -92,9 +92,9 @@ func (r *assignmentResource) description() string {
 		"and sends the difference as one request that Lakekeeper applies atomically. "+
 		"Grants changed outside Terraform are corrected on the next apply. "+
 		"Failed reads, writes and deletes report an error and keep the resource in state.",
-		kind, scope, r.d.idFormat())
-	if r.d.Notes != "" {
-		text += "\n\n" + r.d.Notes
+		kind, scope, r.desc.idFormat())
+	if r.desc.Notes != "" {
+		text += "\n\n" + r.desc.Notes
 	}
 	return text + fmt.Sprintf("\n\n**Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_%s_assignments)", scope)
 }
@@ -103,7 +103,7 @@ func (r *assignmentResource) Configure(_ context.Context, req resource.Configure
 	if req.ProviderData == nil {
 		return
 	}
-	r.adapter = r.d.NewAdapter(req.ProviderData.(*LakekeeperResourceData).Client)
+	r.adapter = r.desc.NewAdapter(req.ProviderData.(*LakekeeperResourceData).Client)
 }
 
 func (r *assignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -111,28 +111,35 @@ func (r *assignmentResource) Create(ctx context.Context, req resource.CreateRequ
 	if resp.Diagnostics.Append(diags...); resp.Diagnostics.HasError() {
 		return
 	}
-	current, err := r.current(ctx, target)
+	current, err := r.assigneeGrantTypes(ctx, target)
 	if err != nil {
 		resp.Diagnostics.AddError(r.errorSummary("read"), err.Error())
 		return
 	}
 	if len(current) > 0 {
 		resp.Diagnostics.AddError(
-			fmt.Sprintf("The %s already holds grants on the %s", r.d.AssigneeKind, r.d.ScopeNoun),
+			fmt.Sprintf("The %s already holds grants on the %s", r.desc.AssigneeKind, r.desc.ScopeNoun),
 			fmt.Sprintf("The %s already holds direct grants on the %s: %s. "+
 				"To manage them with Terraform, import the assignment first: terraform import <resource address> %q",
-				r.d.AssigneeKind, r.d.ScopeNoun, quotedList(current), r.d.buildID(target.values)),
+				r.desc.AssigneeKind, r.desc.ScopeNoun, quotedList(current), buildAssignmentID(target.values)),
 		)
 		return
 	}
-	// Store the ID before writing, so a lost response still leaves the resource tracked.
+	// Store the ID before writing, so a lost response still leaves the resource
+	// tracked. Until the write succeeds, the state holds the grants the server
+	// holds now (none), so a failed create never claims grants that may not exist.
 	resp.State.Raw = req.Plan.Raw.Copy()
-	if resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), r.d.buildID(target.values))...); resp.Diagnostics.HasError() {
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), buildAssignmentID(target.values))...)
+	if resp.Diagnostics.Append(r.setGrants(ctx, &resp.State, current)...); resp.Diagnostics.HasError() {
 		return
 	}
 	if err := r.apply(ctx, target, current, desired); err != nil {
 		resp.Diagnostics.AddError(r.errorSummary("create"), err.Error())
+		return
 	}
+	var planned types.Set
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("assignments"), &planned)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("assignments"), planned)...)
 }
 
 func (r *assignmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -140,7 +147,7 @@ func (r *assignmentResource) Read(ctx context.Context, req resource.ReadRequest,
 	if resp.Diagnostics.Append(diags...); resp.Diagnostics.HasError() {
 		return
 	}
-	current, err := r.current(ctx, target)
+	current, err := r.assigneeGrantTypes(ctx, target)
 	if err != nil {
 		resp.Diagnostics.AddError(r.errorSummary("read"), err.Error())
 		return
@@ -174,12 +181,25 @@ func (r *assignmentResource) Delete(ctx context.Context, req resource.DeleteRequ
 }
 
 func (r *assignmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	values, err := r.d.parseID(req.ID)
+	values, err := r.desc.parseID(req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid import ID", err.Error())
 		return
 	}
-	for i, a := range r.d.identity() {
+	// Run the same identity validators as at plan time.
+	for i, a := range r.desc.identity() {
+		check := validator.StringResponse{}
+		for _, v := range a.Validators {
+			v.ValidateString(ctx, validator.StringRequest{Path: path.Root(a.Name), ConfigValue: types.StringValue(values[i])}, &check)
+		}
+		for _, d := range check.Diagnostics.Errors() {
+			resp.Diagnostics.AddError("Invalid import ID", fmt.Sprintf("Import ID %q: %s", req.ID, d.Detail()))
+		}
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	for i, a := range r.desc.identity() {
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(a.Name), values[i])...)
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
@@ -192,7 +212,7 @@ func (r *assignmentResource) readModel(
 ) (assignmentTarget, []string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	target := assignmentTarget{scope: assignmentScope{}}
-	attrs := r.d.identity()
+	attrs := r.desc.identity()
 	for i, a := range attrs {
 		var v types.String
 		diags.Append(getAttribute(ctx, path.Root(a.Name), &v)...)
@@ -212,16 +232,16 @@ func (r *assignmentResource) readModel(
 	return target, desired, diags
 }
 
-// current lists the direct grants at the scope and keeps only this assignee's
+// assigneeGrantTypes lists the direct grants at the scope and keeps only this assignee's
 // grant types, sorted and without duplicates. The server can't filter by assignee.
-func (r *assignmentResource) current(ctx context.Context, target assignmentTarget) ([]string, error) {
+func (r *assignmentResource) assigneeGrantTypes(ctx context.Context, target assignmentTarget) ([]string, error) {
 	grants, err := r.adapter.ListGrants(ctx, target.scope)
 	if err != nil {
 		return nil, err
 	}
 	out := []string{}
 	for _, g := range grants {
-		if g.AssigneeKind == r.d.AssigneeKind && g.AssigneeID == target.assignee {
+		if g.AssigneeKind == r.desc.AssigneeKind && g.AssigneeID == target.assignee {
 			out = append(out, g.Type)
 		}
 	}
@@ -232,7 +252,7 @@ func (r *assignmentResource) current(ctx context.Context, target assignmentTarge
 // reconcile brings the assignee's direct grants at the scope to the desired set.
 // A failed read never leads to a write.
 func (r *assignmentResource) reconcile(ctx context.Context, target assignmentTarget, desired []string) error {
-	current, err := r.current(ctx, target)
+	current, err := r.assigneeGrantTypes(ctx, target)
 	if err != nil {
 		return err
 	}
@@ -261,7 +281,7 @@ func (r *assignmentResource) apply(ctx context.Context, target assignmentTarget,
 }
 
 func (r *assignmentResource) grant(target assignmentTarget, grantType string) assignmentGrant {
-	return assignmentGrant{AssigneeKind: r.d.AssigneeKind, AssigneeID: target.assignee, Type: grantType}
+	return assignmentGrant{AssigneeKind: r.desc.AssigneeKind, AssigneeID: target.assignee, Type: grantType}
 }
 
 func (r *assignmentResource) setGrants(ctx context.Context, state *tfsdk.State, grants []string) diag.Diagnostics {
@@ -273,7 +293,7 @@ func (r *assignmentResource) setGrants(ctx context.Context, state *tfsdk.State, 
 }
 
 func (r *assignmentResource) errorSummary(op string) string {
-	return fmt.Sprintf("Unable to %s %s grants of the %s", op, r.d.ScopeNoun, r.d.AssigneeKind)
+	return fmt.Sprintf("Unable to %s %s grants of the %s", op, r.desc.ScopeNoun, r.desc.AssigneeKind)
 }
 
 func quotedList(values []string) string {

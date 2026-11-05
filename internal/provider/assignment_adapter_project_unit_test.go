@@ -71,6 +71,11 @@ func TestProjectScopeAdapterListGrants(t *testing.T) {
 		{"server error", 500, `{"error":{"code":500,"message":"boom","type":"Internal"}}`},
 		{"no assignments list", 200, `{"project-id":"p1"}`},
 		{"grant without assignee", 200, `{"assignments":[{"type":"select"}]}`},
+		{"unknown assignee type", 200, `{"assignments":[{"type":"select","group":"g1"}]}`},
+		{"role and user", 200, `{"assignments":[{"type":"select","role":"r1","user":"oidc~a"}]}`},
+		{"grant without type", 200, `{"assignments":[{"role":"r1"}]}`},
+		{"grant with empty type", 200, `{"assignments":[{"type":"","role":"r1"}]}`},
+		{"grant with empty assignee", 200, `{"assignments":[{"type":"select","role":""}]}`},
 		{"not JSON", 200, `oops`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

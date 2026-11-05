@@ -12,9 +12,9 @@ func init() {
 var projectRoleAssignment = assignmentDescriptor{
 	TypeName:     "project_role_assignment",
 	ScopeNoun:    "project",
-	Scope:        ptr(projectIDAttribute("The ID of the project.")),
+	Scope:        projectIDAttribute("The ID of the project."),
 	AssigneeKind: roleAssignee,
-	Assignee:     roleIDAttribute("role_id", "The ID of the role."),
-	GrantTypes:   grantTypes(permissionv1.ValidProjectAssignmentTypes),
+	Assignee:     uuidAttribute("role_id", "The ID of the role."),
+	GrantTypes:   stringValues(permissionv1.ValidProjectAssignmentTypes),
 	NewAdapter:   newProjectScopeAdapter,
 }

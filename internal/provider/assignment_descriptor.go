@@ -18,8 +18,8 @@ type assignmentDescriptor struct {
 	ScopeNoun string
 	// ExtraIDParts are identity attributes that precede the scope in the ID, e.g. project_id for a namespace.
 	ExtraIDParts []assignmentAttribute
-	// Scope is the scope's identity attribute, or nil for the server.
-	Scope *assignmentAttribute
+	// Scope is the scope's identity attribute. Its zero value (no Name) means the server.
+	Scope assignmentAttribute
 	// AssigneeKind is the kind of assignee whose grants this resource manages.
 	AssigneeKind assigneeKind
 	// Assignee is the assignee's identity attribute. It is always the last ID part.
@@ -48,8 +48,8 @@ const (
 	userAssignee assigneeKind = "user"
 )
 
-// grantTypes converts go-lakekeeper's typed grant type constants to plain strings.
-func grantTypes[T ~string](values []T) []string {
+// stringValues converts go-lakekeeper's typed constants, e.g. grant types, to plain strings.
+func stringValues[T ~string](values []T) []string {
 	out := make([]string, len(values))
 	for i, v := range values {
 		out[i] = string(v)
@@ -57,13 +57,11 @@ func grantTypes[T ~string](values []T) []string {
 	return out
 }
 
-func ptr[T any](v T) *T { return &v }
-
 // identity returns the identity attributes in ID order: extra parts, scope, assignee.
 func (d assignmentDescriptor) identity() []assignmentAttribute {
 	attrs := append([]assignmentAttribute{}, d.ExtraIDParts...)
-	if d.Scope != nil {
-		attrs = append(attrs, *d.Scope)
+	if d.Scope.Name != "" {
+		attrs = append(attrs, d.Scope)
 	}
 	return append(attrs, d.Assignee)
 }
@@ -77,8 +75,8 @@ func (d assignmentDescriptor) idFormat() string {
 	return strings.Join(parts, "/")
 }
 
-// buildID joins identity values, in ID order, into the resource ID.
-func (d assignmentDescriptor) buildID(values []string) string {
+// buildAssignmentID joins identity values, in ID order, into the resource ID.
+func buildAssignmentID(values []string) string {
 	return strings.Join(values, "/")
 }
 

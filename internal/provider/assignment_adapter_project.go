@@ -3,13 +3,14 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 )
 
 // projectScopeAdapter is the scope adapter for projects. It wraps go-lakekeeper's
-// project permission client and reads the project from scope["project_id"].
+// project permission client and reads the project from scope[projectIDAttributeName].
 type projectScopeAdapter struct{ client *lakekeeper.Client }
 
 func newProjectScopeAdapter(client *lakekeeper.Client) scopeAdapter {
@@ -17,7 +18,7 @@ func newProjectScopeAdapter(client *lakekeeper.Client) scopeAdapter {
 }
 
 func (a projectScopeAdapter) ListGrants(ctx context.Context, scope assignmentScope) ([]assignmentGrant, error) {
-	resp, _, err := a.client.PermissionV1().ProjectPermission().GetAssignments(ctx, scope["project_id"], nil)
+	resp, _, err := a.client.PermissionV1().ProjectPermission().GetAssignments(ctx, scope[projectIDAttributeName], nil)
 	if err != nil {
 		return nil, err
 	}
@@ -26,17 +27,28 @@ func (a projectScopeAdapter) ListGrants(ctx context.Context, scope assignmentSco
 	}
 	grants := make([]assignmentGrant, 0, len(resp.Assignments))
 	for _, g := range resp.Assignments {
-		grants = append(grants, assignmentGrant{
-			AssigneeKind: assigneeKind(g.Assignee.Type),
-			AssigneeID:   g.Assignee.Value,
-			Type:         string(g.Assignment),
-		})
+		grant := assignmentGrant{AssigneeID: g.Assignee.Value, Type: string(g.Assignment)}
+		switch g.Assignee.Type {
+		case permissionv1.RoleType:
+			grant.AssigneeKind = roleAssignee
+		case permissionv1.UserType:
+			grant.AssigneeKind = userAssignee
+		default:
+			return nil, fmt.Errorf("project assignments response has a grant with unknown assignee type %q: %+v", g.Assignee.Type, g)
+		}
+		if grant.Type == "" {
+			return nil, fmt.Errorf("project assignments response has a grant without a type: %+v", g)
+		}
+		if grant.AssigneeID == "" {
+			return nil, fmt.Errorf("project assignments response has a grant without an assignee ID: %+v", g)
+		}
+		grants = append(grants, grant)
 	}
 	return grants, nil
 }
 
 func (a projectScopeAdapter) ApplyGrants(ctx context.Context, scope assignmentScope, revokes, grants []assignmentGrant) error {
-	_, err := a.client.PermissionV1().ProjectPermission().Update(ctx, scope["project_id"], &permissionv1.UpdateProjectPermissionsOptions{
+	_, err := a.client.PermissionV1().ProjectPermission().Update(ctx, scope[projectIDAttributeName], &permissionv1.UpdateProjectPermissionsOptions{
 		Deletes: projectAssignments(revokes),
 		Writes:  projectAssignments(grants),
 	})

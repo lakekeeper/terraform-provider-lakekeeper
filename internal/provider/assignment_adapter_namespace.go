@@ -13,8 +13,8 @@ import (
 // namespaceScopeAdapter is the scope adapter for namespaces. go-lakekeeper has
 // no namespace permission client, so it sends raw requests through the
 // configured client. Namespace permission endpoints need the project in the
-// x-project-id header; the adapter reads it from scope["project_id"] and the
-// namespace from scope["namespace_id"].
+// x-project-id header; the adapter reads it from scope[projectIDAttributeName]
+// and the namespace from scope[namespaceIDAttributeName].
 type namespaceScopeAdapter struct{ client *lakekeeper.Client }
 
 func newNamespaceScopeAdapter(client *lakekeeper.Client) scopeAdapter {
@@ -32,7 +32,7 @@ func (a namespaceScopeAdapter) ListGrants(ctx context.Context, scope assignmentS
 	var resp struct {
 		Assignments *[]namespaceGrantJSON `json:"assignments"`
 	}
-	if err := a.do(ctx, http.MethodGet, scope, nil, &resp); err != nil {
+	if err := a.sendAssignmentsRequest(ctx, http.MethodGet, scope, nil, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Assignments == nil {
@@ -62,11 +62,12 @@ func (a namespaceScopeAdapter) ApplyGrants(ctx context.Context, scope assignment
 		"deletes": namespaceGrants(revokes),
 		"writes":  namespaceGrants(grants),
 	}
-	return a.do(ctx, http.MethodPost, scope, body, nil)
+	return a.sendAssignmentsRequest(ctx, http.MethodPost, scope, body, nil)
 }
 
-func (a namespaceScopeAdapter) do(ctx context.Context, method string, scope assignmentScope, body, result any) error {
-	return namespaceRequest(ctx, a.client, scope["project_id"], url.PathEscape(scope["namespace_id"]), "/assignments", method, body, result)
+// sendAssignmentsRequest sends one request to the namespace's assignments endpoint.
+func (a namespaceScopeAdapter) sendAssignmentsRequest(ctx context.Context, method string, scope assignmentScope, body, result any) error {
+	return namespaceRequest(ctx, a.client, scope[projectIDAttributeName], url.PathEscape(scope[namespaceIDAttributeName]), "/assignments", method, body, result)
 }
 
 func namespaceGrants(grants []assignmentGrant) []namespaceGrantJSON {

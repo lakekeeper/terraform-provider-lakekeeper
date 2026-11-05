@@ -21,11 +21,11 @@ import (
 func TestAssignmentIDParse(t *testing.T) {
 	project := testAssignmentDescriptor()
 	server := testAssignmentDescriptor()
-	server.Scope = nil
+	server.Scope = assignmentAttribute{}
 	server.ScopeNoun = "server"
 	namespace := testAssignmentDescriptor()
 	namespace.ExtraIDParts = []assignmentAttribute{projectIDAttribute("Project.")}
-	namespace.Scope = &assignmentAttribute{Name: "namespace_id"}
+	namespace.Scope = assignmentAttribute{Name: "namespace_id"}
 	user := testAssignmentDescriptor()
 	user.Assignee = assignmentAttribute{Name: "user_id"}
 
@@ -60,7 +60,7 @@ func TestAssignmentIDParse(t *testing.T) {
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("parseID(%q) = %v, want %v", tc.id, got, tc.want)
 			}
-			if built := tc.d.buildID(got); built != tc.id {
+			if built := buildAssignmentID(got); built != tc.id {
 				t.Fatalf("buildID(%v) = %q, want %q", got, built, tc.id)
 			}
 		})
@@ -76,14 +76,17 @@ func TestAssignmentIdentityValidators(t *testing.T) {
 		rejected []string
 	}{
 		{
-			name:     "project_id",
-			attr:     projectIDAttribute("Project."),
-			accepted: []string{"00000000-0000-0000-0000-000000000000", "my_project", "Projekt-Ä1", "项目"},
-			rejected: []string{"", "a/b", "a b", "a.b", "a~b", "a\nb"},
+			name: "project_id",
+			attr: projectIDAttribute("Project."),
+			// Lakekeeper uses Rust's char::is_alphanumeric (Alphabetic or Numeric). Alphabetic
+			// includes Other_Alphabetic marks such as Devanagari vowel signs (U+093F, U+0902),
+			// which \p{L} misses; a plain combining accent (U+0301) is neither.
+			accepted: []string{"00000000-0000-0000-0000-000000000000", "my_project", "Projekt-Ä1", "项目", "हिंदी", "Ⅻ", "½"},
+			rejected: []string{"", "a/b", "a b", "a.b", "a~b", "a\nb", "é"},
 		},
 		{
 			name:     "role_id",
-			attr:     roleIDAttribute("role_id", "Role."),
+			attr:     uuidAttribute("role_id", "Role."),
 			accepted: []string{"cb6ee351-68ff-4299-87f2-876964f6d8dd", "CB6EE351-68FF-4299-87F2-876964F6D8DD"},
 			rejected: []string{"", "my-role", "p/cb6ee351-68ff-4299-87f2-876964f6d8dd", "cb6ee351-68ff-4299-87f2-876964f6d8dd/x", "cb6ee35168ff429987f2876964f6d8dd"},
 		},
@@ -150,7 +153,7 @@ func TestAssignmentCreate(t *testing.T) {
 		}
 	})
 
-	t.Run("stores the ID before writing", func(t *testing.T) {
+	t.Run("stores the ID before writing, without the planned grants", func(t *testing.T) {
 		m := newMemoryScopeAdapter()
 		m.applyErr = errTestWrite
 		r := newTestAssignmentResource(m)
@@ -161,9 +164,8 @@ func TestAssignmentCreate(t *testing.T) {
 		if resp.State.Raw.IsNull() {
 			t.Fatal("failed write must still leave the resource tracked")
 		}
-		if s := testStateOf(t, resp.State); s.id != "p/target" || s.identity["role_id"] != "target" {
-			t.Fatalf("state %+v", s)
-		}
+		// The state holds the grants the server held before the write: none.
+		assertState(t, testStateOf(t, resp.State), "p/target", "p", "target")
 	})
 
 	t.Run("failed read never writes", func(t *testing.T) {
@@ -339,6 +341,25 @@ func TestAssignmentImport(t *testing.T) {
 			t.Errorf("import %q accepted", id)
 		}
 	}
+
+	// Well-formed IDs whose parts break the identity validators fail like a plan would.
+	for id, attr := range map[string]string{
+		"p/not-a-uuid": "role_id",
+		"p.x/cb6ee351-68ff-4299-87f2-876964f6d8dd": "project_id",
+		"p/cb6ee351-68ff-4299-87f2-876964f6d8dd/x": "role_id",
+	} {
+		resp := testImport(t, r, id)
+		if !resp.Diagnostics.HasError() {
+			t.Errorf("import %q accepted", id)
+			continue
+		}
+		if got := fmt.Sprint(resp.Diagnostics); !strings.Contains(got, "Attribute "+attr+" must be") || !strings.Contains(got, "Invalid import ID") {
+			t.Errorf("import %q: want an invalid import ID diagnostic naming %s, got %v", id, attr, got)
+		}
+		if !resp.State.Raw.IsNull() {
+			t.Errorf("import %q set state %v", id, resp.State.Raw)
+		}
+	}
 }
 
 func TestAssignmentGrantTypeValidator(t *testing.T) {
@@ -362,7 +383,7 @@ func TestAssignmentGrantTypeValidator(t *testing.T) {
 // --- helpers driving the module through the framework's resource interface ---
 
 func newTestAssignmentResource(m scopeAdapter) *assignmentResource {
-	return &assignmentResource{d: testAssignmentDescriptor(), adapter: m}
+	return &assignmentResource{desc: testAssignmentDescriptor(), adapter: m}
 }
 
 func testSchema(t *testing.T, r *assignmentResource) schema.Schema {
@@ -509,9 +530,9 @@ func testAssignmentDescriptor() assignmentDescriptor {
 	return assignmentDescriptor{
 		TypeName:     "test_role_assignment",
 		ScopeNoun:    "project",
-		Scope:        ptr(projectIDAttribute("The project.")),
+		Scope:        projectIDAttribute("The project."),
 		AssigneeKind: roleAssignee,
-		Assignee:     roleIDAttribute("role_id", "The role."),
+		Assignee:     uuidAttribute("role_id", "The role."),
 		GrantTypes:   []string{"describe", "select", "modify"},
 	}
 }
