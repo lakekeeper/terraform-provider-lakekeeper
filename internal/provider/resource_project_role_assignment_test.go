@@ -103,7 +103,7 @@ func TestAccLakekeeperProjectRoleAssignment_basic(t *testing.T) {
 						assignments = ["describe"]
 					}
 				`, project.ID, project.ID, role.ID),
-				ExpectError: regexp.MustCompile("Attribute role_id must be a role UUID and NOT include the project UUID"),
+				ExpectError: regexp.MustCompile("Attribute role_id must be a UUID"),
 			},
 			// delete all assignments
 			{
@@ -126,6 +126,64 @@ func TestAccLakekeeperProjectRoleAssignment_basic(t *testing.T) {
 				ResourceName:      "lakekeeper_project_role_assignment.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// Create refuses grants the role already holds on the project; importing the
+// assignment first brings them under Terraform.
+func TestAccLakekeeperProjectRoleAssignment_existingGrants(t *testing.T) {
+	project := testutil.CreateProject(t)
+	role := testutil.CreateRole(t, project.ID)
+
+	_, err := testutil.TestLakekeeperClient.PermissionV1().ProjectPermission().Update(t.Context(), project.ID, &permissionv1.UpdateProjectPermissionsOptions{
+		Writes: []*permissionv1.ProjectAssignment{{
+			Assignee:   permissionv1.UserOrRole{Type: permissionv1.RoleType, Value: role.ID},
+			Assignment: permissionv1.DescribeProjectAssignment,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("could not grant describe to the role: %v", err)
+	}
+
+	config := fmt.Sprintf(`
+		resource "lakekeeper_project_role_assignment" "test" {
+			project_id  = "%s"
+			role_id     = "%s"
+			assignments = ["describe", "select"]
+		}
+	`, project.ID, role.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperProjectRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      config,
+				ExpectError: regexp.MustCompile(`(?s)already\s+holds\s+direct\s+grants.*terraform\s+import`),
+			},
+			{
+				Config:             config,
+				ResourceName:       "lakekeeper_project_role_assignment.test",
+				ImportState:        true,
+				ImportStateId:      project.ID + "/" + role.ID,
+				ImportStatePersist: true,
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 || states[0].Attributes["assignments.#"] != "1" || states[0].Attributes["assignments.0"] != "describe" {
+						return fmt.Errorf("imported state %v", states)
+					}
+					return nil
+				},
+			},
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_project_role_assignment.test", "id", project.ID+"/"+role.ID),
+					resource.TestCheckResourceAttr("lakekeeper_project_role_assignment.test", "assignments.#", "2"),
+					resource.TestCheckResourceAttr("lakekeeper_project_role_assignment.test", "assignments.0", "describe"),
+					resource.TestCheckResourceAttr("lakekeeper_project_role_assignment.test", "assignments.1", "select"),
+				),
 			},
 		},
 	})
