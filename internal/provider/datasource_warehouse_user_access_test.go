@@ -4,10 +4,9 @@ package provider
 
 import (
 	"fmt"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"slices"
 	"testing"
-
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -27,20 +26,16 @@ func TestAccDataLakekeeperWarehouseUserAccess_basic(t *testing.T) {
 	warehouse := testutil.CreateWarehouse(t, project.ID, keyPrefix)
 
 	// assignment
-	if _, err := testutil.TestLakekeeperClient.PermissionV1().WarehousePermission().Update(
+	if err := testutil.TestLakekeeperClient.UpdateWarehouseAssignments(
 		t.Context(),
 		warehouse.ID,
-		&permissionv1.UpdateWarehousePermissionsOptions{
-			Writes: []*permissionv1.WarehouseAssignment{
-				{
-					Assignee: permissionv1.UserOrRole{
-						Type:  permissionv1.UserType,
-						Value: user.ID,
-					},
-					Assignment: permissionv1.DescribeWarehouseAssignment,
-				},
+		[]api.Assignment{
+			{
+				Assignee:   api.UserAssignee(user.ID),
+				Assignment: api.WarehouseAssignmentDescribe,
 			},
 		},
+		nil,
 	); err != nil {
 		t.Fatalf("could not create warehouse access, %v", err)
 	}
@@ -69,13 +64,13 @@ func TestAccDataLakekeeperWarehouseUserAccess_basic(t *testing.T) {
 						knownvalue.SetPartial([]knownvalue.Check{
 							knownvalue.StringFunc(func(v string) error {
 								if !slices.Contains([]string{
-									string(permissionv1.GetConfig),
-									string(permissionv1.GetMetadata),
-									string(permissionv1.ListNamespaces),
-									string(permissionv1.IncludeInList),
-									string(permissionv1.ListDeletedTabulars),
-									string(permissionv1.GetAllTasks),
-									string(permissionv1.GetWarehouseEndpointStatistics),
+									api.WarehouseActionGetConfig,
+									api.WarehouseActionGetMetadata,
+									api.WarehouseActionListNamespaces,
+									api.WarehouseActionIncludeInList,
+									api.WarehouseActionListDeletedTabulars,
+									api.WarehouseActionGetAllTasks,
+									api.WarehouseActionGetEndpointStatistics,
 								}, v) {
 									return fmt.Errorf("%s is not an allowed action", v)
 								}

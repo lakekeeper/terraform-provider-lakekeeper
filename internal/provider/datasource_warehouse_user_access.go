@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -29,7 +27,7 @@ func NewLakekeeperWarehouseUserAccessDataSource() datasource.DataSource {
 
 // LakekeeperWarehouseUserAccessDataSource is the data source implementation.
 type LakekeeperWarehouseUserAccessDataSource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // LakekeeperWarehouseUserAccessDataSourceModel describes the data source data model.
@@ -69,29 +67,29 @@ func (d *LakekeeperWarehouseUserAccessDataSource) Schema(_ context.Context, _ da
 			"allowed_actions": schema.SetAttribute{
 				MarkdownDescription: `List of the user's allowed actions on the warehouse. The possible values are ` +
 					fmt.Sprintf("`%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s`",
-						permissionv1.CreateNamespace,
-						permissionv1.DeleteWarehouse,
-						permissionv1.ModifyStorage,
-						permissionv1.ModifyStorageCredential,
-						permissionv1.GetConfig,
-						permissionv1.GetMetadata,
-						permissionv1.ListNamespaces,
-						permissionv1.IncludeInList,
-						permissionv1.Deactivate,
-						permissionv1.Activate,
-						permissionv1.Rename,
-						permissionv1.ListDeletedTabulars,
-						permissionv1.ReadWarehouseAssignments,
-						permissionv1.GrantCreate,
-						permissionv1.GrantDescribe,
-						permissionv1.GrantModify,
-						permissionv1.GrantSelect,
-						permissionv1.GrantPassGrants,
-						permissionv1.GrantManageGrants,
-						permissionv1.ChangeOwnership,
-						permissionv1.GetAllTasks,
-						permissionv1.ControlAllTasks,
-						permissionv1.GetWarehouseEndpointStatistics,
+						api.WarehouseActionCreateNamespace,
+						api.WarehouseActionDelete,
+						api.WarehouseActionModifyStorage,
+						api.WarehouseActionModifyStorageCredential,
+						api.WarehouseActionGetConfig,
+						api.WarehouseActionGetMetadata,
+						api.WarehouseActionListNamespaces,
+						api.WarehouseActionIncludeInList,
+						api.WarehouseActionDeactivate,
+						api.WarehouseActionActivate,
+						api.WarehouseActionRename,
+						api.WarehouseActionListDeletedTabulars,
+						api.WarehouseActionReadAssignments,
+						api.WarehouseActionGrantCreate,
+						api.WarehouseActionGrantDescribe,
+						api.WarehouseActionGrantModify,
+						api.WarehouseActionGrantSelect,
+						api.WarehouseActionGrantPassGrants,
+						api.WarehouseActionGrantManageGrants,
+						api.WarehouseActionChangeOwnership,
+						api.WarehouseActionGetAllTasks,
+						api.WarehouseActionControlAllTasks,
+						api.WarehouseActionGetEndpointStatistics,
 					),
 				Computed:    true,
 				ElementType: types.StringType,
@@ -123,23 +121,19 @@ func (d *LakekeeperWarehouseUserAccessDataSource) Read(ctx context.Context, req 
 
 	state.ID = types.StringValue(fmt.Sprintf("%s/%s", state.WarehouseID.ValueString(), state.UserID.ValueString()))
 
-	// GetAccess is deprecated, but its replacements do not fit yet: GetAllowedAuthorizerActions only
-	// returns OpenFGA relations, and go-lakekeeper v0.0.23 cannot decode the WarehouseV1().GetAllowedActions response.
-	access, _, err := d.client.PermissionV1().WarehousePermission().GetAccess(ctx, state.WarehouseID.ValueString(), &permissionv1.GetWarehouseAccessOptions{ //nolint:staticcheck // see above
-		PrincipalUser: core.Ptr(state.UserID.ValueString()),
-	})
+	actions, err := d.client.GetWarehouseAccess(ctx, state.WarehouseID.ValueString(), api.UserAssignee(state.UserID.ValueString()))
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read acess for user %s on warehouse %s, %v", state.UserID.ValueString(), state.ID.ValueString(), err))
 		return
 	}
 
-	actions, diags := types.SetValueFrom(ctx, types.StringType, access.AllowedActions)
+	allowedActions, diags := types.SetValueFrom(ctx, types.StringType, actions)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return
 	}
 
-	state.AllowedActions = actions
+	state.AllowedActions = allowedActions
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

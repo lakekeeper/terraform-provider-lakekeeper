@@ -34,7 +34,7 @@ type OIDCClientConfig struct {
 	Scopes       []string
 }
 
-func (c *Config) NewLakekeeperClient(ctx context.Context) (*lakekeeper.Client, error) {
+func (c *Config) NewLakekeeperClient(ctx context.Context) (*Client, error) {
 	if c.AuthURL == "" {
 		return nil, errors.New("no OIDC Server URI configured, either use the `oidc_server_uri` provider argument or set it as `LAKEKEEPER_AUTH_URL` environment variable")
 	}
@@ -73,7 +73,7 @@ func (c *Config) NewLakekeeperClient(ctx context.Context) (*lakekeeper.Client, e
 
 	if c.InitialBootstrap {
 		opts = append(opts, lakekeeper.WithInitialBootstrapV1Enabled(
-			true, true, core.Ptr(managementv1.ApplicationUserType),
+			true, true, new(managementv1.ApplicationUserType),
 		))
 	}
 
@@ -100,5 +100,5 @@ func (c *Config) NewLakekeeperClient(ctx context.Context) (*lakekeeper.Client, e
 		return nil, err
 	}
 
-	return client, nil
+	return &Client{sdk: client}, nil
 }

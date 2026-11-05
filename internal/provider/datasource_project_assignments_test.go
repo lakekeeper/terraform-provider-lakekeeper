@@ -4,9 +4,8 @@ package provider
 
 import (
 	"fmt"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"testing"
-
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -21,26 +20,19 @@ func TestAccDataLakekeeperProjectAssignments_basic(t *testing.T) {
 	role := testutil.CreateRole(t, project.ID)
 
 	// assignment 2
-	if _, err := testutil.TestLakekeeperClient.PermissionV1().ProjectPermission().Update(
+	if err := testutil.TestLakekeeperClient.UpdateProjectAssignments(
 		t.Context(),
 		project.ID,
-		&permissionv1.UpdateProjectPermissionsOptions{
-			Writes: []*permissionv1.ProjectAssignment{
-				{
-					Assignee: permissionv1.UserOrRole{
-						Type:  permissionv1.UserType,
-						Value: user.ID,
-					},
-					Assignment: permissionv1.SelectProjectAssignment,
-				}, {
-					Assignee: permissionv1.UserOrRole{
-						Type:  permissionv1.RoleType,
-						Value: role.ID,
-					},
-					Assignment: permissionv1.ModifyProjectAssignment,
-				},
+		[]api.Assignment{
+			{
+				Assignee:   api.UserAssignee(user.ID),
+				Assignment: api.ProjectAssignmentSelect,
+			}, {
+				Assignee:   api.RoleAssignee(role.ID),
+				Assignment: api.ProjectAssignmentModify,
 			},
 		},
+		nil,
 	); err != nil {
 		t.Fatalf("could not create project assignments, %v", err)
 	}
@@ -58,16 +50,16 @@ func TestAccDataLakekeeperProjectAssignments_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.#", "3"), // also have the admin user
 
 					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.0.assignee_id", testutil.DefaultUserID),
-					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.0.assignee_type", string(permissionv1.UserType)),
-					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.0.assignment", string(permissionv1.AdminProjectAssignment)),
+					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.0.assignee_type", api.AssigneeTypeUser),
+					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.0.assignment", api.ProjectAssignmentAdmin),
 
 					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.1.assignee_id", user.ID),
-					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.1.assignee_type", string(permissionv1.UserType)),
-					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.1.assignment", string(permissionv1.SelectProjectAssignment)),
+					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.1.assignee_type", api.AssigneeTypeUser),
+					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.1.assignment", api.ProjectAssignmentSelect),
 
 					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.2.assignee_id", role.ID),
-					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.2.assignee_type", string(permissionv1.RoleType)),
-					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.2.assignment", string(permissionv1.ModifyProjectAssignment)),
+					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.2.assignee_type", api.AssigneeTypeRole),
+					resource.TestCheckResourceAttr("data.lakekeeper_project_assignments.foo", "assignments.2.assignment", api.ProjectAssignmentModify),
 				),
 			},
 		},

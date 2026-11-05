@@ -4,10 +4,9 @@ package provider
 
 import (
 	"fmt"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"slices"
 	"testing"
-
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
@@ -23,20 +22,16 @@ func TestAccDataLakekeeperProjectRoleAccess_basic(t *testing.T) {
 	role := testutil.CreateRole(t, project.ID)
 
 	// assignment
-	if _, err := testutil.TestLakekeeperClient.PermissionV1().ProjectPermission().Update(
+	if err := testutil.TestLakekeeperClient.UpdateProjectAssignments(
 		t.Context(),
 		project.ID,
-		&permissionv1.UpdateProjectPermissionsOptions{
-			Writes: []*permissionv1.ProjectAssignment{
-				{
-					Assignee: permissionv1.UserOrRole{
-						Type:  permissionv1.RoleType,
-						Value: role.ID,
-					},
-					Assignment: permissionv1.AdminProjectAssignment,
-				},
+		[]api.Assignment{
+			{
+				Assignee:   api.RoleAssignee(role.ID),
+				Assignment: api.ProjectAssignmentAdmin,
 			},
 		},
+		nil,
 	); err != nil {
 		t.Fatalf("could not create project access, %v", err)
 	}
@@ -64,23 +59,23 @@ func TestAccDataLakekeeperProjectRoleAccess_basic(t *testing.T) {
 						knownvalue.SetPartial([]knownvalue.Check{
 							knownvalue.StringFunc(func(v string) error {
 								if !slices.Contains([]string{
-									string(permissionv1.CreateRole),
-									string(permissionv1.CreateWarehouse),
-									string(permissionv1.DeleteProject),
-									string(permissionv1.RenameProject),
-									string(permissionv1.ListWarehouses),
-									string(permissionv1.ListRoles),
-									string(permissionv1.SearchRoles),
-									string(permissionv1.ReadProjectAssignments),
-									string(permissionv1.GrantProjectRoleCreator),
-									string(permissionv1.GrantProjectCreate),
-									string(permissionv1.GrantProjectDescribe),
-									string(permissionv1.GrantProjectModify),
-									string(permissionv1.GrantProjectSelet),
-									string(permissionv1.GrantProjectAdmin),
-									string(permissionv1.GrantSecurityAdmin),
-									string(permissionv1.GrantDataAdmin),
-									string(permissionv1.GetProjectEndpointStatistics),
+									api.ProjectActionCreateRole,
+									api.ProjectActionCreateWarehouse,
+									api.ProjectActionDelete,
+									api.ProjectActionRename,
+									api.ProjectActionListWarehouses,
+									api.ProjectActionListRoles,
+									api.ProjectActionSearchRoles,
+									api.ProjectActionReadAssignments,
+									api.ProjectActionGrantRoleCreator,
+									api.ProjectActionGrantCreate,
+									api.ProjectActionGrantDescribe,
+									api.ProjectActionGrantModify,
+									api.ProjectActionGrantSelect,
+									api.ProjectActionGrantProjectAdmin,
+									api.ProjectActionGrantSecurityAdmin,
+									api.ProjectActionGrantDataAdmin,
+									api.ProjectActionGetEndpointStatistics,
 								}, v) {
 									return fmt.Errorf("%s is not an allowed action", v)
 								}

@@ -612,7 +612,7 @@ func testAccCheckLakekeeperWarehouseDestroy(s *terraform.State) error {
 		}
 
 		projectID, warehouseID := splitInternalID(types.StringValue(rs.Primary.ID))
-		if _, _, err := testutil.TestLakekeeperClient.WarehouseV1(projectID).Get(context.Background(), warehouseID); err == nil {
+		if _, err := testutil.TestLakekeeperClient.GetWarehouse(context.Background(), projectID, warehouseID); err == nil {
 			return fmt.Errorf("Warehouse with id %s still exists", rs.Primary.ID)
 		}
 		return nil

@@ -3,16 +3,14 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"slices"
 	"strings"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 var (
@@ -27,7 +25,7 @@ func NewLakekeeperNamespaceDataSource() datasource.DataSource {
 	return &lakekeeperNamespaceDataSource{}
 }
 
-type lakekeeperNamespaceDataSource struct{ client *lakekeeper.Client }
+type lakekeeperNamespaceDataSource struct{ client *api.Client }
 type lakekeeperNamespaceDataSourceModel struct {
 	ID            types.String `tfsdk:"id"`
 	ProjectID     types.String `tfsdk:"project_id"`
@@ -75,7 +73,7 @@ func (d *lakekeeperNamespaceDataSource) Read(ctx context.Context, req datasource
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func readExistingNamespace(ctx context.Context, client *lakekeeper.Client, project, warehouse, name string) (string, bool, error) {
+func readExistingNamespace(ctx context.Context, client *api.Client, project, warehouse, name string) (string, bool, error) {
 	for _, id := range []string{project, warehouse} {
 		if _, err := uuid.Parse(id); err != nil {
 			return "", false, fmt.Errorf("project and warehouse must be UUIDs")
@@ -87,7 +85,7 @@ func readExistingNamespace(ctx context.Context, client *lakekeeper.Client, proje
 			return "", false, fmt.Errorf("invalid namespace path")
 		}
 	}
-	w, _, err := client.WarehouseV1(project).Get(ctx, warehouse)
+	w, err := client.GetWarehouse(ctx, project, warehouse)
 	if err != nil {
 		return "", false, err
 	}
@@ -96,34 +94,23 @@ func readExistingNamespace(ctx context.Context, client *lakekeeper.Client, proje
 	}
 	// Use the verified UUID directly, including for nested namespaces. A warehouse
 	// rename or a replacement with the same name cannot redirect this lookup.
-	req, err := client.NewRequest(ctx, http.MethodGet, "/", nil, []core.RequestOptionFunc{core.WithHeader("x-project-id", project)})
+	result, err := client.LoadNamespace(ctx, project, warehouse, parts)
 	if err != nil {
 		return "", false, err
 	}
-	req.URL.Path = strings.TrimSuffix(client.BaseURL().Path, "/management/v1") + "/catalog/v1/" + warehouse + "/namespaces/" + strings.Join(parts, "\x1f")
-	req.URL.RawPath = ""
-	var result struct {
-		Namespace  []string          `json:"namespace"`
-		Properties map[string]string `json:"properties"`
-	}
-	if _, err := client.Do(req, &result); err != nil {
-		return "", false, err
-	}
-	if !slices.Equal(result.Namespace, parts) {
+	if !slices.Equal(result.Path, parts) {
 		return "", false, fmt.Errorf("catalog returned a different namespace path")
 	}
 	id := result.Properties["namespace_id"]
 	if _, err := uuid.Parse(id); err != nil {
 		return "", false, fmt.Errorf("catalog returned an invalid namespace_id")
 	}
-	var props struct {
-		Managed *bool `json:"managed-access"`
-	}
-	if err := namespaceRequest(ctx, client, project, id, "", http.MethodGet, nil, &props); err != nil {
+	managed, err := client.GetNamespaceManagedAccess(ctx, project, id)
+	if err != nil {
 		return "", false, err
 	}
-	if props.Managed == nil {
+	if managed == nil {
 		return "", false, fmt.Errorf("response has no managed-access field")
 	}
-	return id, *props.Managed, nil
+	return id, *managed, nil
 }

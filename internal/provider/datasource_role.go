@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -27,7 +27,7 @@ func NewLakekeeperRoleDataSource() datasource.DataSource {
 
 // LakekeeperRoleDataSource is the data source implementation.
 type LakekeeperRoleDataSource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // LakekeeperRoleDataSourceModel describes the data source data model.
@@ -111,7 +111,7 @@ func (d *LakekeeperRoleDataSource) Read(ctx context.Context, req datasource.Read
 	id := state.RoleID.ValueString()
 	projectID := state.ProjectID.ValueString()
 
-	role, _, err := d.client.RoleV1(projectID).Get(ctx, id)
+	role, err := d.client.GetRole(ctx, projectID, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read role %s in project %s, %v", id, projectID, err))
 		return

@@ -5,9 +5,9 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"testing"
 
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -114,13 +114,13 @@ func testAccCheckLakekeeperServerUserAssignmentDestroy(s *terraform.State) error
 			continue
 		}
 
-		assignments, _, err := testutil.TestLakekeeperClient.PermissionV1().ServerPermission().GetAssignments(context.Background(), nil)
+		assignments, err := testutil.TestLakekeeperClient.GetServerAssignments(context.Background())
 		if err != nil {
 			return fmt.Errorf("could not list server assignments to check destroy, %w", err)
 		}
 
-		for _, v := range assignments.Assignments {
-			if v.Assignee.Value == rs.Primary.ID && v.Assignee.Type == permissionv1.UserType {
+		for _, v := range assignments {
+			if v.Assignee.ID == rs.Primary.ID && v.Assignee.Type == api.AssigneeTypeUser {
 				return fmt.Errorf("server assignment still exists")
 			}
 		}

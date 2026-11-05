@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/sdk"
 )
 
@@ -28,7 +28,7 @@ func NewLakekeeperProjectAssignmentsDataSource() datasource.DataSource {
 
 // LakekeeperProjectAssignmentsDataSource is the data source implementation.
 type LakekeeperProjectAssignmentsDataSource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // LakekeeperProjectAssignmentsDataSourceModel describes the data source data model.
@@ -87,18 +87,18 @@ func (d *LakekeeperProjectAssignmentsDataSource) Read(ctx context.Context, req d
 	id := state.ID.ValueString()
 	state.ID = types.StringValue(id)
 
-	assignments, _, err := d.client.PermissionV1().ProjectPermission().GetAssignments(ctx, id, nil)
+	assignments, err := d.client.GetProjectAssignments(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read assignments for project %s, %v", state.ID.ValueString(), err))
 		return
 	}
 
-	state.Assignments = make([]sdk.Assignment, len(assignments.Assignments))
-	for i, a := range assignments.Assignments {
+	state.Assignments = make([]sdk.Assignment, len(assignments))
+	for i, a := range assignments {
 		state.Assignments[i] = sdk.Assignment{
-			AssigneeID:   types.StringValue(a.Assignee.Value),
-			AssigneeType: types.StringValue(string(a.Assignee.Type)),
-			Assignment:   types.StringValue(string(a.Assignment)),
+			AssigneeID:   types.StringValue(a.Assignee.ID),
+			AssigneeType: types.StringValue(a.Assignee.Type),
+			Assignment:   types.StringValue(a.Assignment),
 		}
 	}
 

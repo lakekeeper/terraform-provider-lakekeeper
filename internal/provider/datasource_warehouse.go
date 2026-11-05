@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/sdk"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -29,7 +29,7 @@ func NewLakekeeperWarehouseDataSource() datasource.DataSource {
 
 // LakekeeperWarehouseDataSource is the data source implementation.
 type LakekeeperWarehouseDataSource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 type storageProfileDataSourceWrapper struct {
@@ -237,19 +237,19 @@ func (d *LakekeeperWarehouseDataSource) Read(ctx context.Context, req datasource
 
 	state.ID = types.StringValue(fmt.Sprintf("%s/%s", projectID, warehouseID))
 
-	warehouse, _, err := d.client.WarehouseV1(projectID).Get(ctx, warehouseID)
+	warehouse, err := d.client.GetWarehouse(ctx, projectID, warehouseID)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read warehouse %s, %v", state.Name.ValueString(), err))
 		return
 	}
 
 	// Authorization Properties
-	m, _, err := d.client.PermissionV1().WarehousePermission().GetAuthzProperties(ctx, warehouseID)
+	managedAccess, err := d.client.GetWarehouseManagedAccess(ctx, warehouseID)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read authorization properties for warehouse %s, %v", state.Name.ValueString(), err))
 		return
 	}
-	state.ManagedAccess = types.BoolValue(m.ManagedAccess)
+	state.ManagedAccess = types.BoolValue(managedAccess)
 
 	diags := state.RefreshDataSourceFromSettings(warehouse)
 	if diags.HasError() {

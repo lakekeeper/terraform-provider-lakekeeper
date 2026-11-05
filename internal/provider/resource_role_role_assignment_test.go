@@ -5,10 +5,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"regexp"
 	"testing"
 
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -151,13 +151,13 @@ func testAccCheckLakekeeperRoleRoleAssignmentDestroy(s *terraform.State) error {
 
 		roleID, assigneeID := splitInternalID(types.StringValue(rs.Primary.ID))
 
-		assignments, _, err := testutil.TestLakekeeperClient.PermissionV1().RolePermission().GetAssignments(context.Background(), roleID, nil)
+		assignments, err := testutil.TestLakekeeperClient.GetRoleAssignments(context.Background(), roleID)
 		if err != nil {
 			return fmt.Errorf("could not list project assignments to check destroy, %w", err)
 		}
 
-		for _, v := range assignments.Assignments {
-			if v.Assignee.Value == assigneeID && v.Assignee.Type == permissionv1.RoleType {
+		for _, v := range assignments {
+			if v.Assignee.ID == assigneeID && v.Assignee.Type == api.AssigneeTypeRole {
 				return fmt.Errorf("project assignment still exists")
 			}
 		}

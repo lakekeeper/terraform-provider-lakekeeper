@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -41,17 +39,17 @@ type LakekeeperProviderModel struct {
 
 type (
 	LakekeeperClientOptionApplyFunc = func(api.Config) api.Config
-	LakekeeperClientFactory         = func(ctx context.Context, configFuncs ...LakekeeperClientOptionApplyFunc) (*lakekeeper.Client, error)
+	LakekeeperClientFactory         = func(ctx context.Context, configFuncs ...LakekeeperClientOptionApplyFunc) (*api.Client, error)
 )
 
 // Attributes passed into Datasources from the Provider
 type LakekeeperDatasourceData struct {
-	Client *lakekeeper.Client
+	Client *api.Client
 }
 
 // Attributes passed into Resources from the Provider
 type LakekeeperResourceData struct {
-	Client              *lakekeeper.Client
+	Client              *api.Client
 	NewLakekeeperClient LakekeeperClientFactory
 }
 
@@ -240,7 +238,7 @@ func New(version string) func() provider.Provider {
 }
 
 func newLakekeeperClient(config api.Config, tfVersion, providerVersion string) LakekeeperClientFactory {
-	return func(ctx context.Context, configFuncs ...LakekeeperClientOptionApplyFunc) (*lakekeeper.Client, error) {
+	return func(ctx context.Context, configFuncs ...LakekeeperClientOptionApplyFunc) (*api.Client, error) {
 		for _, f := range configFuncs {
 			config = f(config)
 		}

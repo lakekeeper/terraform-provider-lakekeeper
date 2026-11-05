@@ -4,15 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
 )
+
+// namespaceAssignment is the wire format of a namespace assignment.
+type namespaceAssignment struct {
+	Type string `json:"type"`
+	Role string `json:"role,omitempty"`
+	User string `json:"user,omitempty"`
+}
 
 func TestNamespaceRoleAssignmentReconcile(t *testing.T) {
 	for _, tc := range []struct {
@@ -68,7 +75,7 @@ func TestNamespaceRoleAssignmentReconcile(t *testing.T) {
 				w.WriteHeader(204)
 			}))
 			defer server.Close()
-			client, err := lakekeeper.NewClient(ctx, "test", server.URL, lakekeeper.WithoutRetries())
+			client, err := api.NewStaticTokenClient(ctx, server.URL, "test")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -122,7 +129,7 @@ func TestNamespaceAssignmentReadFailure(t *testing.T) {
 				_, _ = w.Write([]byte(tc.body))
 			}))
 			defer s.Close()
-			c, e := lakekeeper.NewClient(context.Background(), "test", s.URL, lakekeeper.WithoutRetries())
+			c, e := api.NewStaticTokenClient(context.Background(), s.URL, "test")
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -154,7 +161,7 @@ func TestNamespaceAssignmentResourceState(t *testing.T) {
 				w.WriteHeader(204)
 			}))
 			defer s.Close()
-			client, err := lakekeeper.NewClient(ctx, "test", s.URL, lakekeeper.WithoutRetries())
+			client, err := api.NewStaticTokenClient(ctx, s.URL, "test")
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"strings"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 
 	"github.com/apache/iceberg-go/catalog"
 )
@@ -41,7 +41,7 @@ func (r *lakekeeperNamespaceResource) Metadata(ctx context.Context, req resource
 
 // lakekeeperNamespaceResource defines the resource implementation.
 type lakekeeperNamespaceResource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // lakekeeperNamespaceResourceModel describes the resource data model.
@@ -114,7 +114,7 @@ func (r *lakekeeperNamespaceResource) Create(ctx context.Context, req resource.C
 	project_id := state.ProjectID.ValueString()
 	warehouse_name := state.WarehouseName.ValueString()
 
-	cat, err := r.client.CatalogV1(ctx, project_id, warehouse_name)
+	cat, err := r.client.Catalog(ctx, project_id, warehouse_name)
 	if err != nil {
 		resp.Diagnostics.AddError("Could not create the Iceberg Catalog client", fmt.Sprintf("Unable to initialize the client, %v", err.Error()))
 		return
@@ -170,18 +170,16 @@ func (r *lakekeeperNamespaceResource) Read(ctx context.Context, req resource.Rea
 		return
 	}
 	if !state.ManagedAccess.IsNull() {
-		var props struct {
-			Managed *bool `json:"managed-access"`
-		}
-		if err := namespaceRequest(ctx, r.client, state.ProjectID.ValueString(), state.NamespaceID.ValueString(), "", "GET", nil, &props); err != nil {
+		managed, err := r.client.GetNamespaceManagedAccess(ctx, state.ProjectID.ValueString(), state.NamespaceID.ValueString())
+		if err != nil {
 			resp.Diagnostics.AddError("Cannot read managed access", err.Error())
 			return
 		}
-		if props.Managed == nil {
+		if managed == nil {
 			resp.Diagnostics.AddError("Cannot read managed access", "Response has no managed-access field")
 			return
 		}
-		state.ManagedAccess = types.BoolValue(*props.Managed)
+		state.ManagedAccess = types.BoolValue(*managed)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -221,7 +219,7 @@ func (r *lakekeeperNamespaceResource) Delete(ctx context.Context, req resource.D
 	project_id := state.ProjectID.ValueString()
 	warehouse_name := state.WarehouseName.ValueString()
 
-	cat, err := r.client.CatalogV1(ctx, project_id, warehouse_name)
+	cat, err := r.client.Catalog(ctx, project_id, warehouse_name)
 	if err != nil {
 		resp.Diagnostics.AddError("Could not create the Iceberg Catalog client", fmt.Sprintf("Unable to initialize the client, %v", err.Error()))
 		return
@@ -257,7 +255,7 @@ func (r *lakekeeperNamespaceResource) ImportState(ctx context.Context, req resou
 }
 
 func (r *lakekeeperNamespaceResource) refreshNamespace(ctx context.Context, state *lakekeeperNamespaceResourceModel) error {
-	cat, err := r.client.CatalogV1(ctx, state.ProjectID.ValueString(), state.WarehouseName.ValueString())
+	cat, err := r.client.Catalog(ctx, state.ProjectID.ValueString(), state.WarehouseName.ValueString())
 	if err != nil {
 		return err
 	}
@@ -276,5 +274,5 @@ func (r *lakekeeperNamespaceResource) setManagedAccess(ctx context.Context, stat
 	if state.ManagedAccess.IsNull() {
 		return nil
 	}
-	return namespaceRequest(ctx, r.client, state.ProjectID.ValueString(), state.NamespaceID.ValueString(), "/managed-access", "POST", map[string]bool{"managed-access": state.ManagedAccess.ValueBool()}, nil)
+	return r.client.SetNamespaceManagedAccess(ctx, state.ProjectID.ValueString(), state.NamespaceID.ValueString(), state.ManagedAccess.ValueBool())
 }

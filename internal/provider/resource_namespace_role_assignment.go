@@ -2,13 +2,10 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -18,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 func init() { registerResource(NewLakekeeperNamespaceRoleAssignment) }
@@ -25,7 +23,7 @@ func NewLakekeeperNamespaceRoleAssignment() resource.Resource {
 	return &namespaceRoleAssignmentResource{}
 }
 
-type namespaceRoleAssignmentResource struct{ client *lakekeeper.Client }
+type namespaceRoleAssignmentResource struct{ client *api.Client }
 type namespaceRoleAssignmentModel struct {
 	ID          types.String `tfsdk:"id"`
 	ProjectID   types.String `tfsdk:"project_id"`
@@ -67,37 +65,15 @@ func (r *namespaceRoleAssignmentResource) Configure(_ context.Context, req resou
 	}
 }
 
-type namespaceAssignment struct {
-	Type string `json:"type"`
-	Role string `json:"role,omitempty"`
-	User string `json:"user,omitempty"`
-}
-
-func namespaceRequest(ctx context.Context, client *lakekeeper.Client, project, namespace, suffix, method string, body, result any) error {
-	req, err := client.NewRequest(ctx, method, "/permissions/namespace/"+namespace+suffix, body, []core.RequestOptionFunc{core.WithHeader("x-project-id", project)})
+func namespaceRoleAssignments(ctx context.Context, client *api.Client, project, namespace, role string) ([]string, error) {
+	assignments, err := client.GetNamespaceAssignments(ctx, project, namespace)
 	if err != nil {
-		return err
-	}
-	_, apiErr := client.Do(req, result)
-	if apiErr != nil {
-		return apiErr
-	}
-	return nil
-}
-func namespaceRoleAssignments(ctx context.Context, client *lakekeeper.Client, project, namespace, role string) ([]string, error) {
-	var result struct {
-		Assignments *[]namespaceAssignment `json:"assignments"`
-	}
-	if err := namespaceRequest(ctx, client, project, namespace, "/assignments", "GET", nil, &result); err != nil {
 		return nil, err
 	}
-	if result.Assignments == nil {
-		return nil, fmt.Errorf("namespace assignments response has no assignments list")
-	}
 	found := map[string]bool{}
-	for _, a := range *result.Assignments {
-		if a.Role == role && a.User == "" {
-			found[a.Type] = true
+	for _, a := range assignments {
+		if a.Assignee == api.RoleAssignee(role) {
+			found[a.Assignment] = true
 		}
 	}
 	values := make([]string, 0, len(found))
@@ -109,7 +85,7 @@ func namespaceRoleAssignments(ctx context.Context, client *lakekeeper.Client, pr
 }
 
 // Reconcile only this role's direct grants. Delete before adding; refresh recovers a partial apply.
-func setNamespaceRoleAssignments(ctx context.Context, client *lakekeeper.Client, project, namespace, role string, desired []string) error {
+func setNamespaceRoleAssignments(ctx context.Context, client *api.Client, project, namespace, role string, desired []string) error {
 	current, err := namespaceRoleAssignments(ctx, client, project, namespace, role)
 	if err != nil {
 		return err
@@ -121,21 +97,29 @@ func setNamespaceRoleAssignments(ctx context.Context, client *lakekeeper.Client,
 	for _, a := range desired {
 		after[a] = true
 	}
+	// Revoke and grant in separate requests, revoking first.
 	for _, op := range []struct {
-		key      string
+		deletes  bool
 		from, to map[string]bool
-	}{{"deletes", before, after}, {"writes", after, before}} {
-		changes := []namespaceAssignment{}
+	}{{true, before, after}, {false, after, before}} {
+		changes := []api.Assignment{}
 		for a := range op.from {
 			if !op.to[a] {
-				changes = append(changes, namespaceAssignment{Type: a, Role: role})
+				changes = append(changes, api.Assignment{Assignee: api.RoleAssignee(role), Assignment: a})
 			}
 		}
-		sort.Slice(changes, func(i, j int) bool { return changes[i].Type < changes[j].Type })
-		if len(changes) > 0 {
-			if err := namespaceRequest(ctx, client, project, namespace, "/assignments", "POST", map[string]any{op.key: changes}, nil); err != nil {
-				return err
-			}
+		sort.Slice(changes, func(i, j int) bool { return changes[i].Assignment < changes[j].Assignment })
+		if len(changes) == 0 {
+			continue
+		}
+		var err error
+		if op.deletes {
+			err = client.UpdateNamespaceAssignments(ctx, project, namespace, nil, changes)
+		} else {
+			err = client.UpdateNamespaceAssignments(ctx, project, namespace, changes, nil)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil

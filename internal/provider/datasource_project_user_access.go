@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	permissionv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/permission"
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -29,7 +27,7 @@ func NewLakekeeperProjectUserAccessDataSource() datasource.DataSource {
 
 // LakekeeperProjectUserAccessDataSource is the data source implementation.
 type LakekeeperProjectUserAccessDataSource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // LakekeeperProjectUserAccessDataSourceModel describes the data source data model.
@@ -70,22 +68,22 @@ func (d *LakekeeperProjectUserAccessDataSource) Schema(_ context.Context, _ data
 				MarkdownDescription: `List of the user's allowed actions on the project. The possible values are ` +
 					fmt.Sprintf(
 						"`%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s` `%s`",
-						permissionv1.CreateWarehouse,
-						permissionv1.DeleteProject,
-						permissionv1.RenameProject,
-						permissionv1.ListWarehouses,
-						permissionv1.CreateRole,
-						permissionv1.ListRoles,
-						permissionv1.SearchRoles,
-						permissionv1.ReadProjectAssignments,
-						permissionv1.GrantProjectRoleCreator,
-						permissionv1.GrantProjectCreate,
-						permissionv1.GrantProjectDescribe,
-						permissionv1.GrantProjectModify,
-						permissionv1.GrantProjectSelet,
-						permissionv1.GrantProjectAdmin,
-						permissionv1.GrantSecurityAdmin,
-						permissionv1.GrantDataAdmin,
+						api.ProjectActionCreateWarehouse,
+						api.ProjectActionDelete,
+						api.ProjectActionRename,
+						api.ProjectActionListWarehouses,
+						api.ProjectActionCreateRole,
+						api.ProjectActionListRoles,
+						api.ProjectActionSearchRoles,
+						api.ProjectActionReadAssignments,
+						api.ProjectActionGrantRoleCreator,
+						api.ProjectActionGrantCreate,
+						api.ProjectActionGrantDescribe,
+						api.ProjectActionGrantModify,
+						api.ProjectActionGrantSelect,
+						api.ProjectActionGrantProjectAdmin,
+						api.ProjectActionGrantSecurityAdmin,
+						api.ProjectActionGrantDataAdmin,
 					),
 				Computed:    true,
 				ElementType: types.StringType,
@@ -117,21 +115,19 @@ func (d *LakekeeperProjectUserAccessDataSource) Read(ctx context.Context, req da
 
 	state.ID = types.StringValue(fmt.Sprintf("%s/%s", state.ProjectID.ValueString(), state.UserID.ValueString()))
 
-	access, _, err := d.client.PermissionV1().ProjectPermission().GetAccess(ctx, state.ProjectID.ValueString(), &permissionv1.GetProjectAccessOptions{
-		PrincipalUser: core.Ptr(state.UserID.ValueString()),
-	})
+	actions, err := d.client.GetProjectAccess(ctx, state.ProjectID.ValueString(), api.UserAssignee(state.UserID.ValueString()))
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read acess for user %s on project %s, %v", state.UserID.ValueString(), state.ID.ValueString(), err))
 		return
 	}
 
-	actions, diags := types.SetValueFrom(ctx, types.StringType, access.AllowedActions)
+	allowedActions, diags := types.SetValueFrom(ctx, types.StringType, actions)
 	if diags.HasError() {
 		resp.Diagnostics = append(resp.Diagnostics, diags...)
 		return
 	}
 
-	state.AllowedActions = actions
+	state.AllowedActions = allowedActions
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

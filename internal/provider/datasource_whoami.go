@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -27,7 +27,7 @@ func NewLakekeeperWhoamiDataSource() datasource.DataSource {
 
 // LakekeeperWhoamiDataSource is the data source implementation.
 type LakekeeperWhoamiDataSource struct {
-	client *lakekeeper.Client
+	client *api.Client
 }
 
 // Metadata returns the data source type name.
@@ -96,7 +96,7 @@ func (d *LakekeeperWhoamiDataSource) Read(ctx context.Context, req datasource.Re
 		return
 	}
 
-	user, _, err := d.client.UserV1().Whoami(ctx)
+	user, err := d.client.Whoami(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read current user, %v", err))
 		return
@@ -105,7 +105,7 @@ func (d *LakekeeperWhoamiDataSource) Read(ctx context.Context, req datasource.Re
 	state.ID = types.StringValue(user.ID)
 	state.Name = types.StringValue(user.Name)
 	state.Email = types.StringPointerValue(user.Email)
-	state.UserType = types.StringValue(string(user.UserType))
+	state.UserType = types.StringValue(user.UserType)
 	state.CreatedAt = types.StringValue(user.CreatedAt)
 	state.UpdatedAt = types.StringPointerValue(user.UpdatedAt)
 	state.LastUpdatedWith = types.StringValue(user.LastUpdatedWith)

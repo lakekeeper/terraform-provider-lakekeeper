@@ -10,12 +10,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
-
-	managementv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1"
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/credential"
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/profile"
-	"github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
 )
 
 var testLakekeeperConfig = api.Config{
@@ -29,7 +23,7 @@ var testLakekeeperConfig = api.Config{
 	InitialBootstrap: true,
 }
 
-var TestLakekeeperClient *client.Client
+var TestLakekeeperClient *api.Client
 
 var DefaultUserID string
 
@@ -41,7 +35,7 @@ func init() {
 
 	TestLakekeeperClient = client
 
-	user, _, err := TestLakekeeperClient.UserV1().Whoami(context.Background())
+	user, err := TestLakekeeperClient.Whoami(context.Background())
 	if err != nil {
 		panic("failed to get current user: " + err.Error())
 	}
@@ -50,25 +44,21 @@ func init() {
 }
 
 // CreateProject is a test helper for creating a project.
-func CreateProject(t *testing.T) *managementv1.Project {
+func CreateProject(t *testing.T) *api.Project {
 	t.Helper()
 
-	opts := managementv1.CreateProjectOptions{
-		Name: acctest.RandomWithPrefix("acctest"),
-	}
-
-	resp, _, err := TestLakekeeperClient.ProjectV1().Create(t.Context(), &opts)
+	projectID, err := TestLakekeeperClient.CreateProject(t.Context(), acctest.RandomWithPrefix("acctest"))
 	if err != nil {
 		t.Fatalf("could not create test project: %v", err)
 	}
 
 	t.Cleanup(func() {
-		if _, err := TestLakekeeperClient.ProjectV1().Delete(context.Background(), resp.ID); err != nil {
+		if err := TestLakekeeperClient.DeleteProject(context.Background(), projectID); err != nil {
 			t.Fatalf("could not cleanup test project: %v", err)
 		}
 	})
 
-	project, _, err := TestLakekeeperClient.ProjectV1().Get(t.Context(), resp.ID)
+	project, err := TestLakekeeperClient.GetProject(t.Context(), projectID)
 	if err != nil {
 		t.Fatalf("could not get test project: %v", err)
 	}
@@ -77,39 +67,35 @@ func CreateProject(t *testing.T) *managementv1.Project {
 }
 
 // CreateWarehouse is a test helper for creating a warehouse.
-func CreateWarehouse(t *testing.T, projectID, keyPrefix string) *managementv1.Warehouse {
+func CreateWarehouse(t *testing.T, projectID, keyPrefix string) *api.Warehouse {
 	t.Helper()
 
-	storage := profile.NewS3StorageSettings("testacc", "local-01",
-		profile.WithEndpoint("http://minio:9000/"),
-		profile.WithPathStyleAccess(),
-		profile.WithS3KeyPrefix(keyPrefix),
-	)
-
-	creds := credential.NewS3CredentialAccessKey("minio-root-user", "minio-root-password")
-
-	opts := managementv1.CreateWarehouseOptions{
-		Name:              acctest.RandString(8),
-		StorageProfile:    storage.AsProfile(),
-		StorageCredential: creds.AsCredential(),
-		DeleteProfile:     profile.NewTabularDeleteProfileHard().AsProfile(),
-	}
-
-	w, _, err := TestLakekeeperClient.WarehouseV1(projectID).Create(t.Context(), &opts)
+	warehouseID, err := TestLakekeeperClient.CreateWarehouse(t.Context(), projectID, api.CreateWarehouseRequest{
+		Name: acctest.RandString(8),
+		StorageProfile: &api.S3StorageProfile{
+			Bucket:          "testacc",
+			Region:          "local-01",
+			Endpoint:        new("http://minio:9000/"),
+			PathStyleAccess: new(true),
+			KeyPrefix:       new(keyPrefix),
+		},
+		StorageCredential: &api.S3AccessKeyCredential{
+			AccessKeyID:     "minio-root-user",
+			SecretAccessKey: "minio-root-password",
+		},
+		DeleteProfile: &api.DeleteProfile{Type: api.DeleteProfileTypeHard},
+	})
 	if err != nil {
 		t.Fatalf("could not create test warehouse: %v", err)
 	}
 
 	t.Cleanup(func() {
-		opts := managementv1.DeleteWarehouseOptions{
-			Force: core.Ptr(true),
-		}
-		if _, err := TestLakekeeperClient.WarehouseV1(projectID).Delete(context.Background(), w.ID, &opts); err != nil {
+		if err := TestLakekeeperClient.DeleteWarehouse(context.Background(), projectID, warehouseID, true); err != nil {
 			t.Fatalf("could not cleanup test warehouse: %v", err)
 		}
 	})
 
-	warehouse, _, err := TestLakekeeperClient.WarehouseV1(projectID).Get(t.Context(), w.ID)
+	warehouse, err := TestLakekeeperClient.GetWarehouse(t.Context(), projectID, warehouseID)
 	if err != nil {
 		t.Fatalf("could not create test warehouse: %v", err)
 	}
@@ -118,23 +104,19 @@ func CreateWarehouse(t *testing.T, projectID, keyPrefix string) *managementv1.Wa
 }
 
 // CreateRole is a test helper for creating a role.
-func CreateRole(t *testing.T, projectID string) *managementv1.Role {
+func CreateRole(t *testing.T, projectID string) *api.Role {
 	t.Helper()
 
-	description := acctest.RandString(32)
-
-	opts := managementv1.CreateRoleOptions{
+	role, err := TestLakekeeperClient.CreateRole(t.Context(), projectID, api.RoleRequest{
 		Name:        acctest.RandString(8),
-		Description: &description,
-	}
-
-	role, _, err := TestLakekeeperClient.RoleV1(projectID).Create(t.Context(), &opts)
+		Description: new(acctest.RandString(32)),
+	})
 	if err != nil {
 		t.Fatalf("could not create test role: %v", err)
 	}
 
 	t.Cleanup(func() {
-		if _, err := TestLakekeeperClient.RoleV1(projectID).Delete(context.Background(), role.ID); err != nil {
+		if err := TestLakekeeperClient.DeleteRole(context.Background(), projectID, role.ID); err != nil {
 			t.Fatalf("could not cleanup test role: %v", err)
 		}
 	})
@@ -143,27 +125,23 @@ func CreateRole(t *testing.T, projectID string) *managementv1.Role {
 }
 
 // CreateUser is a test helper for creating a user.
-func CreateUser(t *testing.T, id string) *managementv1.User {
+func CreateUser(t *testing.T, id string) *api.User {
 	t.Helper()
 
 	name := acctest.RandomWithPrefix("acctest")
-	email := fmt.Sprintf("%s@test.com", name)
-	userType := managementv1.HumanUserType
 
-	opts := managementv1.ProvisionUserOptions{
+	user, err := TestLakekeeperClient.ProvisionUser(t.Context(), api.ProvisionUserRequest{
 		ID:       &id,
 		Name:     &name,
-		Email:    &email,
-		UserType: &userType,
-	}
-
-	user, _, err := TestLakekeeperClient.UserV1().Provision(t.Context(), &opts)
+		Email:    new(fmt.Sprintf("%s@test.com", name)),
+		UserType: new(api.UserTypeHuman),
+	})
 	if err != nil {
 		t.Fatalf("could not create test user: %v", err)
 	}
 
 	t.Cleanup(func() {
-		if _, err := TestLakekeeperClient.UserV1().Delete(context.Background(), user.ID); err != nil {
+		if err := TestLakekeeperClient.DeleteUser(context.Background(), user.ID); err != nil {
 			t.Fatalf("could not cleanup test user: %v", err)
 		}
 	})
