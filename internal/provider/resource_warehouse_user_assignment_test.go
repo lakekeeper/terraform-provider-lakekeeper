@@ -12,7 +12,6 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -110,7 +109,7 @@ func TestAccLakekeeperWarehouseUserAssignment_basic(t *testing.T) {
 						assignments = ["ownership"]
 					}
 				`, project.ID, warehouse.ID, user.ID),
-				ExpectError: regexp.MustCompile("Attribute warehouse_id must be a warehouse UUID and NOT include the project\nUUID"),
+				ExpectError: regexp.MustCompile("Attribute warehouse_id must be a UUID"),
 			},
 			// delete all assignments
 			{
@@ -138,22 +137,60 @@ func TestAccLakekeeperWarehouseUserAssignment_basic(t *testing.T) {
 	})
 }
 
+func TestAccLakekeeperWarehouseUserAssignment_userIDWithSlash(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+
+	userID := fmt.Sprintf("oidc~%s/%s", acctest.RandString(8), acctest.RandString(8))
+	user := testutil.CreateUser(t, userID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseUserAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_warehouse_user_assignment" "test" {
+						warehouse_id = "%s"
+						user_id = "%s"
+						assignments = ["describe"]
+					}
+				`, warehouse.ID, user.ID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_warehouse_user_assignment.test", "id", warehouse.ID+"/"+userID),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse_user_assignment.test", "user_id", userID),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse_user_assignment.test", "assignments.#", "1"),
+				),
+			},
+			{
+				ResourceName:      "lakekeeper_warehouse_user_assignment.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func testAccCheckLakekeeperWarehouseUserAssignmentDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_warehouse_user_assignment" {
 			continue
 		}
 
-		warehouseID, userID := splitInternalID(types.StringValue(rs.Primary.ID))
+		parts, err := warehouseUserAssignment.parseID(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		warehouseID, userID := parts[0], parts[1]
 
 		assignments, err := testutil.TestLakekeeperClient.GetWarehouseAssignments(context.Background(), warehouseID)
 		if err != nil {
-			return fmt.Errorf("could not list project assignments to check destroy, %w", err)
+			return fmt.Errorf("could not list warehouse assignments to check destroy, %w", err)
 		}
 
 		for _, v := range assignments {
 			if v.Assignee.ID == userID && v.Assignee.Type == api.AssigneeTypeUser {
-				return fmt.Errorf("project assignment still exists")
+				return fmt.Errorf("warehouse assignment still exists")
 			}
 		}
 	}

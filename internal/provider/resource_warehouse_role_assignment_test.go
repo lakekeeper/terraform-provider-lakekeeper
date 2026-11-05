@@ -12,7 +12,6 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
@@ -109,7 +108,7 @@ func TestAccLakekeeperWarehouseRoleAssignment_basic(t *testing.T) {
 						assignments = ["ownership"]
 					}
 				`, project.ID, warehouse.ID, role.ID),
-				ExpectError: regexp.MustCompile("Attribute warehouse_id must be a warehouse UUID and NOT include the project\nUUID"),
+				ExpectError: regexp.MustCompile("Attribute warehouse_id must be a UUID"),
 			},
 			{
 				Config: fmt.Sprintf(`
@@ -119,7 +118,7 @@ func TestAccLakekeeperWarehouseRoleAssignment_basic(t *testing.T) {
 						assignments = ["ownership"]
 					}
 				`, warehouse.ID, project.ID, role.ID),
-				ExpectError: regexp.MustCompile("Attribute role_id must be a role UUID and NOT include the project UUID"),
+				ExpectError: regexp.MustCompile("Attribute role_id must be a UUID"),
 			},
 			// delete all assignments
 			{
@@ -153,16 +152,20 @@ func testAccCheckLakekeeperWarehouseRoleAssignmentDestroy(s *terraform.State) er
 			continue
 		}
 
-		warehouseID, roleID := splitInternalID(types.StringValue(rs.Primary.ID))
+		parts, err := warehouseRoleAssignment.parseID(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		warehouseID, roleID := parts[0], parts[1]
 
 		assignments, err := testutil.TestLakekeeperClient.GetWarehouseAssignments(context.Background(), warehouseID)
 		if err != nil {
-			return fmt.Errorf("could not list project assignments to check destroy, %w", err)
+			return fmt.Errorf("could not list warehouse assignments to check destroy, %w", err)
 		}
 
 		for _, v := range assignments {
 			if v.Assignee.ID == roleID && v.Assignee.Type == api.AssigneeTypeRole {
-				return fmt.Errorf("project assignment still exists")
+				return fmt.Errorf("warehouse assignment still exists")
 			}
 		}
 	}
