@@ -26,6 +26,7 @@ The `Makefile` has the full target list.
 [`contributing/`](contributing/README.md) holds step-by-step guides. Read the one for your task before you start:
 
 - Before adding a resource or data source: [`contributing/add-resource.md`](contributing/add-resource.md)
+- Before writing or running tests: [`contributing/testing.md`](contributing/testing.md)
 
 ## Architecture
 
