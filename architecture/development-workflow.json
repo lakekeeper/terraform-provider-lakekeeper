@@ -1,0 +1,353 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Development workflow: from edit to release",
+    "output": ".archify/workflow-development-workflow-20261106-125912/development-workflow.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+    },
+    "legend": {
+      "entries": {
+        "external": {
+          "label": "Contributor"
+        },
+        "backend": {
+          "label": "Local step"
+        },
+        "database": {
+          "label": "Generated files"
+        },
+        "cloud": {
+          "label": "Service or automation"
+        },
+        "security": {
+          "label": "Review gate"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "generated",
+      "label": "Generated files (don't edit by hand)",
+      "variant": "exception"
+    },
+    {
+      "id": "local",
+      "label": "Your machine"
+    },
+    {
+      "id": "stack",
+      "label": "Local stack (run/)"
+    },
+    {
+      "id": "github",
+      "label": "GitHub"
+    }
+  ],
+  "mainPath": [
+    "edit",
+    "reviewable",
+    "testacc",
+    "commit",
+    "pr",
+    "releaseplease"
+  ],
+  "nodes": [
+    {
+      "id": "edit",
+      "lane": "local",
+      "col": 0,
+      "type": "external",
+      "icon": "person",
+      "label": "Edit",
+      "sublabel": "Go code, templates/, examples/",
+      "sources": [
+        {
+          "path": "CONTRIBUTING.md",
+          "line": 55,
+          "end_line": 63,
+          "label": "edit doc sources, not docs/"
+        }
+      ]
+    },
+    {
+      "id": "reviewable",
+      "lane": "local",
+      "col": 1,
+      "type": "backend",
+      "label": "make reviewable",
+      "sublabel": "build, fmt, generate, test",
+      "tag": "unit tests",
+      "sources": [
+        {
+          "path": "Makefile",
+          "line": 3,
+          "end_line": 3,
+          "label": "reviewable: build fmt generate test"
+        },
+        {
+          "path": "Makefile",
+          "line": 9,
+          "end_line": 27,
+          "label": "build, generate, test, fmt"
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "line": 87,
+          "end_line": 87,
+          "label": "run before the PR"
+        }
+      ]
+    },
+    {
+      "id": "docs",
+      "lane": "generated",
+      "col": 1,
+      "type": "database",
+      "label": "docs/",
+      "sublabel": "Terraform Registry docs",
+      "tag": "tfplugindocs",
+      "sources": [
+        {
+          "path": "tools/tools.go",
+          "line": 9,
+          "end_line": 9,
+          "label": "go:generate tfplugindocs"
+        },
+        {
+          "path": "Makefile",
+          "line": 13,
+          "end_line": 14,
+          "label": "make generate"
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "line": 57,
+          "end_line": 63,
+          "label": "generated; CI fails if stale"
+        }
+      ]
+    },
+    {
+      "id": "testacc",
+      "lane": "local",
+      "col": 2,
+      "type": "backend",
+      "label": "make testacc",
+      "sublabel": "acceptance tests, TF_ACC=1",
+      "tag": "//go:build acceptance",
+      "sources": [
+        {
+          "path": "Makefile",
+          "line": 87,
+          "end_line": 88,
+          "label": "testacc target"
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "line": 44,
+          "end_line": 53,
+          "label": "acceptance tests"
+        }
+      ]
+    },
+    {
+      "id": "stack",
+      "lane": "stack",
+      "col": 2,
+      "type": "cloud",
+      "label": "Docker Compose stack",
+      "sublabel": "Lakekeeper + Keycloak",
+      "tag": "make testacc-up",
+      "sources": [
+        {
+          "path": "run/docker-compose.yml",
+          "line": 4,
+          "end_line": 5,
+          "label": "Lakekeeper"
+        },
+        {
+          "path": "run/docker-compose.yml",
+          "line": 130,
+          "end_line": 131,
+          "label": "Keycloak"
+        },
+        {
+          "path": "Makefile",
+          "line": 80,
+          "end_line": 85,
+          "label": "testacc-up / testacc-down"
+        }
+      ]
+    },
+    {
+      "id": "commit",
+      "lane": "local",
+      "col": 3,
+      "type": "backend",
+      "label": "Conventional commit",
+      "sublabel": "feat: / fix: / feat!:",
+      "sources": [
+        {
+          "path": "CONTRIBUTING.md",
+          "line": 78,
+          "end_line": 82,
+          "label": "Conventional Commits"
+        }
+      ]
+    },
+    {
+      "id": "pr",
+      "lane": "github",
+      "col": 4,
+      "type": "security",
+      "label": "Pull request",
+      "sublabel": "title check + CI",
+      "tag": "lint-generated, tests",
+      "sources": [
+        {
+          "path": ".github/workflows/pr.yml",
+          "line": 20,
+          "end_line": 47,
+          "label": "PR title check"
+        },
+        {
+          "path": ".github/workflows/test.yml",
+          "line": 63,
+          "end_line": 64,
+          "label": "docs must be up to date"
+        },
+        {
+          "path": ".github/workflows/test.yml",
+          "line": 110,
+          "end_line": 142,
+          "label": "acceptance tests in CI"
+        }
+      ]
+    },
+    {
+      "id": "releaseplease",
+      "lane": "github",
+      "col": 5,
+      "type": "cloud",
+      "label": "release-please",
+      "sublabel": "release PR, v* tag",
+      "tag": "then GoReleaser",
+      "sources": [
+        {
+          "path": ".github/workflows/release-please.yml",
+          "line": 3,
+          "end_line": 22,
+          "label": "runs on push to main"
+        },
+        {
+          "path": "release-please-config.json",
+          "line": 1,
+          "end_line": 70,
+          "label": "changelog sections"
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 6,
+          "end_line": 50,
+          "label": "v* tag runs GoReleaser"
+        }
+      ]
+    },
+    {
+      "id": "changelog",
+      "lane": "generated",
+      "col": 5,
+      "type": "database",
+      "label": "CHANGELOG.md",
+      "sublabel": "+ .release-please-manifest.json",
+      "sources": [
+        {
+          "path": "CONTRIBUTING.md",
+          "line": 83,
+          "end_line": 83,
+          "label": "maintained by release-please"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "edit-reviewable",
+      "from": "edit",
+      "to": "reviewable"
+    },
+    {
+      "id": "reviewable-docs",
+      "from": "reviewable",
+      "to": "docs",
+      "label": "make generate",
+      "role": "branch",
+      "variant": "dashed"
+    },
+    {
+      "id": "reviewable-testacc",
+      "from": "reviewable",
+      "to": "testacc"
+    },
+    {
+      "id": "testacc-stack",
+      "from": "testacc",
+      "to": "stack",
+      "label": "real resources",
+      "role": "branch"
+    },
+    {
+      "id": "testacc-commit",
+      "from": "testacc",
+      "to": "commit"
+    },
+    {
+      "id": "commit-pr",
+      "from": "commit",
+      "to": "pr",
+      "label": "open PR"
+    },
+    {
+      "id": "pr-releaseplease",
+      "from": "pr",
+      "to": "releaseplease",
+      "label": "squash merge",
+      "variant": "emphasis"
+    },
+    {
+      "id": "releaseplease-changelog",
+      "from": "releaseplease",
+      "to": "changelog",
+      "label": "writes",
+      "role": "branch",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Generated, don't edit by hand",
+      "items": [
+        "docs/ comes from templates/, examples/ and schema descriptions via make generate",
+        "CI's make lint-generated fails when docs/ is out of date",
+        "CHANGELOG.md and .release-please-manifest.json belong to release-please"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Source of truth",
+      "items": [
+        "CONTRIBUTING.md has the commands and details",
+        "The PR title becomes the squash commit that release-please reads"
+      ]
+    }
+  ]
+}
