@@ -66,19 +66,19 @@ Below, `<name>` is the resource type name without the `lakekeeper_` prefix, for 
 
 The steps are the same, with these differences:
 
-| Step | Resource | Data source |
-| --- | --- | --- |
-| 1. File | `resource_<name>.go`; copy [`resource_role.go`](../internal/provider/resource_role.go) | `datasource_<name>.go`; copy [`datasource_role.go`](../internal/provider/datasource_role.go) or [`datasource_project.go`](../internal/provider/datasource_project.go), or for one with no input, [`datasource_server_info.go`](../internal/provider/datasource_server_info.go) or [`datasource_whoami.go`](../internal/provider/datasource_whoami.go) |
-| 1. Interfaces and methods | `resource.Resource`, `resource.ResourceWithConfigure`, `resource.ResourceWithImportState`; `Create`, `Read`, `Update`, `Delete`, `ImportState` | `datasource.DataSource` and `datasource.DataSourceWithConfigure`; only `Read`, which reads its input from `req.Config` |
-| 1. Client | from `*LakekeeperResourceData` | from `*LakekeeperDatasourceData` |
-| 1. Type names | unexported: `lakekeeper<Name>Resource` | unexported, as the newest data source (`datasource_namespace.go`) and all resources are: `lakekeeper<Name>DataSource`. Older data sources use exported names; don't copy that. |
-| 2. Registration | `registerResource` | `registerDataSource` |
-| 3. Schema package | `resource/schema` | `datasource/schema` |
-| 3. Attributes | `id` is `Computed` with `UseStateForUnknown` | no plan modifiers. Identifying attributes are `Required`, the rest `Computed`. A data source with no input needs no `id` of its own. |
-| 4. Internal ID and import | as above | no import. Keep the `id` form the matching resource uses, if there is one. |
-| 5. Examples | `examples/resources/lakekeeper_<name>/resource.tf` and `import.sh` | `examples/data-sources/lakekeeper_<name>/data-source.tf` only |
-| 6. Test | `resource_<name>_test.go`, `TestAccLakekeeper<Name>_basic`, with an import step | `datasource_<name>_test.go`, `TestAccDataLakekeeper<Name>_basic`, no import step and no `CheckDestroy`; copy [`datasource_project_test.go`](../internal/provider/datasource_project_test.go) |
-| 7. Generated page | `docs/resources/<name>.md` | `docs/data-sources/<name>.md` |
+| Step | What | Resource | Data source |
+| --- | --- | --- | --- |
+| 1 | File | `resource_<name>.go`; copy [`resource_role.go`](../internal/provider/resource_role.go) | `datasource_<name>.go`; copy [`datasource_role.go`](../internal/provider/datasource_role.go) or [`datasource_project.go`](../internal/provider/datasource_project.go), or for one with no input, [`datasource_server_info.go`](../internal/provider/datasource_server_info.go) or [`datasource_whoami.go`](../internal/provider/datasource_whoami.go) |
+|  | Interfaces and methods | `resource.Resource`, `resource.ResourceWithConfigure`, `resource.ResourceWithImportState`; `Create`, `Read`, `Update`, `Delete`, `ImportState` | `datasource.DataSource` and `datasource.DataSourceWithConfigure`; only `Read`, which reads its input from `req.Config` |
+|  | Client | from `*LakekeeperResourceData` | from `*LakekeeperDatasourceData` |
+|  | Type names | unexported: `lakekeeper<Name>Resource` | unexported, as the newest data source (`datasource_namespace.go`) and all resources are: `lakekeeper<Name>DataSource`. Older data sources use exported names; don't copy that. |
+| 2 | Registration | `registerResource` | `registerDataSource` |
+| 3 | Schema package | `resource/schema` | `datasource/schema` |
+|  | Attributes | `id` is `Computed` with `UseStateForUnknown` | no plan modifiers. Identifying attributes are `Required`, the rest `Computed`. A data source with no input needs no `id` of its own. |
+| 4 | Internal ID and import | as above | no import. Keep the `id` form the matching resource uses, if there is one. |
+| 5 | Examples | `examples/resources/lakekeeper_<name>/resource.tf` and `import.sh` | `examples/data-sources/lakekeeper_<name>/data-source.tf` only |
+| 6 | Test | `resource_<name>_test.go`, `TestAccLakekeeper<Name>_basic`, with an import step | `datasource_<name>_test.go`, `TestAccDataLakekeeper<Name>_basic`, no import step and no `CheckDestroy`; copy [`datasource_project_test.go`](../internal/provider/datasource_project_test.go) |
+| 7 | Generated page | `docs/resources/<name>.md` | `docs/data-sources/<name>.md` |
 
 ## Pitfalls
 
