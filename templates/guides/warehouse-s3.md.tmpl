@@ -28,7 +28,7 @@ And the following optional attributes:
 * `assume_role_arn` (String) Optional ARN to assume when accessing the bucket from Lakekeeper for S3 storage profile
 * `aws_kms_key_arn` (String) ARN of the KMS key used to encrypt the S3 bucket, if any.  
 * `push_s3_delete_disabled` (Boolean) Controls whether the `s3.delete-enabled=false` flag is sent to clients.
-* `remote_signing_url_style` (String) S3 URL style detection mode for remote signing. One of `auto`, `path-style`, `virtual-host`. Default: `auto`.
+* `remote_signing_url_style` (String) S3 URL style detection mode for remote signing. One of `auto`, `path`, `virtual_host`. Default: `auto`.
 * `sts_role_arn` (String)
 * `sts_token_validity_seconds` (Number) The validity of the STS tokens in seconds. Default is `3600`.
 

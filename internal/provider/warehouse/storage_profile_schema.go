@@ -105,8 +105,7 @@ func storageProfileDescriptions() []profileDescription {
 				},
 				{
 					name: "remote_signing_url_style", kind: stringField, computed: true,
-					description:           fmt.Sprintf("S3 URL style detection mode for remote signing. One of `%s`, `%s`, `%s`. Default: `%s`.", api.RemoteSigningURLStyleAuto, api.RemoteSigningURLStylePath, api.RemoteSigningURLStyleVirtualHost, api.RemoteSigningURLStyleAuto),
-					dataSourceDescription: "S3 URL style detection mode for remote signing. One of `auto`, `path-style`, `virtual-host`. Default: `auto`.",
+					description: fmt.Sprintf("S3 URL style detection mode for remote signing. One of `%s`, `%s`, `%s`. Default: `%s`.", api.RemoteSigningURLStyleAuto, api.RemoteSigningURLStylePath, api.RemoteSigningURLStyleVirtualHost, api.RemoteSigningURLStyleAuto),
 					stringValidators: []validator.String{
 						stringvalidator.OneOf(
 							api.RemoteSigningURLStyleAuto,
