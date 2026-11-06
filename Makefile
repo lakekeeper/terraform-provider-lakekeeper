@@ -41,7 +41,7 @@ lint-examples-sh: ## Run shell linter on examples (same as fmt but without modif
 # renovate: datasource=go depName=github.com/rhysd/actionlint
 ACTIONLINT_VERSION ?= v1.7.12
 # renovate: datasource=pypi depName=zizmor
-ZIZMOR_VERSION ?= 1.31.1
+ZIZMOR_VERSION ?= 1.32.0
 
 lint-actions: lint-actionlint lint-zizmor ## Lint GitHub Actions workflows with actionlint and zizmor.
 
