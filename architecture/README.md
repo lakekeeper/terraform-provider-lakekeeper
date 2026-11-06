@@ -75,7 +75,17 @@ _Not drawn yet._
 
 ## Development workflow
 
-_Not drawn yet._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="development-workflow-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="development-workflow-light.svg">
+  <img alt="Development workflow: edit, make reviewable, acceptance tests on the local stack, conventional commit, pull request, release-please; docs/ and CHANGELOG.md are generated" src="development-workflow-light.svg">
+</picture>
+
+A change goes from an edit through `make reviewable` (build, format, generate docs, unit tests) and `make testacc`, which runs the acceptance tests against the local stack started by `make testacc-up`. It is committed as a conventional commit and opened as a pull request, where CI checks the title and reruns lint, the generated-docs check and the tests. Once squash-merged to `main`, release-please opens a release pull request and, when that is merged, tags the version that GoReleaser publishes.
+
+The top row holds generated files. `docs/` is the Terraform Registry documentation that `make generate` builds with `tfplugindocs` from `templates/`, `examples/` and the schema descriptions in the Go code: edit those sources, never `docs/`. `CHANGELOG.md` and `.release-please-manifest.json` belong to release-please. [`CONTRIBUTING.md`](../CONTRIBUTING.md) is the source of truth for the commands and details.
+
+Explorable version: [`development-workflow.html`](development-workflow.html) (open locally).
 
 ## Terms
 
@@ -115,7 +125,11 @@ _Not written yet._
 
 ### Development workflow terms
 
-_Not written yet._
+- **Acceptance test**: a Go test with the `//go:build acceptance` tag that creates real resources on a running server. `make testacc` runs them.
+- **Local stack**: the Docker Compose setup in `run/` (Lakekeeper, Keycloak as the OIDC identity provider, PostgreSQL and OpenFGA) that `make testacc-up` starts for acceptance tests.
+- **Generated file**: a file a tool writes and nobody edits by hand: `docs/` (from `tfplugindocs`) and `CHANGELOG.md` with `.release-please-manifest.json` (from release-please).
+- **Conventional commit**: a commit message or pull request title of the form `type: description`, such as `fix: handle empty role list`; `!` after the type marks a breaking change.
+- **release-please**: the GitHub workflow that reads the conventional commits on `main`, opens a release pull request with the next version and changelog, and tags the release.
 
 ## Drift table
 
@@ -129,4 +143,4 @@ Each diagram, the source it shows, and the commit it was last checked against.
 | [Package layers](#package-layers) | _Not drawn yet._ | |
 | [Assignment module](#assignment-module) | _Not drawn yet._ | |
 | [Warehouse module](#warehouse-module) | _Not drawn yet._ | |
-| [Development workflow](#development-workflow) | _Not drawn yet._ | |
+| [Development workflow](#development-workflow) | `Makefile`, `CONTRIBUTING.md`, `tools/tools.go`, `run/docker-compose.yml`, `.github/workflows/pr.yml`, `.github/workflows/test.yml`, `.github/workflows/release-please.yml`, `.github/workflows/release.yml`, `release-please-config.json` | `818c1a6` |
