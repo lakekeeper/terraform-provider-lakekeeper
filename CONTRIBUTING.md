@@ -30,6 +30,10 @@ The `playground/` directory holds a sample configuration you can apply against t
 
 For a picture of how the provider is built, start with the diagrams in [`architecture/README.md`](architecture/README.md).
 
+## Guides
+
+Step-by-step guides for common tasks, such as adding a resource or data source, are in [`contributing/`](contributing/README.md). Each names the files to create or edit and an existing file to copy from.
+
 ## Making changes
 
 ### Tests
