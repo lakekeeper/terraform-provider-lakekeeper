@@ -109,11 +109,11 @@ Below, `<scope>` is the new kind of scope, for example `table`.
 - **Delete revokes, an empty set keeps the resource.** Delete revokes all the assignee's direct grants at the scope. `assignments = []` does the same but keeps the resource in state.
 - **The assignee is the last internal ID part.** `parseID` splits only up to the number of identity attributes, so a user ID that contains `/` still imports. Don't add an identity attribute after the assignee.
 - **Two attributes with one name.** When the scope and the assignee are the same kind (a role on a role), give the assignee its own attribute name, as `assignee_id` in [`resource_role_role_assignment.go`](../internal/provider/resource_role_role_assignment.go) does. The generated description then says "scope role" and "assignee role".
-- **The SDK import.** A scope adapter calls `*api.Client`, never the Lakekeeper Go SDK. Importing the SDK outside `internal/provider/api` fails `make lint` (the **depguard rule**).
+- **The SDK import.** A scope adapter calls `*api.Client`, never the Lakekeeper Go SDK; see [Add an API method](add-api-method.md#pitfalls).
 
 ## Before you open the PR
 
 - [ ] `make reviewable` passes, and you committed what it changed, including `docs/`.
-- [ ] Your acceptance tests pass against the local stack: `make testacc-up`, then `RUN=TestAccLakekeeper<Type> make testacc`, e.g. `RUN=TestAccLakekeeperWarehouseUserAssignment`.
+- [ ] Your acceptance tests pass against the local stack: `make testacc-up`, then `RUN='TestAccLakekeeper<Type>_' make testacc`, e.g. `RUN='TestAccLakekeeperWarehouseUserAssignment_'`.
 - [ ] If you changed a file listed in the architecture README's [drift table](../architecture/README.md#drift-table) or in the [guides' source table](README.md#guides-and-their-sources), you updated that diagram or guide.
 - [ ] `make lint` passes.

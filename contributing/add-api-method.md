@@ -94,6 +94,6 @@ If your resource should remove a deleted object from state, use the snippet abov
 
 - [ ] `make reviewable` passes, and you committed what it changed.
 - [ ] Your unit test passes: `RUN=Test<Name> make test`.
-- [ ] If a resource or data source uses the new method, its acceptance tests pass against the local stack: `make testacc-up`, then `RUN=TestAccLakekeeper<Name> make testacc`.
+- [ ] If a resource or data source uses the new method, its acceptance tests pass against the local stack: `make testacc-up`, then `RUN='TestAccLakekeeper<Name>_' make testacc`.
 - [ ] If you changed a file listed in the architecture README's [drift table](../architecture/README.md#drift-table) or in the [guides' source table](README.md#guides-and-their-sources), you updated that diagram or guide.
 - [ ] `make lint` passes.

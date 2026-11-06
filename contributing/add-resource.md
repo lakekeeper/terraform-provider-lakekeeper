@@ -42,7 +42,7 @@ Below, `<name>` is the resource type name without the `lakekeeper_` prefix, for 
 
    This is all the wiring there is. There is no central list to edit: [`registry.go`](../internal/provider/registry.go) collects every registered constructor, and [`provider.go`](../internal/provider/provider.go) hands the list to Terraform.
 
-3. **Write the schema and its descriptions.** Set `MarkdownDescription` on the schema and on every attribute. They are the source of the resource's page in the Terraform Registry docs. Start the schema description like the reference file does: what the resource manages, then an `**Upstream API**` link to the matching operation in the Lakekeeper REST API docs: `https://docs.lakekeeper.io/docs/nightly/api/management/#tag/<tag>/operation/<operation_id>`, for example `#tag/role/operation/get_role`. Declare `id` as `Computed` with `stringplanmodifier.UseStateForUnknown()`, and describe its form, e.g. ``"The ID of the role. in the form `{{project_id}}/{{role_id}}`"``.
+3. **Write the schema and its descriptions.** Set `MarkdownDescription` on the schema and on every attribute. They are the source of the resource's page in the Terraform Registry docs. Start the schema description like the reference file does: what the resource manages, then an `**Upstream API**` link to the matching operation in the Lakekeeper REST API docs: `https://docs.lakekeeper.io/docs/nightly/api/management/#tag/<tag>/operation/<operation_id>`, for example `#tag/role/operation/get_role`. Declare `id` as `Computed` with `stringplanmodifier.UseStateForUnknown()`, and give its form in the description, e.g. `` in the form `{{project_id}}/{{role_id}}` ``.
 
 4. **Build the internal ID and implement import.**
    - In `Create`, set `state.ID` from the created object's identifiers: `types.StringValue(project.ID)` for a simple ID, or `fmt.Sprintf("%s/%s", role.ProjectID, role.ID)` for a composite one. Set it again in `Read` and `Update`.
@@ -58,12 +58,7 @@ Below, `<name>` is the resource type name without the `lakekeeper_` prefix, for 
      terraform import lakekeeper_role.admin "261bd4e4-5c57-4707-96ad-44128f9038c0/37cf8760-5092-4d5d-8b29-a6b46a45f067"
      ```
 
-6. **Write the acceptance test** in `internal/provider/resource_<name>_test.go`. Copy from [`resource_role_test.go`](../internal/provider/resource_role_test.go) or [`resource_project_test.go`](../internal/provider/resource_project_test.go).
-   - The first line is `//go:build acceptance`.
-   - Name the test `TestAccLakekeeper<Name>_basic` and run it with `resource.ParallelTest`, `testAccProtoV6ProviderFactories` and a `CheckDestroy` function.
-   - Create parent objects (project, warehouse, role, user) with the helpers in [`testutil/helpers.go`](../internal/provider/testutil/helpers.go), such as `testutil.CreateProject(t)`. Use `acctest.RandString` for names, so parallel tests don't collide. A data source that reads server-wide state (server info, whoami) needs no parent objects.
-   - Check values with `resource.TestCheckResourceAttr`; for values you can't predict, such as timestamps, use `resource.TestCheckResourceAttrSet`.
-   - End with an import step: `ResourceName`, `ImportState: true`, `ImportStateVerify: true`. List attributes the server never returns in `ImportStateVerifyIgnore`.
+6. **Write the acceptance test** in `internal/provider/resource_<name>_test.go`, named `TestAccLakekeeper<Name>_basic`. Copy from [`resource_role_test.go`](../internal/provider/resource_role_test.go) or [`resource_project_test.go`](../internal/provider/resource_project_test.go). [Testing](testing.md#steps) covers the pattern: build tag, `CheckDestroy`, parent objects from `testutil`, and the import step. A data source that reads server-wide state (server info, whoami) needs no parent objects.
 
 7. **Run `make generate`.** It runs `tfplugindocs` (see [`tools/tools.go`](../tools/tools.go)) and writes `docs/resources/<name>.md` from your schema descriptions and examples. Commit that file with your change. You don't need a per-type template: `templates/` holds only the provider index and the guides, and pages without a template come from the default layout (`make generate` still prints a `rendering "resources/<name>.md.tmpl"` line for each).
 
@@ -88,11 +83,11 @@ The steps are the same, with these differences:
 ## Pitfalls
 
 - **`docs/` is generated.** Never edit it by hand: the next `make generate` overwrites your edit, and CI's `make lint-generated` fails when `docs/` differs from what the sources produce. Change the schema description or the example, then run `make generate`.
-- **The acceptance build tag.** Without `//go:build acceptance` on the first line, `make test` compiles your acceptance test. It then fails to build, because `testutil` and `testAccProtoV6ProviderFactories` (in [`provider_test.go`](../internal/provider/provider_test.go)) exist only under that tag. With the tag, `make test` skips the file; only `make testacc` runs it, so `make reviewable` never compiles it. Check it compiles without a server: `go vet -tags acceptance ./internal/provider/`.
+- **The acceptance build tag.** A missing tag breaks `make test`; see [Testing's pitfalls](testing.md#pitfalls). With the tag, only `make testacc` compiles the file, so `make reviewable` never does. Check it compiles without a server: `go vet -tags acceptance ./internal/provider/`.
 - **`splitInternalID` doesn't validate.** It panics on an ID with fewer than two parts. That is safe in `Read`, `Update` and `Delete`, because the provider built the ID. In `ImportState`, the ID comes from the user, so check the number of parts yourself first.
 - **Resource and data source clients differ.** A resource's `Configure` asserts `req.ProviderData` to `*LakekeeperResourceData`, a data source's to `*LakekeeperDatasourceData`. Copying `Configure` across panics at runtime.
-- **The SDK import.** Importing `github.com/baptistegh/go-lakekeeper` in the provider package fails `make lint` (the **depguard rule**). Add a method to `*api.Client` instead.
-- **Fields the server never returns.** Some values, like a warehouse's storage credential, are sent but never read back. Copy them from the plan or prior state in `Read`, and list them in the import step's `ImportStateVerifyIgnore`; see [`resource_warehouse_test.go`](../internal/provider/resource_warehouse_test.go).
+- **The SDK import.** Importing the Lakekeeper Go SDK in the provider package fails `make lint`; see [Add an API method](add-api-method.md#pitfalls).
+- **Fields the server never returns.** Some values, like a warehouse's storage credential, are sent but never read back. Copy them from the plan or prior state in `Read`; the test must ignore them on import (see [Testing](testing.md#steps), step 4).
 
 ## Before you open the PR
 

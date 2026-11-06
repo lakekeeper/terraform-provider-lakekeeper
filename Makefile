@@ -26,7 +26,7 @@ fmt: tool-terraform ## Format files and fix issues.
 	$(GOBIN)/terraform fmt -recursive -list ./examples ./playground
 	go run mvdan.cc/sh/v3/cmd/shfmt -l -s -w ./examples
 
-lint: lint-golangci lint-examples-tf lint-examples-sh lint-actions lint-links lint-generated
+lint: lint-golangci lint-examples-tf lint-examples-sh lint-actions lint-links lint-generated ## Run every linter without modifying files (what CI checks).
 
 lint-golangci: ## Run golangci-lint linter (same as fmt but without modifying files).
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --build-tags acceptance
