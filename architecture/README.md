@@ -61,7 +61,17 @@ _Not drawn yet._
 
 ## Warehouse module
 
-_Not drawn yet._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="warehouse-module-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="warehouse-module-light.svg">
+  <img alt="Warehouse module: the plan becomes a warehouse request for Lakekeeper, and Refresh combines the prior state with the server's warehouse into the new state" src="warehouse-module-light.svg">
+</picture>
+
+The warehouse module (`internal/provider/warehouse`) owns the warehouse's schemas, models and conversions; `resource_warehouse.go` and `datasource_warehouse.go` only orchestrate. On the way out, `WarehouseRequest` turns the plan's resource model into a warehouse request: exactly one storage profile (S3 or S3-compatible, ADLS or GCS), its storage credential, and the delete profile (`hard`, or `soft` with an expiration; an absent one is sent as `hard`). On the way back, `Refresh` builds the new state from the server's warehouse plus the prior (the plan in Create and Update, the state in Read). The data source reads the same server fields through `DataSourceModelFromAPI` and shares the module's schemas.
+
+Lakekeeper never returns the storage credential. `Refresh` copies it from the prior, and only when the storage profile kept its type; after an import, or when the type changed on the server, it stays null. The data source never holds one.
+
+Explorable version: [`warehouse-module.html`](warehouse-module.html) (open locally).
 
 ## Development workflow
 
@@ -97,7 +107,12 @@ _Not written yet._
 
 ### Warehouse module terms
 
-_Not written yet._
+- **Storage profile**: where a warehouse stores its data: exactly one of S3 (or an S3-compatible store), ADLS or GCS, with its location settings.
+- **Storage credential**: the secret Lakekeeper uses to access the storage profile. The provider sends it but never reads it back, so it comes only from configuration or prior state.
+- **Delete profile**: what happens when a table or view in the warehouse is dropped: `hard` deletes it at once, `soft` keeps it for an expiration period first.
+- **Resource model**: the Terraform model of a `lakekeeper_warehouse` resource (`ResourceModel`), read from the plan or state. The data source has its own model without a storage credential.
+- **Warehouse request**: what the provider sends to create or update a warehouse: name, storage profile, storage credential and delete profile.
+- **Prior state**: the warehouse as Terraform last knew it, passed to `Refresh`: the plan in Create and Update, the stored state in Read.
 
 ### Development workflow terms
 
@@ -114,5 +129,5 @@ Each diagram, the source it shows, and the commit it was last checked against.
 | [Apply sequence](#apply-sequence) | _Not drawn yet._ | |
 | [Package layers](#package-layers) | _Not drawn yet._ | |
 | [Assignment module](#assignment-module) | _Not drawn yet._ | |
-| [Warehouse module](#warehouse-module) | _Not drawn yet._ | |
+| [Warehouse module](#warehouse-module) | `internal/provider/warehouse/warehouse.go`, `internal/provider/warehouse/storage_profile.go`, `internal/provider/warehouse/storage_credential.go`, `internal/provider/warehouse/delete_profile.go`, `internal/provider/warehouse/schema.go`, `internal/provider/warehouse/storage_profile_schema.go`, `internal/provider/resource_warehouse.go`, `internal/provider/datasource_warehouse.go`, `internal/provider/api/warehouses.go` | `818c1a6` |
 | [Development workflow](#development-workflow) | _Not drawn yet._ | |
