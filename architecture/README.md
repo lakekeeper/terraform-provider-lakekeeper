@@ -49,7 +49,17 @@ _Not drawn yet._
 
 ## Apply sequence
 
-_Not drawn yet._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="apply-sequence-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="apply-sequence-light.svg">
+  <img alt="Apply sequence: Terraform configures the provider, which sets up TLS and the OIDC token source, then a resource's create and read go through the API client layer and the Lakekeeper Go SDK to the Lakekeeper server and back into Terraform state" src="apply-sequence-light.svg">
+</picture>
+
+Terraform first sends the provider configuration to `Configure` (`internal/provider/provider.go`). It builds one `*api.Client` through `Config.NewLakekeeperClient` (`internal/provider/api/config.go`), which sets up TLS (`cacert_file`, `insecure`) and the OAuth 2.0 client credentials token source for `auth_url`, before any resource runs. The SDK fetches the access token on its first request: with `initial_bootstrap` on (the default) that is the server info check in `Configure`. The token request has its own 2-second timeout and does not use the TLS settings, so look here when authentication fails.
+
+A resource's `Create` and `Read` (here `lakekeeper_role`) call one API client method each. The SDK sends the HTTPS request with the bearer token and retries 429 and 5xx responses. The API client layer wraps errors in `*api.Error` with the HTTP status, and the resource writes the result to Terraform state or reports an error diagnostic.
+
+Explorable version: [`apply-sequence.html`](apply-sequence.html) (open locally).
 
 ## Package layers
 
@@ -85,7 +95,11 @@ _Not written yet._
 
 ### Apply sequence terms
 
-_Not written yet._
+- **Provider configuration**: the `provider "lakekeeper"` block (`endpoint`, `auth_url`, `client_id`, `client_secret`, `scopes`, `cacert_file`, `insecure`, `initial_bootstrap`), or the `LAKEKEEPER_*` environment variables for unset values. `Configure` reads it once per run.
+- **Resource**: a Terraform resource type such as `lakekeeper_role`. Its `Create`, `Read`, `Update` and `Delete` each call the API client layer.
+- **Terraform state**: Terraform's record of each resource's attributes. A resource writes the server's values into it after every create, read and update.
+- **Access token**: the bearer token the SDK sends with each request to the server. The identity provider issues it for the client credentials grant; the SDK reuses it until it expires.
+- **Bootstrap**: the one-time initialisation of a new server. With `initial_bootstrap` on, the SDK checks the server info while the provider is configured and bootstraps the server if needed.
 
 ### Package layers terms
 
@@ -111,7 +125,7 @@ Each diagram, the source it shows, and the commit it was last checked against.
 | --- | --- | --- |
 | [System context](#system-context) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/api/client.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | `fce86e9` |
 | [Domain model](#domain-model) | _Not drawn yet._ | |
-| [Apply sequence](#apply-sequence) | _Not drawn yet._ | |
+| [Apply sequence](#apply-sequence) | `main.go`, `internal/provider/provider.go`, `internal/provider/resource_role.go`, `internal/provider/api/config.go`, `internal/provider/api/management.go`, `internal/provider/api/client.go`, `go.mod` | `818c1a6` |
 | [Package layers](#package-layers) | _Not drawn yet._ | |
 | [Assignment module](#assignment-module) | _Not drawn yet._ | |
 | [Warehouse module](#warehouse-module) | _Not drawn yet._ | |

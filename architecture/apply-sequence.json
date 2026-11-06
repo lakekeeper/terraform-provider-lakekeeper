@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Apply sequence: one terraform apply through the provider",
+    "output": ".archify/sequence-apply-sequence-20261106-130200/apply-sequence.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+    }
+  },
+  "participants": [
+    {
+      "id": "terraform",
+      "type": "external",
+      "label": "Terraform CLI",
+      "sublabel": "via plugin framework",
+      "sources": [
+        {
+          "path": "main.go",
+          "line": 20,
+          "end_line": 46,
+          "label": "providerserver.Serve"
+        }
+      ]
+    },
+    {
+      "id": "provider",
+      "type": "backend",
+      "label": "Provider config",
+      "sublabel": "Configure",
+      "sources": [
+        {
+          "path": "internal/provider/provider.go",
+          "line": 102,
+          "end_line": 222,
+          "label": "Configure reads endpoint, OIDC, TLS"
+        },
+        {
+          "path": "internal/provider/provider.go",
+          "line": 240,
+          "end_line": 257,
+          "label": "newLakekeeperClient factory"
+        },
+        {
+          "path": "internal/provider/provider.go",
+          "line": 50,
+          "end_line": 54,
+          "label": "LakekeeperResourceData"
+        }
+      ]
+    },
+    {
+      "id": "resource",
+      "type": "backend",
+      "label": "Resource",
+      "sublabel": "e.g. lakekeeper_role",
+      "sources": [
+        {
+          "path": "internal/provider/resource_role.go",
+          "line": 106,
+          "end_line": 114,
+          "label": "Configure stores r.client"
+        },
+        {
+          "path": "internal/provider/resource_role.go",
+          "line": 117,
+          "end_line": 151,
+          "label": "Create"
+        },
+        {
+          "path": "internal/provider/resource_role.go",
+          "line": 154,
+          "end_line": 184,
+          "label": "Read"
+        }
+      ]
+    },
+    {
+      "id": "apiclient",
+      "type": "backend",
+      "label": "API client layer",
+      "sublabel": "*api.Client",
+      "sources": [
+        {
+          "path": "internal/provider/api/config.go",
+          "line": 37,
+          "end_line": 104,
+          "label": "NewLakekeeperClient: TLS + OIDC"
+        },
+        {
+          "path": "internal/provider/api/management.go",
+          "line": 114,
+          "end_line": 133,
+          "label": "CreateRole / GetRole"
+        },
+        {
+          "path": "internal/provider/api/client.go",
+          "line": 51,
+          "end_line": 92,
+          "label": "api.Error, IsNotFound, wrapErr"
+        }
+      ]
+    },
+    {
+      "id": "sdk",
+      "type": "backend",
+      "label": "Lakekeeper Go SDK",
+      "sublabel": "go-lakekeeper",
+      "sources": [
+        {
+          "path": "go.mod",
+          "line": 25,
+          "end_line": 25,
+          "label": "SDK dependency"
+        },
+        {
+          "path": "internal/provider/api/config.go",
+          "line": 96,
+          "end_line": 98,
+          "label": "NewAuthSourceClient"
+        }
+      ]
+    },
+    {
+      "id": "idp",
+      "type": "security",
+      "label": "Identity provider",
+      "sublabel": "OIDC, at auth_url",
+      "sources": [
+        {
+          "path": "internal/provider/api/config.go",
+          "line": 84,
+          "end_line": 94,
+          "label": "client credentials config"
+        }
+      ]
+    },
+    {
+      "id": "lakekeeper",
+      "type": "external",
+      "label": "Lakekeeper server",
+      "sublabel": "REST API at endpoint",
+      "sources": [
+        {
+          "path": "internal/provider/provider.go",
+          "line": 161,
+          "end_line": 174,
+          "label": "endpoint / LAKEKEEPER_ENDPOINT"
+        }
+      ]
+    }
+  ],
+  "segments": [
+    {
+      "from": 188,
+      "to": 818,
+      "label": "Provider configuration"
+    },
+    {
+      "from": 846,
+      "to": 1288,
+      "label": "Resource create"
+    },
+    {
+      "from": 1316,
+      "to": 1662,
+      "label": "Next refresh: read"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m1",
+      "from": "terraform",
+      "to": "provider",
+      "y": 200,
+      "label": "configure provider block",
+      "variant": "default",
+      "note": "endpoint, auth_url, client_id, client_secret, scopes, cacert_file, insecure; unset values fall back to LAKEKEEPER_* env vars"
+    },
+    {
+      "id": "m2",
+      "from": "provider",
+      "to": "apiclient",
+      "y": 292,
+      "label": "Config.NewLakekeeperClient",
+      "variant": "security",
+      "note": "TLS: cacert_file sets the trusted CAs, insecure skips verification. OIDC: client credentials token source for auth_url"
+    },
+    {
+      "id": "m3",
+      "from": "apiclient",
+      "to": "sdk",
+      "y": 384,
+      "label": "NewAuthSourceClient",
+      "variant": "default",
+      "note": "HTTP client with the TLS transport, token source, user agent, bootstrap option"
+    },
+    {
+      "id": "m4",
+      "from": "sdk",
+      "to": "idp",
+      "y": 456,
+      "label": "client credentials grant",
+      "variant": "security",
+      "note": "on the first request; this token call has a 2 s timeout and does not use the TLS settings"
+    },
+    {
+      "id": "m5",
+      "from": "idp",
+      "to": "sdk",
+      "y": 548,
+      "label": "access token",
+      "variant": "return"
+    },
+    {
+      "id": "m6",
+      "from": "sdk",
+      "to": "lakekeeper",
+      "y": 582,
+      "label": "server info, bootstrap if needed",
+      "variant": "default",
+      "note": "only when initial_bootstrap is true (the default)"
+    },
+    {
+      "id": "m7",
+      "from": "lakekeeper",
+      "to": "sdk",
+      "y": 654,
+      "label": "server info",
+      "variant": "return"
+    },
+    {
+      "id": "m8",
+      "from": "apiclient",
+      "to": "provider",
+      "y": 688,
+      "label": "*api.Client or error",
+      "variant": "return",
+      "note": "an error becomes the diagnostic 'Failed to create Lakekeeper Client'"
+    },
+    {
+      "id": "m9",
+      "from": "provider",
+      "to": "terraform",
+      "y": 760,
+      "label": "ResourceData / DataSourceData",
+      "variant": "return",
+      "note": "the framework passes the shared client to each resource's Configure"
+    },
+    {
+      "id": "m10",
+      "from": "terraform",
+      "to": "resource",
+      "y": 858,
+      "label": "Create(plan)",
+      "variant": "emphasis",
+      "note": "Configure has already stored r.client; Create reads the plan into the model"
+    },
+    {
+      "id": "m11",
+      "from": "resource",
+      "to": "apiclient",
+      "y": 930,
+      "label": "CreateRole(project_id, RoleRequest)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m12",
+      "from": "apiclient",
+      "to": "sdk",
+      "y": 964,
+      "label": "RoleV1(project).Create",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m13",
+      "from": "sdk",
+      "to": "lakekeeper",
+      "y": 998,
+      "label": "HTTPS POST, Bearer token",
+      "variant": "emphasis",
+      "note": "token reused until it expires, then fetched again from the identity provider; 429 and 5xx are retried"
+    },
+    {
+      "id": "m14",
+      "from": "lakekeeper",
+      "to": "sdk",
+      "y": 1090,
+      "label": "role JSON or error",
+      "variant": "return"
+    },
+    {
+      "id": "m15",
+      "from": "sdk",
+      "to": "apiclient",
+      "y": 1124,
+      "label": "SDK role or API error",
+      "variant": "return"
+    },
+    {
+      "id": "m16",
+      "from": "apiclient",
+      "to": "resource",
+      "y": 1158,
+      "label": "*api.Role or *api.Error",
+      "variant": "return",
+      "note": "wrapErr keeps the HTTP status for IsNotFound / StatusCode"
+    },
+    {
+      "id": "m17",
+      "from": "resource",
+      "to": "terraform",
+      "y": 1230,
+      "label": "State.Set or error diagnostic",
+      "variant": "return",
+      "note": "ids and server-set fields written to Terraform state"
+    },
+    {
+      "id": "m18",
+      "from": "terraform",
+      "to": "resource",
+      "y": 1328,
+      "label": "Read(state)",
+      "variant": "default",
+      "note": "splitInternalID(id) gives project_id and role_id"
+    },
+    {
+      "id": "m19",
+      "from": "resource",
+      "to": "apiclient",
+      "y": 1400,
+      "label": "GetRole(project_id, role_id)",
+      "variant": "default"
+    },
+    {
+      "id": "m20",
+      "from": "apiclient",
+      "to": "sdk",
+      "y": 1434,
+      "label": "RoleV1(project).Get",
+      "variant": "default"
+    },
+    {
+      "id": "m21",
+      "from": "sdk",
+      "to": "lakekeeper",
+      "y": 1468,
+      "label": "HTTPS GET, Bearer token",
+      "variant": "default"
+    },
+    {
+      "id": "m22",
+      "from": "lakekeeper",
+      "to": "sdk",
+      "y": 1502,
+      "label": "role JSON",
+      "variant": "return"
+    },
+    {
+      "id": "m23",
+      "from": "sdk",
+      "to": "apiclient",
+      "y": 1536,
+      "label": "SDK role",
+      "variant": "return"
+    },
+    {
+      "id": "m24",
+      "from": "apiclient",
+      "to": "resource",
+      "y": 1570,
+      "label": "*api.Role",
+      "variant": "return"
+    },
+    {
+      "id": "m25",
+      "from": "resource",
+      "to": "terraform",
+      "y": 1604,
+      "label": "State.Set",
+      "variant": "return",
+      "note": "the server's values replace the prior state"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "When authentication fails",
+      "items": [
+        "Token and TLS are set up once in Configure (internal/provider/api/config.go), before any resource call",
+        "cacert_file and insecure apply to Lakekeeper requests, not to the token request to auth_url",
+        "Configure errors surface as 'Failed to create Lakekeeper Client from provider configuration'"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "When a request fails",
+      "items": [
+        "Every API client method wraps SDK errors in *api.Error with the HTTP status",
+        "The resource reports it to Terraform as an error diagnostic",
+        "lakekeeper_role is the example; other resources call other API client methods along the same path"
+      ]
+    }
+  ]
+}
