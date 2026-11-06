@@ -1,24 +1,27 @@
 #!/bin/sh
 # Copy the newest Archify render of each diagram into architecture/.
 #
-# Usage: scripts/copy-diagrams.sh [archify-dir] [architecture-dir]
+# Usage: scripts/copy-diagrams.sh [slug ...]
 #
-# Archify writes one folder per render, <archify-dir>/<type>-<slug>-<YYYYMMDD-HHMMSS>/,
+# Archify writes one folder per render, .archify/<type>-<slug>-<YYYYMMDD-HHMMSS>/,
 # where <type> is an Archify diagram type. For each slug, this copies the newest
 # folder's files under stable names:
 #
-#   candidate.json     -> <architecture-dir>/<slug>.json
-#   <slug>.html        -> <architecture-dir>/<slug>.html
-#   <slug>-light.svg   -> <architecture-dir>/<slug>-light.svg
-#   <slug>-dark.svg    -> <architecture-dir>/<slug>-dark.svg
+#   candidate.json     -> architecture/<slug>.json
+#   <slug>.html        -> architecture/<slug>.html
+#   <slug>-light.svg   -> architecture/<slug>-light.svg
+#   <slug>-dark.svg    -> architecture/<slug>-dark.svg
+#
+# With slugs, it copies only those diagrams; without, every slug in .archify/.
+# ARCHIFY_DIR and ARCHITECTURE_DIR override the two folders.
 #
 # The SVGs come from scripts/export-diagram-svg.mjs. This script never runs
-# Archify. It checks every newest render first and copies nothing if one is
-# incomplete.
+# Archify (scripts/render-diagrams.sh does). It checks every render it would
+# copy first and copies nothing if one is missing or incomplete.
 set -eu
 
-src=${1:-.archify}
-dst=${2:-architecture}
+src=${ARCHIFY_DIR:-.archify}
+dst=${ARCHITECTURE_DIR:-architecture}
 
 # Archify's diagram types (see `archify --help`), longest first so the longest
 # matching type wins. Keep in sync with ARCHIFY_TYPES in
@@ -26,7 +29,7 @@ dst=${2:-architecture}
 types="architecture waterfall lifecycle sequence dataflow workflow timeline class tree erd"
 
 fail() {
-	echo "make diagrams: $*" >&2
+	echo "copy-diagrams: $*" >&2
 	exit 1
 }
 
@@ -62,12 +65,23 @@ renders=$(
 		if [ -n "$parsed" ]; then
 			printf '%s %s\n' "$parsed" "$name"
 		else
-			echo "make diagrams: skipping $src/$name/: not <type>-<slug>-<YYYYMMDD-HHMMSS> with an Archify type" >&2
+			echo "copy-diagrams: skipping $src/$name/: not <type>-<slug>-<YYYYMMDD-HHMMSS> with an Archify type" >&2
 		fi
 	done | sort -k1,1 -k2,2 | awk '{ newest[$1] = $3 } END { for (s in newest) print s, newest[s] }' | sort
 )
 
 [ -n "$renders" ] || fail "no <type>-<slug>-<YYYYMMDD-HHMMSS>/ render folders in $src/."
+
+if [ $# -gt 0 ]; then
+	selected=
+	for want in "$@"; do
+		line=$(printf '%s\n' "$renders" | awk -v s="$want" '$1 == s')
+		[ -n "$line" ] || fail "no render of $want in $src/."
+		selected="$selected$line
+"
+	done
+	renders=$(printf '%s' "$selected" | sort -u)
+fi
 
 missing=$(
 	printf '%s\n' "$renders" | while read -r slug name; do
