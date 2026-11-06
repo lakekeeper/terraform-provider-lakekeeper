@@ -60,6 +60,22 @@ jobs:
           advanced-security: false
           annotations: true
 
+      # Same check as `make lint-links`: version, file list and lychee.toml
+      # all come from the repository, so CI and local runs agree.
+      - name: Read lychee version from Makefile
+        id: lychee
+        run: echo "version=$(make -s lychee-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Check Markdown links offline
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          lycheeVersion: ${{ steps.lychee.outputs.version }}
+          args: --config lychee.toml $(make -s lint-links-files)
+          jobSummary: false
+          # Keep the report out of the checkout: `make lint-generated` below
+          # fails on any untracked file.
+          output: ${{ runner.temp }}/lychee/out.md
+
       - name: Fail if docs are not up to date
         run: make lint-generated
 

@@ -1,0 +1,10 @@
+# Link check for the repository's Markdown, run by `make lint-links` and CI.
+# Offline: only relative file links and their anchors are checked. External
+# URLs are never fetched, so an unreachable website cannot fail the build.
+offline = true
+include_fragments = "anchor-only"
+no_progress = true
+
+# The registry guides in docs/ link to each other without the extension
+# (`./warehouse-s3`), which is the form the Terraform Registry serves them at.
+fallback_extensions = ["md"]

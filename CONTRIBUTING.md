@@ -30,6 +30,10 @@ The `playground/` directory holds a sample configuration you can apply against t
 
 For a picture of how the provider is built, start with the diagrams in [`architecture/README.md`](architecture/README.md).
 
+## Guides
+
+Step-by-step guides for common tasks, such as adding a resource or data source, are in [`contributing/`](contributing/README.md). Each names the files to create or edit and an existing file to copy from.
+
 ## Making changes
 
 ### Tests
@@ -67,6 +71,8 @@ CI fails when `docs/` is out of date.
 Formatting and linting are enforced by `gofmt`, [`golangci-lint`](https://golangci-lint.run/), `terraform fmt`, and `shfmt`. `make fmt` applies all of them; `make lint` checks without changing files. Keep changes consistent with the surrounding code.
 
 GitHub Actions workflows in `.github/workflows/` are checked with [`actionlint`](https://github.com/rhysd/actionlint) and [`zizmor`](https://docs.zizmor.sh/). Run `make lint-actions` after changing them; it needs [`uv`](https://docs.astral.sh/uv/) for zizmor. CI also runs zizmor's online audits (e.g. known-vulnerable actions); set `GH_TOKEN` to run them locally too.
+
+Links in the repository's tracked Markdown are checked with [lychee](https://lychee.cli.rs/), offline: relative file links and `#anchor` fragments must resolve, and external URLs are never fetched. `CHANGELOG.md` and `graphify-out/` are skipped. Run `make lint-links` after renaming a file or heading; it runs lychee's Docker image, configured by `lychee.toml`.
 
 ### Knowledge graph (optional)
 
