@@ -27,6 +27,7 @@ The `Makefile` has the full target list.
 
 - Before adding a resource or data source: [`contributing/add-resource.md`](contributing/add-resource.md)
 - Before adding or changing an assignment resource: [`contributing/add-assignment-resource.md`](contributing/add-assignment-resource.md)
+- Before writing or running tests: [`contributing/testing.md`](contributing/testing.md)
 
 ## Architecture
 
