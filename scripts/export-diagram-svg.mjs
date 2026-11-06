@@ -26,14 +26,27 @@ function fail(message) {
   process.exit(1);
 }
 
+// Archify's diagram types (see `archify --help`), longest first so the longest
+// matching type wins. Keep in sync with `types` in scripts/copy-diagrams.sh.
+const ARCHIFY_TYPES = ['architecture', 'waterfall', 'lifecycle', 'sequence', 'dataflow', 'workflow', 'timeline', 'class', 'tree', 'erd'];
+
+// slugOf returns the slug of a <type>-<slug>-<YYYYMMDD-HHMMSS> folder name: the
+// name without its leading Archify type and trailing timestamp, or null.
+function slugOf(name) {
+  const stamped = /^(.+)-\d{8}-\d{6}$/.exec(name);
+  if (!stamped) return null;
+  const type = ARCHIFY_TYPES.find((t) => stamped[1].startsWith(`${t}-`) && stamped[1].length > t.length + 1);
+  return type ? stamped[1].slice(type.length + 1) : null;
+}
+
 // findHtml returns the slug and the rendered HTML path of a render folder.
 function findHtml(folder) {
   if (!fs.existsSync(folder) || !fs.statSync(folder).isDirectory()) {
     fail(`${folder} is not a directory`);
   }
-  const match = /^[a-z]+-(.+)-\d{8}-\d{6}$/.exec(path.basename(path.resolve(folder)));
-  if (match && fs.existsSync(path.join(folder, `${match[1]}.html`))) {
-    return { slug: match[1], html: path.join(folder, `${match[1]}.html`) };
+  const slug = slugOf(path.basename(path.resolve(folder)));
+  if (slug && fs.existsSync(path.join(folder, `${slug}.html`))) {
+    return { slug, html: path.join(folder, `${slug}.html`) };
   }
   const htmls = fs.readdirSync(folder).filter((f) => f.endsWith('.html'));
   if (htmls.length === 1) {
