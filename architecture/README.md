@@ -45,7 +45,17 @@ Explorable version: [`system-context.html`](system-context.html) (open locally).
 
 ## Domain model
 
-_Not drawn yet._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="domain-model-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="domain-model-light.svg">
+  <img alt="Domain model: server, project, default project, warehouse, namespace, user and role, and an assignment of grant types to an assignee at a scope" src="domain-model-light.svg">
+</picture>
+
+The server contains users and projects. A user belongs to the server, never to a project; it only holds grants there. A project contains roles and warehouses, and a warehouse contains namespaces. The default project is an ordinary project; the provider reads it by passing the nil UUID as the project ID (`lakekeeper_default_project`).
+
+An assignment is one assignee holding a set of grant types at one scope. A user or a role can be an assignee. The five kinds of scope are server, project, warehouse, role and namespace, and each has its own grant types. A role appears on both sides: as an assignee it receives grants, and as a scope it has users and other roles assigned to it. Every scope has a `lakekeeper_<scope>_role_assignment` resource, and every scope except namespace also has a `lakekeeper_<scope>_user_assignment` resource.
+
+Explorable version: [`domain-model.html`](domain-model.html) (open locally).
 
 ## Apply sequence
 
@@ -81,7 +91,17 @@ The diagrams use these terms exactly. Each group lists the terms a diagram intro
 
 ### Domain model terms
 
-_Not written yet._
+- **Project**: a container on the server for warehouses and roles (`lakekeeper_project`).
+- **Default project**: the server's default project, an ordinary project that the provider reads by passing the nil UUID as the project ID (`lakekeeper_default_project`).
+- **Warehouse**: an Iceberg storage location in a project, with its own storage configuration (`lakekeeper_warehouse`).
+- **Namespace**: a group of tables inside a warehouse (`lakekeeper_namespace`).
+- **User**: a human or application identity known to the server (`lakekeeper_user`). A user belongs to the server, never to a project.
+- **Role**: a named identity that belongs to one project (`lakekeeper_role`). A role is both an assignee, which holds grants, and a scope, which users and other roles are assigned to.
+- **Scope**: the server or the project, warehouse, role or namespace that a grant is attached to.
+- **Assignee**: the user or role that holds a grant.
+- **Grant type**: one permission level allowed at a kind of scope, for example `select` on a warehouse or `admin` on the server.
+- **Grant**: one grant type held by one assignee at one scope.
+- **Assignment**: the set of grants one assignee holds at one scope. Each `lakekeeper_*_assignment` resource manages one assignment.
 
 ### Apply sequence terms
 
@@ -110,7 +130,7 @@ Each diagram, the source it shows, and the commit it was last checked against.
 | Diagram | Source it shows | Checked against |
 | --- | --- | --- |
 | [System context](#system-context) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/api/client.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | `fce86e9` |
-| [Domain model](#domain-model) | _Not drawn yet._ | |
+| [Domain model](#domain-model) | `internal/provider/api/management.go`, `internal/provider/api/permissions.go`, `internal/provider/api/constants.go`, `internal/provider/assignment_adapter.go`, `internal/provider/assignment_descriptor.go`, `internal/provider/resource_user.go`, `internal/provider/resource_role.go`, `internal/provider/resource_project.go`, `internal/provider/resource_namespace.go`, `internal/provider/resource_namespace_role_assignment.go`, `internal/provider/datasource_default_project.go`, `internal/provider/warehouse/warehouse.go` | `818c1a6` |
 | [Apply sequence](#apply-sequence) | _Not drawn yet._ | |
 | [Package layers](#package-layers) | _Not drawn yet._ | |
 | [Assignment module](#assignment-module) | _Not drawn yet._ | |
