@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "System context: terraform-provider-lakekeeper",
+    "output": ".archify/architecture-system-context-20261106-133136/system-context.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "430e59820035f08e449d5be6dc8f5b4468c1d0ad"
+    }
+  },
+  "components": [
+    {
+      "id": "terraform",
+      "type": "external",
+      "label": "Terraform CLI",
+      "sublabel": "plan / apply / import",
+      "pos": [40, 120],
+      "size": [150, 64],
+      "sources": [
+        { "path": "main.go", "line": 20, "end_line": 45, "label": "providerserver.Serve" }
+      ]
+    },
+    {
+      "id": "provider",
+      "type": "backend",
+      "label": "Provider",
+      "sublabel": "internal/provider",
+      "tag": "resources + data sources",
+      "pos": [310, 120],
+      "size": [150, 64],
+      "sources": [
+        { "path": "internal/provider/provider.go", "line": 102, "end_line": 222, "label": "Configure builds the client" },
+        { "path": "internal/provider/registry.go", "line": 11, "end_line": 24, "label": "registerResource / registerDataSource" },
+        { "path": "internal/provider/resource_project.go", "line": 97, "end_line": 97, "label": "r.client.CreateProject" }
+      ]
+    },
+    {
+      "id": "apiclient",
+      "type": "backend",
+      "label": "API client layer",
+      "sublabel": "internal/provider/api",
+      "tag": "*api.Client",
+      "pos": [570, 120],
+      "size": [150, 64],
+      "sources": [
+        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 33, "label": "only package that uses the SDK" },
+        { "path": "internal/provider/api/config.go", "line": 37, "end_line": 104, "label": "OIDC token source and TLS" },
+        { "path": "internal/provider/api/management.go", "line": 55, "end_line": 61, "label": "CreateProject calls the SDK" }
+      ]
+    },
+    {
+      "id": "sdk",
+      "type": "backend",
+      "label": "Lakekeeper Go SDK",
+      "sublabel": "baptistegh/go-lakekeeper",
+      "pos": [810, 120],
+      "size": [150, 64],
+      "sources": [
+        { "path": "go.mod", "line": 25, "end_line": 25, "label": "SDK dependency" },
+        { "path": ".golangci.yml", "line": 6, "end_line": 19, "label": "depguard: only api/ may import it" }
+      ]
+    },
+    {
+      "id": "lakekeeper",
+      "type": "cloud",
+      "label": "Lakekeeper server",
+      "sublabel": "REST API",
+      "pos": [1070, 120],
+      "size": [150, 64],
+      "sources": [
+        { "path": "internal/provider/api/config.go", "line": 96, "end_line": 98, "label": "client for the base URL" },
+        { "path": "internal/provider/provider.go", "line": 64, "end_line": 67, "label": "endpoint attribute" }
+      ]
+    },
+    {
+      "id": "idp",
+      "type": "security",
+      "label": "OIDC identity provider",
+      "sublabel": "token endpoint",
+      "tag": "client credentials",
+      "pos": [810, 300],
+      "size": [150, 64],
+      "sources": [
+        { "path": "internal/provider/api/config.go", "line": 84, "end_line": 98, "label": "clientcredentials token source" },
+        { "path": "internal/provider/provider.go", "line": 68, "end_line": 85, "label": "auth_url, client_id, secret, scopes" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Provider binary", "wraps": ["provider", "apiclient", "sdk"] }
+  ],
+  "connections": [
+    { "id": "tf-to-provider", "from": "terraform", "to": "provider", "label": "plugin protocol", "variant": "emphasis" },
+    { "id": "provider-to-api", "from": "provider", "to": "apiclient", "label": "calls methods", "variant": "emphasis" },
+    { "id": "api-to-sdk", "from": "apiclient", "to": "sdk", "label": "SDK calls", "variant": "emphasis" },
+    { "id": "sdk-to-lakekeeper", "from": "sdk", "to": "lakekeeper", "label": "HTTPS + token", "variant": "emphasis" },
+    { "id": "sdk-to-idp", "from": "sdk", "to": "idp", "label": "fetch token", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Provider configuration",
+      "items": [
+        "endpoint, auth_url, client_id, client_secret and scopes, or the LAKEKEEPER_* environment variables",
+        "cacert_file and insecure set up TLS for every request",
+        "Configure builds one *api.Client and hands it to every resource and data source"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Layer rule",
+      "items": [
+        "Only internal/provider/api imports the Lakekeeper Go SDK",
+        "A depguard rule in .golangci.yml enforces it",
+        "A missing endpoint becomes a new *api.Client method"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Authentication",
+      "items": [
+        "OAuth 2.0 client credentials grant against auth_url",
+        "The token source is set up in api/config.go; the SDK fetches and refreshes the token",
+        "Each REST call carries the token as a bearer token"
+      ]
+    }
+  ]
+}

@@ -28,6 +28,8 @@ make testacc-up    # Start Lakekeeper, Keycloak, PostgreSQL and OpenFGA via Dock
 
 The `playground/` directory holds a sample configuration you can apply against the local stack with `make playground`; see the [README](README.md#playground).
 
+For a picture of how the provider is built, start with the diagrams in [`architecture/README.md`](architecture/README.md).
+
 ## Making changes
 
 ### Tests
@@ -72,6 +74,10 @@ If you use a coding agent, the [graphify](https://github.com/safishamsi/graphify
 
 - `make graph` rebuilds the graph (needs `uv`). It runs locally, costs no API tokens, and takes a few seconds. Rerun it after code changes and commit the updated `graph.json` with them.
 - `make graph-setup` registers graphify's union merge driver in your clone, once. `.gitattributes` routes `graph.json` through it, so two branches that both changed the graph merge without a conflict.
+
+### Diagrams
+
+The diagrams in [`architecture/`](architecture/README.md) are committed. When your change touches source listed in that README's [drift table](architecture/README.md#drift-table), update the affected diagram in the same pull request, following [Reading and updating the diagrams](architecture/README.md#reading-and-updating-the-diagrams). Re-rendering (`make diagrams-render`) needs [Archify](https://github.com/tt-a1i/archify), Chrome and Node.
 
 ## Commits and branches
 

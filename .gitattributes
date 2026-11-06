@@ -1,3 +1,6 @@
 # graphify knowledge graph: union-merge with the graphify driver (`make graph-setup`),
 # collapse in GitHub PRs, and keep it out of `git diff`.
 graphify-out/graph.json merge=graphify linguist-generated=true -diff
+# Diagram HTML and SVG are rendered from architecture/<slug>.json: collapse them in GitHub PRs.
+architecture/*.html linguist-generated=true
+architecture/*.svg linguist-generated=true

@@ -1,0 +1,554 @@
+{
+  "schema_version": 1,
+  "diagram_type": "class",
+  "meta": {
+    "title": "Domain model: what the provider manages",
+    "output": ".archify/class-domain-model-20261106-131445/domain-model.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+    }
+  },
+  "layout": {
+    "mode": "grid"
+  },
+  "types": [
+    {
+      "id": "user",
+      "label": "User",
+      "kind": "class",
+      "sublabel": "Server-wide, never in a project",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "user_type",
+          "type": "human | application"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/management.go",
+          "line": 156,
+          "end_line": 165,
+          "label": "api.User"
+        },
+        {
+          "path": "internal/provider/resource_user.go",
+          "line": 45,
+          "end_line": 94,
+          "label": "user schema"
+        },
+        {
+          "path": "internal/provider/api/constants.go",
+          "line": 12,
+          "end_line": 16,
+          "label": "user types"
+        }
+      ]
+    },
+    {
+      "id": "server",
+      "label": "Server",
+      "kind": "class",
+      "sublabel": "One Lakekeeper installation",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "default_project_id",
+          "type": "string"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/management.go",
+          "line": 14,
+          "end_line": 20,
+          "label": "api.ServerInfo"
+        }
+      ]
+    },
+    {
+      "id": "default_project",
+      "label": "Default project",
+      "kind": "class",
+      "sublabel": "The project the nil UUID selects",
+      "row": 0,
+      "col": 2,
+      "sources": [
+        {
+          "path": "internal/provider/datasource_default_project.go",
+          "line": 76,
+          "end_line": 98,
+          "label": "default project read"
+        },
+        {
+          "path": "internal/provider/api/management.go",
+          "line": 63,
+          "end_line": 64,
+          "label": "GetProject"
+        }
+      ]
+    },
+    {
+      "id": "role",
+      "label": "Role",
+      "kind": "class",
+      "sublabel": "Belongs to one project",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "project_id",
+          "type": "string"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/management.go",
+          "line": 87,
+          "end_line": 95,
+          "label": "api.Role"
+        },
+        {
+          "path": "internal/provider/resource_role.go",
+          "line": 75,
+          "end_line": 80,
+          "label": "project_id"
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "label": "Project",
+      "kind": "class",
+      "sublabel": "Holds warehouses and roles",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/management.go",
+          "line": 48,
+          "end_line": 52,
+          "label": "api.Project"
+        },
+        {
+          "path": "internal/provider/resource_project.go",
+          "line": 50,
+          "end_line": 57,
+          "label": "project schema"
+        }
+      ]
+    },
+    {
+      "id": "warehouse",
+      "label": "Warehouse",
+      "kind": "class",
+      "sublabel": "Iceberg storage location in a project",
+      "row": 1,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "warehouse_id",
+          "type": "string"
+        },
+        {
+          "name": "project_id",
+          "type": "string"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 25,
+          "end_line": 32,
+          "label": "warehouse model"
+        }
+      ]
+    },
+    {
+      "id": "namespace",
+      "label": "Namespace",
+      "kind": "class",
+      "sublabel": "Holds tables in a warehouse",
+      "row": 1,
+      "col": 3,
+      "attributes": [
+        {
+          "name": "namespace_id",
+          "type": "string"
+        },
+        {
+          "name": "warehouse_name",
+          "type": "string"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/resource_namespace.go",
+          "line": 71,
+          "end_line": 80,
+          "label": "namespace schema"
+        }
+      ]
+    },
+    {
+      "id": "assignee",
+      "label": "Assignee",
+      "kind": "interface",
+      "sublabel": "Receives grants",
+      "row": 2,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "type",
+          "type": "user | role"
+        },
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/permissions.go",
+          "line": 10,
+          "end_line": 20,
+          "label": "api.Assignee"
+        },
+        {
+          "path": "internal/provider/api/constants.go",
+          "line": 6,
+          "end_line": 10,
+          "label": "assignee types"
+        }
+      ]
+    },
+    {
+      "id": "assignment",
+      "label": "Assignment",
+      "kind": "record",
+      "sublabel": "One assignee's grant types at one scope",
+      "row": 3,
+      "col": 1.5,
+      "attributes": [
+        {
+          "name": "assignee",
+          "type": "Assignee"
+        },
+        {
+          "name": "scope",
+          "type": "Scope"
+        },
+        {
+          "name": "grant_types",
+          "type": "set of Grant type"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_descriptor.go",
+          "line": 12,
+          "end_line": 35,
+          "label": "assignmentDescriptor"
+        },
+        {
+          "path": "internal/provider/assignment_adapter.go",
+          "line": 10,
+          "end_line": 15,
+          "label": "one grant"
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "label": "Scope",
+      "kind": "interface",
+      "sublabel": "Where a grant is attached",
+      "row": 2,
+      "col": 2.5,
+      "attributes": [
+        {
+          "name": "kind",
+          "type": "server|project|warehouse|role|namespace"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_adapter.go",
+          "line": 17,
+          "end_line": 31,
+          "label": "scope and adapter"
+        },
+        {
+          "path": "internal/provider/api/permissions.go",
+          "line": 22,
+          "end_line": 28,
+          "label": "api.Assignment"
+        }
+      ],
+      "width": 360
+    },
+    {
+      "id": "grant_type",
+      "label": "Grant type",
+      "kind": "enum",
+      "sublabel": "Allowed values depend on the scope",
+      "row": 4,
+      "col": 1.5,
+      "attributes": [
+        {
+          "name": "server",
+          "type": "admin, operator"
+        },
+        {
+          "name": "project",
+          "type": "project_admin, security_admin, data_admin, role_creator, describe, select, create, modify"
+        },
+        {
+          "name": "warehouse",
+          "type": "ownership, pass_grants, manage_grants, describe, select, create, modify"
+        },
+        {
+          "name": "role",
+          "type": "ownership, assignee"
+        },
+        {
+          "name": "namespace",
+          "type": "ownership, pass_grants, manage_grants, describe, select, create, modify"
+        }
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/constants.go",
+          "line": 18,
+          "end_line": 51,
+          "label": "grant type constants"
+        },
+        {
+          "path": "internal/provider/resource_namespace_role_assignment.go",
+          "line": 8,
+          "end_line": 21,
+          "label": "namespace grant types"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "server_users",
+      "from": "server",
+      "to": "user",
+      "kind": "composition",
+      "label": "contains"
+    },
+    {
+      "id": "server_projects",
+      "from": "server",
+      "to": "project",
+      "kind": "composition",
+      "label": "contains"
+    },
+    {
+      "id": "server_default",
+      "from": "server",
+      "to": "default_project",
+      "kind": "association",
+      "label": "has one"
+    },
+    {
+      "id": "default_is_project",
+      "from": "default_project",
+      "to": "project",
+      "kind": "inheritance"
+    },
+    {
+      "id": "project_roles",
+      "from": "project",
+      "to": "role",
+      "kind": "composition",
+      "label": "contains"
+    },
+    {
+      "id": "project_warehouses",
+      "from": "project",
+      "to": "warehouse",
+      "kind": "composition",
+      "label": "contains"
+    },
+    {
+      "id": "warehouse_namespaces",
+      "from": "warehouse",
+      "to": "namespace",
+      "kind": "composition",
+      "label": "contains"
+    },
+    {
+      "id": "user_is_assignee",
+      "from": "user",
+      "to": "assignee",
+      "kind": "realization",
+      "fromSide": "left",
+      "toSide": "left"
+    },
+    {
+      "id": "role_is_assignee",
+      "from": "role",
+      "to": "assignee",
+      "kind": "realization",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "server_is_scope",
+      "from": "server",
+      "to": "scope",
+      "kind": "realization",
+      "fromSide": "top",
+      "toSide": "right"
+    },
+    {
+      "id": "project_is_scope",
+      "from": "project",
+      "to": "scope",
+      "kind": "realization",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          490.5,
+          320
+        ],
+        [
+          790,
+          320
+        ],
+        [
+          790,
+          423
+        ]
+      ]
+    },
+    {
+      "id": "warehouse_is_scope",
+      "from": "warehouse",
+      "to": "scope",
+      "kind": "realization",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "role_is_scope",
+      "from": "role",
+      "to": "scope",
+      "kind": "realization",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          146.5,
+          350
+        ],
+        [
+          770,
+          350
+        ],
+        [
+          770,
+          494
+        ],
+        [
+          982,
+          494
+        ]
+      ]
+    },
+    {
+      "id": "namespace_is_scope",
+      "from": "namespace",
+      "to": "scope",
+      "kind": "realization",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "assignment_assignee",
+      "from": "assignment",
+      "to": "assignee",
+      "kind": "association",
+      "label": "held by",
+      "fromSide": "left",
+      "toSide": "bottom"
+    },
+    {
+      "id": "assignment_scope",
+      "from": "assignment",
+      "to": "scope",
+      "kind": "association",
+      "label": "at",
+      "fromSide": "right",
+      "toSide": "right"
+    },
+    {
+      "id": "assignment_grant_types",
+      "from": "assignment",
+      "to": "grant_type",
+      "kind": "association",
+      "label": "holds",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Ownership",
+      "items": [
+        "A user belongs to the server, never to a project; it only holds grants there",
+        "A role, a warehouse and its namespaces belong to one project",
+        "The default project is an ordinary project; the nil UUID selects it"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Role on both sides",
+      "items": [
+        "As an assignee, a role receives grants at any scope",
+        "As a scope, a role has users and other roles assigned to it (ownership, assignee)",
+        "Lakekeeper rejects assigning a role to itself"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Assignment resources",
+      "items": [
+        "Server, project, warehouse and role scopes: one resource for a role assignee and one for a user assignee",
+        "Namespace scope: a role assignee only (lakekeeper_namespace_role_assignment)",
+        "Each manages one assignee's grants at one scope; other assignees' grants are left alone"
+      ]
+    }
+  ]
+}

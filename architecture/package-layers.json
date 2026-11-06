@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Package layers: terraform-provider-lakekeeper",
+    "output": ".archify/architecture-package-layers-20261106-125903/package-layers.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+    }
+  },
+  "components": [
+    {
+      "id": "main",
+      "type": "backend",
+      "label": "Plugin entry point",
+      "sublabel": "main.go (package main)",
+      "pos": [40, 40],
+      "size": [170, 64],
+      "sources": [
+        { "path": "main.go", "line": 41, "end_line": 41, "label": "providerserver.Serve(provider.New)" }
+      ]
+    },
+    {
+      "id": "provider",
+      "type": "backend",
+      "label": "Provider",
+      "sublabel": "provider.go",
+      "tag": "Configure builds *api.Client",
+      "pos": [330, 40],
+      "size": [170, 64],
+      "sources": [
+        { "path": "internal/provider/provider.go", "line": 207, "end_line": 221, "label": "Configure hands the client on" },
+        { "path": "internal/provider/provider.go", "line": 224, "end_line": 230, "label": "Resources() / DataSources()" }
+      ]
+    },
+    {
+      "id": "registry",
+      "type": "backend",
+      "label": "Registration",
+      "sublabel": "registry.go",
+      "tag": "registerResource / registerDataSource",
+      "pos": [660, 40],
+      "size": [190, 64],
+      "sources": [
+        { "path": "internal/provider/registry.go", "line": 11, "end_line": 24, "label": "allResources / allDataSources" }
+      ]
+    },
+    {
+      "id": "types",
+      "type": "backend",
+      "label": "Resources and data sources",
+      "sublabel": "resource_*.go, datasource_*.go",
+      "tag": "one file per Terraform type",
+      "pos": [660, 220],
+      "size": [190, 64],
+      "sources": [
+        { "path": "internal/provider/resource_role.go", "line": 36, "end_line": 38, "label": "init() registers the resource" },
+        { "path": "internal/provider/datasource_project.go", "line": 19, "end_line": 21, "label": "init() registers the data source" },
+        { "path": "internal/provider/resource_role.go", "line": 106, "end_line": 113, "label": "Configure stores r.client" }
+      ]
+    },
+    {
+      "id": "warehouse",
+      "type": "backend",
+      "label": "Warehouse module",
+      "sublabel": "internal/provider/warehouse",
+      "tag": "schemas, models, conversions",
+      "pos": [330, 400],
+      "size": [190, 64],
+      "sources": [
+        { "path": "internal/provider/warehouse/warehouse.go", "line": 54, "end_line": 54, "label": "ResourceModel.WarehouseRequest" },
+        { "path": "internal/provider/warehouse/warehouse.go", "line": 95, "end_line": 95, "label": "Refresh(prior, warehouse)" },
+        { "path": "internal/provider/resource_warehouse.go", "line": 46, "end_line": 46, "label": "warehouse.ResourceSchema()" }
+      ]
+    },
+    {
+      "id": "fragment",
+      "type": "backend",
+      "label": "Assignment schema fragment",
+      "sublabel": "internal/provider/sdk",
+      "tag": "assignments data sources",
+      "pos": [940, 400],
+      "size": [190, 64],
+      "sources": [
+        { "path": "internal/provider/sdk/assignment.go", "line": 11, "end_line": 17, "label": "Assignment + AssignmentDataSourceType" },
+        { "path": "internal/provider/datasource_project_assignments.go", "line": 60, "end_line": 60, "label": "project assignments data source" },
+        { "path": "internal/provider/datasource_warehouse_assignments.go", "line": 60, "end_line": 60, "label": "warehouse assignments data source" }
+      ]
+    },
+    {
+      "id": "apiclient",
+      "type": "backend",
+      "label": "API client layer",
+      "sublabel": "internal/provider/api",
+      "tag": "*api.Client + SDK-neutral types",
+      "pos": [660, 580],
+      "size": [190, 64],
+      "sources": [
+        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 26, "label": "only package that imports the SDK" },
+        { "path": "internal/provider/api/management.go", "line": 55, "end_line": 61, "label": "a method wraps one SDK call" },
+        { "path": "internal/provider/api/config.go", "line": 37, "end_line": 37, "label": "Config.NewLakekeeperClient" }
+      ]
+    },
+    {
+      "id": "sdk",
+      "type": "external",
+      "label": "Lakekeeper Go SDK",
+      "sublabel": "baptistegh/go-lakekeeper",
+      "pos": [660, 760],
+      "size": [190, 64],
+      "sources": [
+        { "path": "go.mod", "line": 25, "end_line": 25, "label": "SDK dependency" }
+      ]
+    },
+    {
+      "id": "depguard",
+      "type": "security",
+      "label": "depguard rule",
+      "sublabel": ".golangci.yml",
+      "tag": "lakekeeper-sdk",
+      "pos": [1000, 760],
+      "size": [170, 64],
+      "sources": [
+        { "path": ".golangci.yml", "line": 6, "end_line": 19, "label": "deny the SDK outside api/" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "package provider (internal/provider)", "wraps": ["provider", "registry", "types"] },
+    { "kind": "security-group", "label": "only allowed SDK importer", "wraps": ["apiclient"] }
+  ],
+  "connections": [
+    { "id": "main-to-provider", "from": "main", "to": "provider", "label": "provider.New", "variant": "emphasis" },
+    { "id": "provider-to-registry", "from": "provider", "to": "registry", "label": "reads the lists" },
+    { "id": "types-to-registry", "from": "types", "to": "registry", "label": "init() registers" },
+    { "id": "provider-to-types", "from": "provider", "to": "types", "label": "Configure: *api.Client" },
+    { "id": "types-to-warehouse", "from": "types", "to": "warehouse", "label": "warehouse schema + conversions" },
+    { "id": "types-to-fragment", "from": "types", "to": "fragment", "label": "shared schema" },
+    { "id": "types-to-api", "from": "types", "to": "apiclient", "label": "calls methods", "variant": "emphasis" },
+    { "id": "warehouse-to-api", "from": "warehouse", "to": "apiclient", "label": "api types" },
+    { "id": "fragment-to-api", "from": "fragment", "to": "apiclient", "label": "api constants" },
+    { "id": "api-to-sdk", "from": "apiclient", "to": "sdk", "label": "imports", "variant": "emphasis" },
+    { "id": "depguard-to-sdk", "from": "depguard", "to": "sdk", "label": "deny outside api/", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Where new code goes",
+      "items": [
+        "A new resource or data source is one resource_*.go or datasource_*.go file whose init() calls registerResource or registerDataSource; nothing else needs wiring",
+        "A missing Lakekeeper endpoint becomes a new *api.Client method in internal/provider/api",
+        "Warehouse schema and model conversions go in internal/provider/warehouse"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Import rule",
+      "items": [
+        "Only internal/provider/api may import the Lakekeeper Go SDK",
+        "The depguard rule lakekeeper-sdk in .golangci.yml denies it in every other file; make lint fails on a violation",
+        "Everything else uses *api.Client and the api types"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Naming trap",
+      "items": [
+        "Package sdk (internal/provider/sdk) is the assignment schema fragment, not the Lakekeeper Go SDK",
+        "Warehouse module and assignment schema fragment import api for its types, never the SDK"
+      ]
+    }
+  ]
+}
