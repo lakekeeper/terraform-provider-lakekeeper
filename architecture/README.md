@@ -91,7 +91,17 @@ Explorable version: [`assignment-module.html`](assignment-module.html) (open loc
 
 ## Warehouse module
 
-_Not drawn yet._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="warehouse-module-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="warehouse-module-light.svg">
+  <img alt="Warehouse module: the plan becomes a warehouse request for Lakekeeper, and Refresh combines the prior state with the server's warehouse into the new state" src="warehouse-module-light.svg">
+</picture>
+
+The warehouse module (`internal/provider/warehouse`) owns the warehouse's schemas, models and conversions; `resource_warehouse.go` and `datasource_warehouse.go` only orchestrate. On the way out, `WarehouseRequest` turns the plan's resource model into a warehouse request: exactly one storage profile (S3 or S3-compatible, ADLS or GCS), its storage credential, and the delete profile (`hard`, or `soft` with an expiration; an absent one is sent as `hard`). On the way back, `Refresh` builds the new state from the server's warehouse plus the prior (the plan in Create and Update, the state in Read). The data source reads the same server fields through `DataSourceModelFromAPI` and shares the module's schemas.
+
+Lakekeeper never returns the storage credential. `Refresh` copies it from the prior, and only when the storage profile kept its type; after an import, or when the type changed on the server, it stays null. The data source never holds one.
+
+Explorable version: [`warehouse-module.html`](warehouse-module.html) (open locally).
 
 ## Development workflow
 
@@ -148,7 +158,9 @@ _Not written yet._
 
 ### Warehouse module terms
 
-_Not written yet._
+- **Storage profile**: where a warehouse stores its data: exactly one of S3 (or an S3-compatible store), ADLS or GCS, with its location settings.
+- **Storage credential**: the secret Lakekeeper uses to access the storage profile. The provider sends it but never reads it back, so it comes only from configuration or prior state.
+- **Delete profile**: what happens when a table or view in the warehouse is dropped: `hard` deletes it at once, `soft` keeps it for an expiration period first.
 
 ### Development workflow terms
 
@@ -169,5 +181,5 @@ Each diagram, the source it shows, and the commit it was last checked against.
 | [Apply sequence](#apply-sequence) | `main.go`, `internal/provider/provider.go`, `internal/provider/resource_role.go`, `internal/provider/api/config.go`, `internal/provider/api/management.go`, `internal/provider/api/client.go`, `go.mod` | `818c1a6` |
 | [Package layers](#package-layers) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/resource_role.go`, `internal/provider/datasource_project.go`, `internal/provider/resource_warehouse.go`, `internal/provider/warehouse/warehouse.go`, `internal/provider/sdk/assignment.go`, `internal/provider/datasource_project_assignments.go`, `internal/provider/datasource_warehouse_assignments.go`, `internal/provider/api/client.go`, `internal/provider/api/management.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | `818c1a6` |
 | [Assignment module](#assignment-module) | `internal/provider/assignment_descriptor.go`, `internal/provider/assignment_resource.go`, `internal/provider/assignment_adapter.go`, `internal/provider/assignment_adapter_*.go`, `internal/provider/resource_*_assignment.go`, `internal/provider/registry.go`, `internal/provider/api/permissions.go`, `internal/provider/api/namespaces.go` | `818c1a6` |
-| [Warehouse module](#warehouse-module) | _Not drawn yet._ | |
+| [Warehouse module](#warehouse-module) | `internal/provider/warehouse/warehouse.go`, `internal/provider/warehouse/storage_profile.go`, `internal/provider/warehouse/storage_credential.go`, `internal/provider/warehouse/delete_profile.go`, `internal/provider/warehouse/schema.go`, `internal/provider/warehouse/storage_profile_schema.go`, `internal/provider/resource_warehouse.go`, `internal/provider/datasource_warehouse.go`, `internal/provider/api/warehouses.go` | `818c1a6` |
 | [Development workflow](#development-workflow) | `Makefile`, `CONTRIBUTING.md`, `tools/tools.go`, `run/docker-compose.yml`, `.github/workflows/pr.yml`, `.github/workflows/test.yml`, `.github/workflows/release-please.yml`, `.github/workflows/release.yml`, `release-please-config.json` | `818c1a6` |

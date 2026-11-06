@@ -1,0 +1,497 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Warehouse module: terraform-provider-lakekeeper",
+    "output": ".archify/dataflow-warehouse-module-20261106-130104/warehouse-module.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+    },
+    "legend": {
+      "entries": {
+        "security": {
+          "label": "storage credential (secret)"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "Terraform"
+    },
+    {
+      "label": "Warehouse module models"
+    },
+    {
+      "label": "Warehouse module conversions"
+    },
+    {
+      "label": "API client"
+    },
+    {
+      "label": "Lakekeeper server"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "plan",
+      "type": "frontend",
+      "label": "Plan",
+      "sublabel": "lakekeeper_warehouse config",
+      "stage": 0,
+      "row": 0,
+      "tag": "Create / Update",
+      "sources": [
+        {
+          "path": "internal/provider/resource_warehouse.go",
+          "line": 61,
+          "end_line": 83
+        },
+        {
+          "path": "internal/provider/resource_warehouse.go",
+          "line": 212,
+          "end_line": 254
+        }
+      ]
+    },
+    {
+      "id": "prior",
+      "type": "frontend",
+      "label": "Prior state",
+      "sublabel": "plan, or state in Read",
+      "stage": 0,
+      "row": 2,
+      "tag": "prior",
+      "sources": [
+        {
+          "path": "internal/provider/resource_warehouse.go",
+          "line": 166,
+          "end_line": 188
+        },
+        {
+          "path": "internal/provider/resource_warehouse.go",
+          "line": 154,
+          "end_line": 156
+        }
+      ]
+    },
+    {
+      "id": "state",
+      "type": "frontend",
+      "label": "Resource state",
+      "sublabel": "written after Refresh",
+      "stage": 0,
+      "row": 3,
+      "tag": "state",
+      "sources": [
+        {
+          "path": "internal/provider/resource_warehouse.go",
+          "line": 156,
+          "end_line": 162
+        },
+        {
+          "path": "internal/provider/resource_warehouse.go",
+          "line": 184,
+          "end_line": 208
+        }
+      ]
+    },
+    {
+      "id": "dsstate",
+      "type": "frontend",
+      "label": "Data source state",
+      "sublabel": "lakekeeper_warehouse",
+      "stage": 0,
+      "row": 4,
+      "tag": "data source",
+      "sources": [
+        {
+          "path": "internal/provider/datasource_warehouse.go",
+          "line": 55,
+          "end_line": 89
+        }
+      ]
+    },
+    {
+      "id": "model",
+      "type": "backend",
+      "label": "Resource model",
+      "sublabel": "ResourceModel",
+      "stage": 1,
+      "row": 0,
+      "tag": "Terraform model",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 24,
+          "end_line": 35
+        }
+      ]
+    },
+    {
+      "id": "schemas",
+      "type": "backend",
+      "label": "Schemas",
+      "sublabel": "resource + data source",
+      "stage": 1,
+      "row": 1,
+      "tag": "shared",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/schema.go",
+          "line": 14,
+          "end_line": 15
+        },
+        {
+          "path": "internal/provider/warehouse/schema.go",
+          "line": 80,
+          "end_line": 81
+        },
+        {
+          "path": "internal/provider/warehouse/storage_profile_schema.go",
+          "line": 21,
+          "end_line": 26
+        }
+      ]
+    },
+    {
+      "id": "cred",
+      "type": "security",
+      "label": "Storage credential",
+      "sublabel": "never from the server",
+      "stage": 1,
+      "row": 2,
+      "tag": "config / prior",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 89,
+          "end_line": 120
+        },
+        {
+          "path": "internal/provider/warehouse/storage_profile.go",
+          "line": 197,
+          "end_line": 203
+        },
+        {
+          "path": "internal/provider/warehouse/storage_credential.go",
+          "line": 12,
+          "end_line": 16
+        }
+      ]
+    },
+    {
+      "id": "refresh",
+      "type": "backend",
+      "label": "Refresh",
+      "sublabel": "prior + server's warehouse",
+      "stage": 1,
+      "row": 3,
+      "tag": "read back",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 89,
+          "end_line": 133
+        }
+      ]
+    },
+    {
+      "id": "dsmodel",
+      "type": "backend",
+      "label": "Data source model",
+      "sublabel": "DataSourceModelFromAPI",
+      "stage": 1,
+      "row": 4,
+      "tag": "no credential",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 135,
+          "end_line": 154
+        },
+        {
+          "path": "internal/provider/warehouse/storage_profile.go",
+          "line": 21,
+          "end_line": 27
+        }
+      ]
+    },
+    {
+      "id": "request",
+      "type": "backend",
+      "label": "WarehouseRequest",
+      "sublabel": "model to warehouse request",
+      "stage": 2,
+      "row": 0,
+      "tag": "write",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 50,
+          "end_line": 87
+        }
+      ]
+    },
+    {
+      "id": "sp",
+      "type": "backend",
+      "label": "Storage profile",
+      "sublabel": "one of S3, ADLS or GCS",
+      "stage": 2,
+      "row": 1,
+      "tag": "exactly one",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/storage_profile.go",
+          "line": 12,
+          "end_line": 19
+        },
+        {
+          "path": "internal/provider/warehouse/storage_profile.go",
+          "line": 373,
+          "end_line": 439
+        }
+      ]
+    },
+    {
+      "id": "dp",
+      "type": "backend",
+      "label": "Delete profile",
+      "sublabel": "hard, or soft + expiration",
+      "stage": 2,
+      "row": 2,
+      "tag": "default hard",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 194,
+          "end_line": 230
+        },
+        {
+          "path": "internal/provider/warehouse/delete_profile.go",
+          "line": 25,
+          "end_line": 28
+        }
+      ]
+    },
+    {
+      "id": "read",
+      "type": "backend",
+      "label": "Read warehouse",
+      "sublabel": "readServerWarehouse",
+      "stage": 2,
+      "row": 3,
+      "tag": "read",
+      "sources": [
+        {
+          "path": "internal/provider/warehouse/warehouse.go",
+          "line": 156,
+          "end_line": 192
+        }
+      ]
+    },
+    {
+      "id": "apireq",
+      "type": "backend",
+      "label": "Warehouse request",
+      "sublabel": "CreateWarehouseRequest",
+      "stage": 3,
+      "row": 0,
+      "tag": "api",
+      "sources": [
+        {
+          "path": "internal/provider/api/warehouses.go",
+          "line": 25,
+          "end_line": 58
+        }
+      ]
+    },
+    {
+      "id": "apiwh",
+      "type": "backend",
+      "label": "Server's warehouse",
+      "sublabel": "api.Warehouse",
+      "stage": 3,
+      "row": 3,
+      "tag": "no credential",
+      "sources": [
+        {
+          "path": "internal/provider/api/warehouses.go",
+          "line": 9,
+          "end_line": 20
+        },
+        {
+          "path": "internal/provider/api/warehouses.go",
+          "line": 60,
+          "end_line": 83
+        }
+      ]
+    },
+    {
+      "id": "server",
+      "type": "external",
+      "label": "Lakekeeper",
+      "sublabel": "management REST API",
+      "stage": 4,
+      "row": 1,
+      "tag": "warehouse",
+      "sources": [
+        {
+          "path": "internal/provider/api/warehouses.go",
+          "line": 53,
+          "end_line": 57
+        },
+        {
+          "path": "internal/provider/api/warehouses.go",
+          "line": 61,
+          "end_line": 65
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "plan-model",
+      "from": "plan",
+      "to": "model",
+      "label": "plan",
+      "variant": "emphasis"
+    },
+    {
+      "id": "schemas-model",
+      "from": "schemas",
+      "to": "model",
+      "label": "shapes"
+    },
+    {
+      "id": "model-request",
+      "from": "model",
+      "to": "request",
+      "label": "Terraform model",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sp-request",
+      "from": "sp",
+      "to": "request",
+      "label": "storage profile"
+    },
+    {
+      "id": "cred-request",
+      "from": "cred",
+      "to": "request",
+      "label": "plan's credential",
+      "variant": "security"
+    },
+    {
+      "id": "dp-request",
+      "from": "dp",
+      "to": "request",
+      "label": "delete profile"
+    },
+    {
+      "id": "request-apireq",
+      "from": "request",
+      "to": "apireq",
+      "label": "request",
+      "variant": "emphasis"
+    },
+    {
+      "id": "apireq-server",
+      "from": "apireq",
+      "to": "server",
+      "label": "create / update",
+      "variant": "emphasis"
+    },
+    {
+      "id": "server-apiwh",
+      "from": "server",
+      "to": "apiwh",
+      "label": "GetWarehouse",
+      "variant": "emphasis"
+    },
+    {
+      "id": "apiwh-read",
+      "from": "apiwh",
+      "to": "read",
+      "label": "no credential",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-refresh",
+      "from": "read",
+      "to": "refresh",
+      "label": "server fields",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-dsmodel",
+      "from": "read",
+      "to": "dsmodel",
+      "label": "server fields"
+    },
+    {
+      "id": "prior-cred",
+      "from": "prior",
+      "to": "cred",
+      "label": "credential",
+      "variant": "security"
+    },
+    {
+      "id": "cred-refresh",
+      "from": "cred",
+      "to": "refresh",
+      "label": "same kind only",
+      "variant": "security"
+    },
+    {
+      "id": "refresh-state",
+      "from": "refresh",
+      "to": "state",
+      "label": "new state",
+      "variant": "emphasis"
+    },
+    {
+      "id": "dsmodel-dsstate",
+      "from": "dsmodel",
+      "to": "dsstate",
+      "label": "data source"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Write and read back",
+      "items": [
+        "Create and Update call WarehouseRequest on the plan; the API client sends the warehouse request to Lakekeeper",
+        "Create, Read and Update then call Refresh with the prior (plan, or state in Read) and the server's warehouse",
+        "readServerWarehouse converts the storage profile and delete profile from the server for both Refresh and the data source"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Storage credential",
+      "items": [
+        "Lakekeeper never returns the storage credential; api.Warehouse has no field for it",
+        "WarehouseRequest takes it from the configuration; Refresh copies it from the prior",
+        "If the storage profile's type changed on the server, or the prior has no storage profile (after import), it stays null",
+        "The data source never holds a storage credential"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Storage profile and delete profile",
+      "items": [
+        "Exactly one of S3 (or S3-compatible), ADLS or GCS is set; anything else is an error",
+        "The delete profile is hard, or soft with expiration_seconds; an absent one is sent as hard",
+        "The resource and the data source share this module's schemas and conversions; the data-source schema has no credential"
+      ]
+    }
+  ]
+}
