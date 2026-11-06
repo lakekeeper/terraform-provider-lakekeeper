@@ -892,8 +892,8 @@ svg[data-class-ui]:has([data-legend-semantic-kind="aggregation"]:is(:hover, :foc
           </g>
         </g>
 
-        <g id="node-namespace" data-node-id="namespace" data-node-label="Namespace" tabindex="0" role="button" aria-label="Focus Namespace, Groups tables in a warehouse, Class" aria-pressed="false" data-node-kind="class" data-node-sublabel="Groups tables in a warehouse" data-node-context="Class" data-class-kind="class" class="cl-hue-backend">
-          <title>Namespace · Groups tables in a warehouse · Class</title>
+        <g id="node-namespace" data-node-id="namespace" data-node-label="Namespace" tabindex="0" role="button" aria-label="Focus Namespace, Holds tables in a warehouse, Class" aria-pressed="false" data-node-kind="class" data-node-sublabel="Holds tables in a warehouse" data-node-context="Class" data-class-kind="class" class="cl-hue-backend">
+          <title>Namespace · Holds tables in a warehouse · Class</title>
           <rect x="1052" y="208" width="180" height="84" rx="8" class="c-mask"/>
           <rect x="1052" y="208" width="180" height="84" rx="8" class="c-backend cl-type" data-animate="node" style="--step: 6; --flow-node-name: archify-relay-node-10;" stroke-width="1.2"/>
           <path class="cl-header c-backend" stroke="none" d="M 1060 208 H 1224 A 8 8 0 0 1 1232 216 V 242 H 1052 V 216 A 8 8 0 0 1 1060 208 Z"/>

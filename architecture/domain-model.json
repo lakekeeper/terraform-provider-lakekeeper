@@ -3,7 +3,7 @@
   "diagram_type": "class",
   "meta": {
     "title": "Domain model: what the provider manages",
-    "output": ".archify/class-domain-model-20261106-125819/domain-model.html",
+    "output": ".archify/class-domain-model-20261106-131445/domain-model.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
@@ -193,7 +193,7 @@
       "id": "namespace",
       "label": "Namespace",
       "kind": "class",
-      "sublabel": "Groups tables in a warehouse",
+      "sublabel": "Holds tables in a warehouse",
       "row": 1,
       "col": 3,
       "attributes": [
