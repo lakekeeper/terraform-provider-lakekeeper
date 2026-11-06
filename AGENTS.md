@@ -27,6 +27,7 @@ The `Makefile` has the full target list.
 
 - Before adding a resource or data source: [`contributing/add-resource.md`](contributing/add-resource.md)
 - Before adding a missing API endpoint to the API client layer: [`contributing/add-api-method.md`](contributing/add-api-method.md)
+- Before writing or running tests: [`contributing/testing.md`](contributing/testing.md)
 
 ## Architecture
 
