@@ -1,4 +1,4 @@
-package sdk
+package warehouse
 
 import (
 	"context"
@@ -34,9 +34,29 @@ func (d DeleteProfileModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-func DeleteProfileResourceSchema() rschema.SingleNestedAttribute {
+// The delete_profile block is described once, here; the resource schema adds
+// its default to each description.
+var (
+	deleteProfileDescription           = "The delete profile for the warehouse. It can be either a soft or hard delete profile."
+	deleteProfileTypeDescription       = fmt.Sprintf("Type of the delete profile. Can be `%s` or `%s`", api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft)
+	deleteProfileExpirationDescription = fmt.Sprintf("When the types is `%s`. Entity will be deleted after `expiration_seconds`. Default is `3600`", api.DeleteProfileTypeSoft)
+	deleteProfileTypeValidators        = []validator.String{
+		stringvalidator.OneOf(api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft),
+	}
+)
+
+// Equal reports whether two delete profiles have the same type and
+// expiration. Either may be nil; nil equals only nil.
+func (d *DeleteProfileModel) Equal(o *DeleteProfileModel) bool {
+	if d == nil || o == nil {
+		return d == o
+	}
+	return d.Type.Equal(o.Type) && d.ExpirationSeconds.Equal(o.ExpirationSeconds)
+}
+
+func deleteProfileResourceSchema() rschema.SingleNestedAttribute {
 	return rschema.SingleNestedAttribute{
-		MarkdownDescription: "The delete profile for the warehouse. It can be either a soft or hard delete profile. Default: `hard`",
+		MarkdownDescription: deleteProfileDescription + " Default: `" + api.DeleteProfileTypeHard + "`",
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers: []planmodifier.Object{
@@ -44,20 +64,18 @@ func DeleteProfileResourceSchema() rschema.SingleNestedAttribute {
 		},
 		Attributes: map[string]rschema.Attribute{
 			"type": rschema.StringAttribute{
-				Optional: true,
-				Computed: true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft),
-				},
-				Default:             stringdefault.StaticString("hard"),
-				MarkdownDescription: fmt.Sprintf("Type of the delete profile. Can be `%s` or `%s`. Default: `%s`", api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft, api.DeleteProfileTypeHard),
+				Optional:            true,
+				Computed:            true,
+				Validators:          deleteProfileTypeValidators,
+				Default:             stringdefault.StaticString(api.DeleteProfileTypeHard),
+				MarkdownDescription: deleteProfileTypeDescription + ". Default: `" + api.DeleteProfileTypeHard + "`",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"expiration_seconds": rschema.Int32Attribute{
 				Optional:            true,
-				MarkdownDescription: "When the types is `soft`. Entity will be deleted after `expiration_seconds`. Default is `3600`",
+				MarkdownDescription: deleteProfileExpirationDescription,
 				PlanModifiers: []planmodifier.Int32{
 					int32planmodifier.UseStateForUnknown(),
 				},
@@ -67,21 +85,19 @@ func DeleteProfileResourceSchema() rschema.SingleNestedAttribute {
 	}
 }
 
-func DeleteProfileDatasourceSchema() dschema.SingleNestedAttribute {
+func deleteProfileDataSourceSchema() dschema.SingleNestedAttribute {
 	return dschema.SingleNestedAttribute{
-		MarkdownDescription: "The delete profile for the warehouse. It can be either a soft or hard delete profile.",
+		MarkdownDescription: deleteProfileDescription,
 		Computed:            true,
 		Attributes: map[string]dschema.Attribute{
 			"type": dschema.StringAttribute{
-				Computed: true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft),
-				},
-				MarkdownDescription: fmt.Sprintf("Type of the delete profile. Can be `%s` or `%s`", api.DeleteProfileTypeHard, api.DeleteProfileTypeSoft),
+				Computed:            true,
+				Validators:          deleteProfileTypeValidators,
+				MarkdownDescription: deleteProfileTypeDescription,
 			},
 			"expiration_seconds": dschema.Int32Attribute{
 				Computed:            true,
-				MarkdownDescription: fmt.Sprintf("When the types is `%s`. Entity will be deleted after `expiration_seconds`. Default is `3600`", api.DeleteProfileTypeSoft),
+				MarkdownDescription: deleteProfileExpirationDescription,
 			},
 		},
 		Validators: []validator.Object{deleteProfileValidator{}},

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 )
@@ -600,6 +601,71 @@ func TestAccLakekeeperWarehouse_NoCreds(t *testing.T) {
 				}
 				`, rName, project.ID),
 				ExpectError: regexp.MustCompile("Incorrect Warehouse creation request"),
+			},
+		},
+	})
+}
+
+// Removing a soft delete_profile from the configuration while updating the
+// warehouse must apply cleanly (VAK-813): no panic and an empty next plan.
+// delete_profile is Optional+Computed without an object default, so the
+// absent block keeps the delete profile from state.
+func TestAccLakekeeperWarehouse_DeleteProfileRemoved(t *testing.T) {
+	rName := acctest.RandString(8)
+
+	project := testutil.CreateProject(t)
+
+	config := func(managedAccess bool, deleteProfile string) string {
+		return fmt.Sprintf(`
+		resource "lakekeeper_warehouse" "dp" {
+			name = "%s"
+			project_id = "%s"
+			managed_access = %t
+			storage_profile = {
+				s3 = {
+					bucket = "testacc"
+					endpoint = "http://minio:9000/"
+					region = "eu-west-1"
+					sts_enabled = false
+					credential = {
+						access_key = {
+							access_key_id = "minio-root-user"
+							secret_access_key = "minio-root-password"
+						}
+					}
+				}
+			}
+			%s
+		}
+		`, rName, project.ID, managedAccess, deleteProfile)
+	}
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config(false, `delete_profile = {
+					type = "soft"
+					expiration_seconds = 600
+				}`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.dp", "delete_profile.type", "soft"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.dp", "delete_profile.expiration_seconds", "600"),
+				),
+			},
+			{
+				Config: config(true, ""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("lakekeeper_warehouse.dp", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.dp", "managed_access", "true"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.dp", "delete_profile.type", "soft"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.dp", "delete_profile.expiration_seconds", "600"),
+				),
 			},
 		},
 	})
