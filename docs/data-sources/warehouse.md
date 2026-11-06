@@ -96,7 +96,7 @@ Read-Only:
 - `path_style_access` (Boolean) Path style access for S3 requests. If the underlying S3 supports both, we recommend to not set path_style_access.
 - `push_s3_delete_disabled` (Boolean) Controls whether the `s3.delete-enabled=false` flag is sent to clients.
 - `region` (String) Region to use for S3 requests.
-- `remote_signing_url_style` (String) S3 URL style detection mode for remote signing. One of `auto`, `path-style`, `virtual-host`. Default: `auto`.
+- `remote_signing_url_style` (String) S3 URL style detection mode for remote signing. One of `auto`, `path`, `virtual_host`. Default: `auto`.
 - `sts_enabled` (Boolean) Whether to enable STS for S3 storage profile. Required if the storage type is `s3`. If enabled, the `sts_role_arn` or `assume_role_arn` must be provided.
 - `sts_role_arn` (String)
 - `sts_token_validity_seconds` (Number) The validity of the STS tokens in seconds. Default is `3600`.
