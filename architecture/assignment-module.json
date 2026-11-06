@@ -1,0 +1,577 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Assignment module: descriptor, reconcile and scope adapters",
+    "output": ".archify/architecture-assignment-module-20261106-125851/assignment-module.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+    }
+  },
+  "components": [
+    {
+      "id": "resources",
+      "type": "frontend",
+      "label": "Assignment resources",
+      "sublabel": "resource_*_assignment.go",
+      "tag": "9 resources",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/resource_project_role_assignment.go",
+          "line": 7,
+          "end_line": 20,
+          "label": "project role assignment"
+        },
+        {
+          "path": "internal/provider/resource_namespace_role_assignment.go",
+          "line": 3,
+          "end_line": 21,
+          "label": "namespace role assignment"
+        },
+        {
+          "path": "internal/provider/registry.go",
+          "line": 21,
+          "end_line": 24,
+          "label": "registerResource"
+        }
+      ]
+    },
+    {
+      "id": "descriptor",
+      "type": "backend",
+      "label": "Assignment descriptor",
+      "sublabel": "identity attributes",
+      "tag": "grant types + NewAdapter",
+      "pos": [
+        40,
+        170
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_descriptor.go",
+          "line": 12,
+          "end_line": 35,
+          "label": "assignmentDescriptor"
+        },
+        {
+          "path": "internal/provider/assignment_descriptor.go",
+          "line": 54,
+          "end_line": 101,
+          "label": "identity, ID format and parsing"
+        }
+      ]
+    },
+    {
+      "id": "factory",
+      "type": "backend",
+      "label": "Assignment resource factory",
+      "sublabel": "newAssignmentResource",
+      "tag": "schema, ID, import, lifecycle",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 28,
+          "end_line": 83,
+          "label": "factory and derived schema"
+        },
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 108,
+          "end_line": 188,
+          "label": "Configure and lifecycle"
+        },
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 190,
+          "end_line": 213,
+          "label": "ImportState"
+        }
+      ]
+    },
+    {
+      "id": "read",
+      "type": "backend",
+      "label": "Read direct grants",
+      "sublabel": "all assignees at the scope",
+      "pos": [
+        310,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 242,
+          "end_line": 248,
+          "label": "ListGrants at the scope"
+        },
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 259,
+          "end_line": 267,
+          "label": "reconcile reads first"
+        }
+      ]
+    },
+    {
+      "id": "filter",
+      "type": "backend",
+      "label": "Keep this assignee's",
+      "sublabel": "same kind and ID",
+      "pos": [
+        510,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 249,
+          "end_line": 257,
+          "label": "filter by assignee"
+        }
+      ]
+    },
+    {
+      "id": "compare",
+      "type": "backend",
+      "label": "Compare with config",
+      "sublabel": "revokes and grants",
+      "pos": [
+        710,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 269,
+          "end_line": 283,
+          "label": "difference to desired set"
+        }
+      ]
+    },
+    {
+      "id": "write",
+      "type": "backend",
+      "label": "Write the difference",
+      "sublabel": "ApplyGrants, one request",
+      "tag": "atomic",
+      "pos": [
+        960,
+        300
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_resource.go",
+          "line": 284,
+          "end_line": 288,
+          "label": "skip when equal, else apply"
+        },
+        {
+          "path": "internal/provider/assignment_adapter.go",
+          "line": 28,
+          "end_line": 30,
+          "label": "one atomic request"
+        }
+      ]
+    },
+    {
+      "id": "adapter",
+      "type": "backend",
+      "label": "Scope adapter",
+      "sublabel": "ListGrants / ApplyGrants",
+      "tag": "scopeAdapter interface",
+      "pos": [
+        40,
+        480
+      ],
+      "size": [
+        1090,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_adapter.go",
+          "line": 10,
+          "end_line": 31,
+          "label": "scopeAdapter seam"
+        },
+        {
+          "path": "internal/provider/assignment_adapter.go",
+          "line": 33,
+          "end_line": 68,
+          "label": "grant conversions"
+        }
+      ]
+    },
+    {
+      "id": "server",
+      "type": "backend",
+      "label": "Server adapter",
+      "sublabel": "Get/UpdateServerAssignments",
+      "pos": [
+        40,
+        640
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_adapter_server.go",
+          "line": 1,
+          "end_line": 28,
+          "label": "serverScopeAdapter"
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "type": "backend",
+      "label": "Project adapter",
+      "sublabel": "Get/UpdateProjectAssignments",
+      "pos": [
+        265,
+        640
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_adapter_project.go",
+          "line": 1,
+          "end_line": 28,
+          "label": "projectScopeAdapter"
+        }
+      ]
+    },
+    {
+      "id": "warehouse",
+      "type": "backend",
+      "label": "Warehouse adapter",
+      "sublabel": "Get/UpdateWarehouseAssignments",
+      "pos": [
+        490,
+        640
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_adapter_warehouse.go",
+          "line": 1,
+          "end_line": 28,
+          "label": "warehouseScopeAdapter"
+        }
+      ]
+    },
+    {
+      "id": "role",
+      "type": "backend",
+      "label": "Role adapter",
+      "sublabel": "Get/UpdateRoleAssignments",
+      "pos": [
+        715,
+        640
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_adapter_role.go",
+          "line": 1,
+          "end_line": 27,
+          "label": "roleScopeAdapter"
+        }
+      ]
+    },
+    {
+      "id": "namespace",
+      "type": "backend",
+      "label": "Namespace adapter",
+      "sublabel": "Get/UpdateNamespaceAssignments",
+      "pos": [
+        940,
+        640
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/assignment_adapter_namespace.go",
+          "line": 1,
+          "end_line": 31,
+          "label": "namespaceScopeAdapter"
+        }
+      ]
+    },
+    {
+      "id": "apiclient",
+      "type": "backend",
+      "label": "API client layer",
+      "sublabel": "*api.Client assignment methods",
+      "pos": [
+        40,
+        790
+      ],
+      "size": [
+        1090,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/permissions.go",
+          "line": 81,
+          "end_line": 100,
+          "label": "server assignments"
+        },
+        {
+          "path": "internal/provider/api/permissions.go",
+          "line": 108,
+          "end_line": 126,
+          "label": "project assignments"
+        },
+        {
+          "path": "internal/provider/api/namespaces.go",
+          "line": 53,
+          "end_line": 92,
+          "label": "namespace assignments"
+        }
+      ]
+    },
+    {
+      "id": "lakekeeper",
+      "type": "cloud",
+      "label": "Lakekeeper server",
+      "sublabel": "permissions API",
+      "pos": [
+        490,
+        930
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/provider/api/permissions.go",
+          "line": 88,
+          "end_line": 99,
+          "label": "SDK permission calls"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Reconcile: this assignee's direct grants at this scope only",
+      "wraps": [
+        "read",
+        "filter",
+        "compare",
+        "write"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Calls *api.Client",
+      "wraps": [
+        "server",
+        "project",
+        "warehouse",
+        "role",
+        "namespace"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "resources-to-descriptor",
+      "from": "resources",
+      "to": "descriptor",
+      "label": "declare",
+      "variant": "emphasis"
+    },
+    {
+      "id": "descriptor-to-factory",
+      "from": "descriptor",
+      "to": "factory",
+      "label": "derives",
+      "variant": "emphasis"
+    },
+    {
+      "id": "factory-to-read",
+      "from": "factory",
+      "to": "read",
+      "label": "apply",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-to-filter",
+      "from": "read",
+      "to": "filter",
+      "variant": "emphasis"
+    },
+    {
+      "id": "filter-to-compare",
+      "from": "filter",
+      "to": "compare",
+      "variant": "emphasis"
+    },
+    {
+      "id": "compare-to-write",
+      "from": "compare",
+      "to": "write",
+      "label": "if different",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-to-adapter",
+      "from": "read",
+      "to": "adapter",
+      "label": "ListGrants"
+    },
+    {
+      "id": "write-to-adapter",
+      "from": "write",
+      "to": "adapter",
+      "label": "ApplyGrants"
+    },
+    {
+      "id": "adapter-to-server",
+      "from": "adapter",
+      "to": "server"
+    },
+    {
+      "id": "adapter-to-project",
+      "from": "adapter",
+      "to": "project"
+    },
+    {
+      "id": "adapter-to-warehouse",
+      "from": "adapter",
+      "to": "warehouse"
+    },
+    {
+      "id": "adapter-to-role",
+      "from": "adapter",
+      "to": "role"
+    },
+    {
+      "id": "adapter-to-namespace",
+      "from": "adapter",
+      "to": "namespace"
+    },
+    {
+      "id": "server-to-api",
+      "from": "server",
+      "to": "apiclient"
+    },
+    {
+      "id": "project-to-api",
+      "from": "project",
+      "to": "apiclient"
+    },
+    {
+      "id": "warehouse-to-api",
+      "from": "warehouse",
+      "to": "apiclient"
+    },
+    {
+      "id": "role-to-api",
+      "from": "role",
+      "to": "apiclient"
+    },
+    {
+      "id": "namespace-to-api",
+      "from": "namespace",
+      "to": "apiclient"
+    },
+    {
+      "id": "api-to-lakekeeper",
+      "from": "apiclient",
+      "to": "lakekeeper",
+      "label": "list / update assignments"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One descriptor per resource",
+      "items": [
+        "A resource file declares an assignment descriptor and registers newAssignmentResource(descriptor) in init()",
+        "The descriptor names the identity attributes, the allowed grant types and the scope adapter (NewAdapter)",
+        "The factory derives the schema, the internal ID and import format, and Create, Read, Update, Delete"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Reconcile",
+      "items": [
+        "Update reconciles to the configured grant types; Delete reconciles to the empty set",
+        "Create first fails if the assignee already holds a direct grant at the scope (import it instead), then writes the difference",
+        "Read stores the assignee's current direct grants, so changes made outside Terraform show up as drift",
+        "Grants that other assignees hold at the scope are never revoked; a failed read never leads to a write"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Extending the module",
+      "items": [
+        "Scope adapters are the only assignment code that calls *api.Client",
+        "New grant type: add it to the descriptor's grant types",
+        "New kind of scope: add a scope adapter (assignment_adapter_<scope>.go) and the *api.Client methods it calls",
+        "New assignee at an existing scope: add a resource file with a new descriptor"
+      ]
+    }
+  ]
+}

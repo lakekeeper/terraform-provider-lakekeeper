@@ -77,7 +77,17 @@ Explorable version: [`package-layers.html`](package-layers.html) (open locally).
 
 ## Assignment module
 
-_Not drawn yet._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assignment-module-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assignment-module-light.svg">
+  <img alt="Assignment module: an assignment descriptor feeds the assignment resource factory, which reconciles the assignee's direct grants through one scope adapter per kind of scope" src="assignment-module-light.svg">
+</picture>
+
+Each of the nine assignment resources is one file that declares an assignment descriptor and registers `newAssignmentResource(descriptor)`. The shared assignment resource (`assignment_resource.go`) derives the schema, internal ID, import and lifecycle from it. A new grant type goes into a descriptor's grant types; a new kind of scope needs a new scope adapter (`assignment_adapter_<scope>.go`) plus the `*api.Client` methods it calls. Scope adapters are the only assignment code that calls the API client layer.
+
+Every create, update and delete reconciles against the server. It reads all direct grants at the scope, keeps only the assignee's own, compares their grant types with the configuration, and sends the revokes and grants as one atomic request, or nothing when they match. Grants that other assignees hold at the scope are never touched, and a failed read never leads to a write. Create also fails if the assignee already holds a direct grant at the scope; import it first.
+
+Explorable version: [`assignment-module.html`](assignment-module.html) (open locally).
 
 ## Warehouse module
 
@@ -131,7 +141,10 @@ _Not written yet._
 
 ### Assignment module terms
 
-_Not written yet._
+- **Direct grant**: a grant that Lakekeeper stores for an assignee at a scope, as opposed to one the assignee inherits from a role or a parent scope. Assignment resources read and write only direct grants.
+- **Assignment descriptor**: the `assignmentDescriptor` value that declares one assignment resource: its identity attributes, allowed grant types and scope adapter.
+- **Assignment resource factory**: `newAssignmentResource`, which turns an assignment descriptor into a complete Terraform resource.
+- **Scope adapter**: the `scopeAdapter` for one kind of scope. It lists the direct grants at a scope and applies revokes and grants in one request through the API client layer.
 
 ### Warehouse module terms
 
@@ -155,6 +168,6 @@ Each diagram, the source it shows, and the commit it was last checked against.
 | [Domain model](#domain-model) | _Not drawn yet._ | |
 | [Apply sequence](#apply-sequence) | `main.go`, `internal/provider/provider.go`, `internal/provider/resource_role.go`, `internal/provider/api/config.go`, `internal/provider/api/management.go`, `internal/provider/api/client.go`, `go.mod` | `818c1a6` |
 | [Package layers](#package-layers) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/resource_role.go`, `internal/provider/datasource_project.go`, `internal/provider/resource_warehouse.go`, `internal/provider/warehouse/warehouse.go`, `internal/provider/sdk/assignment.go`, `internal/provider/datasource_project_assignments.go`, `internal/provider/datasource_warehouse_assignments.go`, `internal/provider/api/client.go`, `internal/provider/api/management.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | `818c1a6` |
-| [Assignment module](#assignment-module) | _Not drawn yet._ | |
+| [Assignment module](#assignment-module) | `internal/provider/assignment_descriptor.go`, `internal/provider/assignment_resource.go`, `internal/provider/assignment_adapter.go`, `internal/provider/assignment_adapter_*.go`, `internal/provider/resource_*_assignment.go`, `internal/provider/registry.go`, `internal/provider/api/permissions.go`, `internal/provider/api/namespaces.go` | `818c1a6` |
 | [Warehouse module](#warehouse-module) | _Not drawn yet._ | |
 | [Development workflow](#development-workflow) | `Makefile`, `CONTRIBUTING.md`, `tools/tools.go`, `run/docker-compose.yml`, `.github/workflows/pr.yml`, `.github/workflows/test.yml`, `.github/workflows/release-please.yml`, `.github/workflows/release.yml`, `release-please-config.json` | `818c1a6` |
