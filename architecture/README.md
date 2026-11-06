@@ -107,9 +107,9 @@ Explorable version: [`assignment-module.html`](assignment-module.html) (open loc
   <img alt="Warehouse module: the plan becomes a warehouse request for Lakekeeper, and Refresh combines the prior state with the server's warehouse into the new state" src="warehouse-module-light.svg">
 </picture>
 
-The warehouse module (`internal/provider/warehouse`) owns the warehouse's schemas, models and conversions; `resource_warehouse.go` and `datasource_warehouse.go` only orchestrate. On the way out, `WarehouseRequest` turns the plan's resource model into a warehouse request: exactly one storage profile (S3 or S3-compatible, ADLS or GCS), its storage credential, and the delete profile (`hard`, or `soft` with an expiration; an absent one is sent as `hard`). On the way back, `Refresh` builds the new state from the server's warehouse plus the prior (the plan in Create and Update, the state in Read). The data source reads the same server fields through `DataSourceModelFromAPI` and shares the module's schemas.
+The warehouse module (`internal/provider/warehouse`) owns the warehouse's schemas, models and conversions; `resource_warehouse.go` and `datasource_warehouse.go` only orchestrate. On the way out, `WarehouseRequest` turns the plan's resource model into a warehouse request: exactly one storage profile (S3 or S3-compatible, ADLS or GCS), its storage credential, and the delete profile (`hard`, or `soft` with an expiration; an absent one is sent as `hard`). On the way back, `Refresh` builds the new state from the server's warehouse plus the prior state. The data source reads the same server fields through `DataSourceModelFromAPI` and shares the module's schemas.
 
-Lakekeeper never returns the storage credential. `Refresh` copies it from the prior, and only when the storage profile kept its type; after an import, or when the type changed on the server, it stays null. The data source never holds one.
+Lakekeeper never returns the storage credential. `Refresh` copies it from the prior state, and only when the storage profile kept its type; after an import, or when the type changed on the server, it stays null. The data source never holds one.
 
 Explorable version: [`warehouse-module.html`](warehouse-module.html) (open locally).
 
@@ -129,12 +129,13 @@ Explorable version: [`development-workflow.html`](development-workflow.html) (op
 
 ## Terms
 
-The diagrams use these terms exactly. Each group lists the terms a diagram introduces; a term is defined only where it first appears.
+The diagrams use these terms exactly. Each subsection lists the terms a diagram introduces; a term is defined only where it first appears.
 
 ### System context terms
 
 - **Server**: one Lakekeeper installation, reached through its REST API at the provider's `endpoint`.
 - **Provider**: this Terraform provider. Terraform runs it as a plugin process.
+- **Provider configuration**: the `provider "lakekeeper"` block (`endpoint`, `auth_url`, `client_id`, `client_secret`, `scopes`, `cacert_file`, `insecure`, `initial_bootstrap`), or the `LAKEKEEPER_*` environment variables for unset values. `Configure` reads it once per run.
 - **API client layer**: the `internal/provider/api` package. It wraps the Lakekeeper Go SDK and gives resources and data sources SDK-neutral types.
 - **Lakekeeper Go SDK**: the Go client library for the Lakekeeper REST API ([`go-lakekeeper`](https://github.com/baptistegh/go-lakekeeper)).
 - **OIDC identity provider**: the OpenID Connect server that issues the provider's access tokens, for example Keycloak. The provider authenticates with the OAuth 2.0 client credentials grant at `auth_url`.
@@ -144,7 +145,7 @@ The diagrams use these terms exactly. Each group lists the terms a diagram intro
 - **Project**: a container on the server for warehouses and roles (`lakekeeper_project`).
 - **Default project**: the server's default project, an ordinary project that the provider reads by passing the nil UUID as the project ID (`lakekeeper_default_project`).
 - **Warehouse**: an Iceberg storage location in a project, with its own storage configuration (`lakekeeper_warehouse`).
-- **Namespace**: a group of tables inside a warehouse (`lakekeeper_namespace`).
+- **Namespace**: a container for tables and views inside a warehouse (`lakekeeper_namespace`).
 - **User**: a human or application identity known to the server (`lakekeeper_user`). A user belongs to the server, never to a project.
 - **Role**: a named identity that belongs to one project (`lakekeeper_role`). A role is both an assignee, which holds grants, and a scope, which users and other roles are assigned to.
 - **Scope**: the server or the project, warehouse, role or namespace that a grant is attached to.
@@ -155,7 +156,6 @@ The diagrams use these terms exactly. Each group lists the terms a diagram intro
 
 ### Apply sequence terms
 
-- **Provider configuration**: the `provider "lakekeeper"` block (`endpoint`, `auth_url`, `client_id`, `client_secret`, `scopes`, `cacert_file`, `insecure`, `initial_bootstrap`), or the `LAKEKEEPER_*` environment variables for unset values. `Configure` reads it once per run.
 - **Resource**: a Terraform resource type such as `lakekeeper_role`. Its `Create`, `Read`, `Update` and `Delete` each call the API client layer.
 - **Terraform state**: Terraform's record of each resource's attributes. A resource writes the server's values into it after every create, read and update.
 - **Access token**: the bearer token the SDK sends with each request to the server. The identity provider issues it for the client credentials grant; the SDK reuses it until it expires.
@@ -171,7 +171,7 @@ The diagrams use these terms exactly. Each group lists the terms a diagram intro
 
 ### Assignment module terms
 
-- **Direct grant**: a grant that Lakekeeper stores for an assignee at a scope, as opposed to one the assignee inherits from a role or a parent scope. Assignment resources read and write only direct grants.
+- **Direct grant**: a grant an assignee holds directly at a scope, as opposed to one it inherits through a role or from a parent scope. Assignment resources read and write only direct grants.
 - **Assignment descriptor**: the `assignmentDescriptor` value that declares one assignment resource: its identity attributes, allowed grant types and scope adapter.
 - **Assignment resource factory**: `newAssignmentResource`, which turns an assignment descriptor into a complete Terraform resource.
 - **Scope adapter**: the `scopeAdapter` for one kind of scope. It lists the direct grants at a scope and applies revokes and grants in one request through the API client layer.
@@ -181,6 +181,11 @@ The diagrams use these terms exactly. Each group lists the terms a diagram intro
 - **Storage profile**: where a warehouse stores its data: exactly one of S3 (or an S3-compatible store), ADLS or GCS, with its location settings.
 - **Storage credential**: the secret Lakekeeper uses to access the storage profile. The provider sends it but never reads it back, so it comes only from configuration or prior state.
 - **Delete profile**: what happens when a table or view in the warehouse is dropped: `hard` deletes it at once, `soft` keeps it for an expiration period first.
+- **Resource model**: `ResourceModel`, the `lakekeeper_warehouse` resource's plan or state as Go values.
+- **Data source model**: `DataSourceModel`, the `lakekeeper_warehouse` data source's state. It has no storage credential.
+- **Warehouse request**: `api.CreateWarehouseRequest`, the name, storage profile, storage credential and delete profile that create a warehouse.
+- **Prior state**: the values `Refresh` starts from: the plan in Create and Update, the state in Read. The storage credential comes from it.
+- **Refresh**: `warehouse.Refresh`, which builds the new resource state from the prior state and the server's warehouse.
 
 ### Development workflow terms
 
