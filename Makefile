@@ -66,6 +66,12 @@ lint-generated: generate ## Check that "make generate" was called. Note this onl
 	@echo "validate documentation"
 	PATH="$(GOBIN):$(PATH)" go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs validate -provider-name lakekeeper
 
+ARCHIFY_DIR ?= .archify
+ARCHITECTURE_DIR ?= architecture
+
+diagrams: ## Copy the newest Archify render of each diagram from .archify/ into architecture/ (does not run Archify).
+	@./scripts/copy-diagrams.sh $(ARCHIFY_DIR) $(ARCHITECTURE_DIR)
+
 LAKEKEEPER_ENDPOINT ?= http://localhost:8181
 LAKEKEEPER_AUTH_URL ?= http://localhost:30080/realms/iceberg/protocol/openid-connect/token
 LAKEKEEPER_CLIENT_ID ?= lakekeeper-admin

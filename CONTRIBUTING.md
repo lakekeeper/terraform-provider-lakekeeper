@@ -28,6 +28,8 @@ make testacc-up    # Start Lakekeeper, Keycloak, PostgreSQL and OpenFGA via Dock
 
 The `playground/` directory holds a sample configuration you can apply against the local stack with `make playground`; see the [README](README.md#playground).
 
+For a picture of how the provider is built, start with the diagrams in [`architecture/README.md`](architecture/README.md).
+
 ## Making changes
 
 ### Tests
