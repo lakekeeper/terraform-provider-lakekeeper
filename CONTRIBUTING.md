@@ -77,7 +77,7 @@ If you use a coding agent, the [graphify](https://github.com/safishamsi/graphify
 
 ### Diagrams
 
-The diagrams in [`architecture/`](architecture/README.md) are committed. When your change touches source listed in that README's [drift table](architecture/README.md#drift-table), update the affected diagram in the same pull request, following [Reading and updating the diagrams](architecture/README.md#reading-and-updating-the-diagrams). Re-rendering needs [Archify](https://github.com/tt-a1i/archify) and Chrome.
+The diagrams in [`architecture/`](architecture/README.md) are committed. When your change touches source listed in that README's [drift table](architecture/README.md#drift-table), update the affected diagram in the same pull request, following [Reading and updating the diagrams](architecture/README.md#reading-and-updating-the-diagrams). Re-rendering (`make diagrams-render`) needs [Archify](https://github.com/tt-a1i/archify), Chrome and Node.
 
 ## Commits and branches
 

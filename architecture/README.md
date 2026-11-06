@@ -20,14 +20,16 @@ Each diagram has three files here, named after its slug:
 - `<slug>.html`: an explorable version with zoom, focus, search and themes. GitHub shows its source, so clone the repository or download the file and open it locally in a browser.
 - `<slug>.json`: the diagram's source. Review diagram changes in this file.
 
-Reading and reviewing the diagrams needs nothing beyond a browser. Re-rendering one needs [Archify](https://github.com/tt-a1i/archify) and Chrome. When a change touches source listed in the [drift table](#drift-table), update that diagram:
+Reading and reviewing the diagrams needs nothing beyond a browser.
 
-1. Copy `<slug>.json` to `.archify/<type>-<slug>-<YYYYMMDD-HHMMSS>/candidate.json`, where `<type>` is its `diagram_type` and the timestamp is the current local time. `.archify/` is gitignored.
-2. Edit the candidate. Set `meta.output` to `<that folder>/<slug>.html` and `meta.repository.revision` to the commit you checked the code at.
-3. Render it: `archify finalize <type> <folder>/candidate.json <folder>/<slug>.html --repo-root . --quality showcase`. The `--repo-root` check fails when a cited source file or line range no longer exists at that commit.
-4. Export the images: `node scripts/export-diagram-svg.mjs <folder>`.
-5. Run `make diagrams`. It copies the newest render of each diagram into this folder under stable names; it does not run Archify.
-6. Set the diagram's commit in the drift table to the short form of `meta.repository.revision`.
+When a change touches source listed in the [drift table](#drift-table), update that diagram in two steps:
+
+1. **Edit `<slug>.json`.** This part needs judgement, from a person or a coding agent with the [Archify](https://github.com/tt-a1i/archify) skill: decide what the diagram shows, label it with the words from [Terms](#terms), and cite the source file and lines behind each element. It needs only an editor.
+2. **Render it:** `make diagrams-render DIAGRAMS=<slug>`, then set the diagram's date in the drift table to today. This part is mechanical. It needs Archify, Chrome and Node; set `ARCHIFY` to Archify's `bin/archify.mjs` if `archify` is not on your `PATH`. The command checks every citation against the current commit (`HEAD`), so commit your code changes first. It writes `HEAD` into `meta.repository.revision`; don't edit that by hand.
+
+Without `DIAGRAMS`, it renders every diagram. Renders go to `.archify/` (gitignored) and are then copied here.
+
+If you rendered with the Archify skill instead, into `.archify/<type>-<slug>-<YYYYMMDD-HHMMSS>/`, run `make diagrams` to copy the newest render of each diagram here; it does not run Archify.
 
 ## System context
 
@@ -197,14 +199,14 @@ The diagrams use these terms exactly. Each subsection lists the terms a diagram 
 
 ## Drift table
 
-Each diagram, the source it shows, and the commit it was last checked against.
+Each diagram, the source it shows, and the date it was last checked against the code.
 
-| Diagram | Source it shows | Checked against |
+| Diagram | Source it shows | Last checked |
 | --- | --- | --- |
-| [System context](#system-context) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/api/client.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | `fce86e9` |
-| [Domain model](#domain-model) | `internal/provider/api/management.go`, `internal/provider/api/permissions.go`, `internal/provider/api/constants.go`, `internal/provider/assignment_adapter.go`, `internal/provider/assignment_descriptor.go`, `internal/provider/resource_user.go`, `internal/provider/resource_role.go`, `internal/provider/resource_project.go`, `internal/provider/resource_namespace.go`, `internal/provider/resource_namespace_role_assignment.go`, `internal/provider/datasource_default_project.go`, `internal/provider/warehouse/warehouse.go` | `818c1a6` |
-| [Apply sequence](#apply-sequence) | `main.go`, `internal/provider/provider.go`, `internal/provider/resource_role.go`, `internal/provider/api/config.go`, `internal/provider/api/management.go`, `internal/provider/api/client.go`, `go.mod` | `818c1a6` |
-| [Package layers](#package-layers) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/resource_role.go`, `internal/provider/datasource_project.go`, `internal/provider/resource_warehouse.go`, `internal/provider/warehouse/warehouse.go`, `internal/provider/sdk/assignment.go`, `internal/provider/datasource_project_assignments.go`, `internal/provider/datasource_warehouse_assignments.go`, `internal/provider/api/client.go`, `internal/provider/api/management.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | `818c1a6` |
-| [Assignment module](#assignment-module) | `internal/provider/assignment_descriptor.go`, `internal/provider/assignment_resource.go`, `internal/provider/assignment_adapter.go`, `internal/provider/assignment_adapter_*.go`, `internal/provider/resource_*_assignment.go`, `internal/provider/registry.go`, `internal/provider/api/permissions.go`, `internal/provider/api/namespaces.go` | `818c1a6` |
-| [Warehouse module](#warehouse-module) | `internal/provider/warehouse/warehouse.go`, `internal/provider/warehouse/storage_profile.go`, `internal/provider/warehouse/storage_credential.go`, `internal/provider/warehouse/delete_profile.go`, `internal/provider/warehouse/schema.go`, `internal/provider/warehouse/storage_profile_schema.go`, `internal/provider/resource_warehouse.go`, `internal/provider/datasource_warehouse.go`, `internal/provider/api/warehouses.go` | `818c1a6` |
-| [Development workflow](#development-workflow) | `Makefile`, `CONTRIBUTING.md`, `tools/tools.go`, `run/docker-compose.yml`, `.github/workflows/pr.yml`, `.github/workflows/test.yml`, `.github/workflows/release-please.yml`, `.github/workflows/release.yml`, `release-please-config.json` | `818c1a6` |
+| [System context](#system-context) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/api/client.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | 2026-11-06 |
+| [Domain model](#domain-model) | `internal/provider/api/management.go`, `internal/provider/api/permissions.go`, `internal/provider/api/constants.go`, `internal/provider/assignment_adapter.go`, `internal/provider/assignment_descriptor.go`, `internal/provider/resource_user.go`, `internal/provider/resource_role.go`, `internal/provider/resource_project.go`, `internal/provider/resource_namespace.go`, `internal/provider/resource_namespace_role_assignment.go`, `internal/provider/datasource_default_project.go`, `internal/provider/warehouse/warehouse.go` | 2026-11-06 |
+| [Apply sequence](#apply-sequence) | `main.go`, `internal/provider/provider.go`, `internal/provider/resource_role.go`, `internal/provider/api/config.go`, `internal/provider/api/management.go`, `internal/provider/api/client.go`, `go.mod` | 2026-11-06 |
+| [Package layers](#package-layers) | `main.go`, `internal/provider/provider.go`, `internal/provider/registry.go`, `internal/provider/resource_role.go`, `internal/provider/datasource_project.go`, `internal/provider/resource_warehouse.go`, `internal/provider/warehouse/warehouse.go`, `internal/provider/sdk/assignment.go`, `internal/provider/datasource_project_assignments.go`, `internal/provider/datasource_warehouse_assignments.go`, `internal/provider/api/client.go`, `internal/provider/api/management.go`, `internal/provider/api/config.go`, `go.mod`, `.golangci.yml` | 2026-11-06 |
+| [Assignment module](#assignment-module) | `internal/provider/assignment_descriptor.go`, `internal/provider/assignment_resource.go`, `internal/provider/assignment_adapter.go`, `internal/provider/assignment_adapter_*.go`, `internal/provider/resource_*_assignment.go`, `internal/provider/registry.go`, `internal/provider/api/permissions.go`, `internal/provider/api/namespaces.go` | 2026-11-06 |
+| [Warehouse module](#warehouse-module) | `internal/provider/warehouse/warehouse.go`, `internal/provider/warehouse/storage_profile.go`, `internal/provider/warehouse/storage_credential.go`, `internal/provider/warehouse/delete_profile.go`, `internal/provider/warehouse/schema.go`, `internal/provider/warehouse/storage_profile_schema.go`, `internal/provider/resource_warehouse.go`, `internal/provider/datasource_warehouse.go`, `internal/provider/api/warehouses.go` | 2026-11-06 |
+| [Development workflow](#development-workflow) | `Makefile`, `CONTRIBUTING.md`, `tools/tools.go`, `run/docker-compose.yml`, `.github/workflows/pr.yml`, `.github/workflows/test.yml`, `.github/workflows/release-please.yml`, `.github/workflows/release.yml`, `release-please-config.json` | 2026-11-06 |
