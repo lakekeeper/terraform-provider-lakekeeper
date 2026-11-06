@@ -92,7 +92,8 @@ func (m ResourceModel) WarehouseRequest() (*api.CreateWarehouseRequest, error) {
 // server. Lakekeeper never returns the storage credential, and managed access
 // is read separately, so both are taken from prior: pass the plan in Create
 // and Update and the state in Read. A prior without a storage profile (for
-// example right after import) leaves the storage credential null.
+// example right after import), or with a storage profile of another type than
+// the server's, leaves the storage credential null.
 func Refresh(prior ResourceModel, w *api.Warehouse) (ResourceModel, error) {
 	s, err := readServerWarehouse(w)
 	if err != nil {
@@ -105,13 +106,18 @@ func Refresh(prior ResourceModel, w *api.Warehouse) (ResourceModel, error) {
 			return ResourceModel{}, err
 		}
 
-		storageCredential, err := priorProfile.credential()
-		if err != nil {
-			return ResourceModel{}, err
-		}
+		// A storage profile whose type changed on the server (for example S3
+		// to GCS) cannot hold the prior storage credential. Drop it so the
+		// credential reads as null and the plan shows the drift.
+		if priorProfile.kind() == s.storageProfile.kind() {
+			storageCredential, err := priorProfile.credential()
+			if err != nil {
+				return ResourceModel{}, err
+			}
 
-		if err := s.storageProfile.addCredential(storageCredential); err != nil {
-			return ResourceModel{}, err
+			if err := s.storageProfile.addCredential(storageCredential); err != nil {
+				return ResourceModel{}, err
+			}
 		}
 	}
 

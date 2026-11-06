@@ -33,6 +33,8 @@ type (
 		credential() (storageCredential, error)
 		toAPI() (api.StorageProfile, error)
 		isEmpty() bool
+		// kind names the storage profile's type: s3, adls or gcs.
+		kind() string
 		// resourceModel wraps the profile into the resource's storage_profile
 		// block.
 		resourceModel() *StorageProfileModel
@@ -313,6 +315,10 @@ func (m *ADLSStorageProfileModel) credential() (storageCredential, error) {
 
 	return onlyOneStorageCredential(m.Credential.ClientCredentials, m.Credential.SharedAccessKey, m.Credential.SystemIdentity)
 }
+
+func (*S3StorageProfileModel) kind() string   { return "s3" }
+func (*ADLSStorageProfileModel) kind() string { return "adls" }
+func (*GCSStorageProfileModel) kind() string  { return "gcs" }
 
 func (m *S3StorageProfileModel) resourceModel() *StorageProfileModel {
 	return &StorageProfileModel{S3: m}

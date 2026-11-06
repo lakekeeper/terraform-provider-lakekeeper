@@ -218,9 +218,57 @@ func TestRefresh_DeleteProfile(t *testing.T) {
 	}
 }
 
-func TestRefresh_Errors(t *testing.T) {
+func TestRefresh_StorageProfileTypeChangedOnServerDropsCredential(t *testing.T) {
+	s3AccessKey := s3Profile(&warehouse.S3CredentialWrapper{AccessKey: &warehouse.S3AccessKeyCredsModel{
+		AccessKeyID:     types.StringValue("id"),
+		SecretAccessKey: types.StringValue("secret"),
+	}})
+	adlsClientCredentials := adlsProfile(&warehouse.ADLSCredentialWrapper{ClientCredentials: &warehouse.AZClientCredentialsCredsModel{ClientID: types.StringValue("c")}})
 	gcsSystemIdentity := gcsProfile(&warehouse.GCSCredentialWrapper{SystemIdentity: &warehouse.GCPSystemIdentityCredsModel{}})
 
+	tests := []struct {
+		name   string
+		prior  *warehouse.StorageProfileModel
+		server api.StorageProfile
+		want   *warehouse.StorageProfileModel
+	}{
+		{
+			name:   "s3 to gcs",
+			prior:  s3AccessKey,
+			server: &api.GCSStorageProfile{Bucket: "bucket"},
+			want: &warehouse.StorageProfileModel{GCS: &warehouse.GCSStorageProfileModel{
+				Bucket:    types.StringValue("bucket"),
+				KeyPrefix: types.StringNull(),
+			}},
+		},
+		{
+			name:   "adls to s3",
+			prior:  adlsClientCredentials,
+			server: serverS3(),
+			want:   &warehouse.StorageProfileModel{S3: refreshedS3()},
+		},
+		{
+			name:   "gcs to s3",
+			prior:  gcsSystemIdentity,
+			server: serverS3(),
+			want:   &warehouse.StorageProfileModel{S3: refreshedS3()},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := warehouse.Refresh(warehouse.ResourceModel{StorageProfile: tt.prior}, serverWarehouse(tt.server, nil))
+			if err != nil {
+				t.Fatalf("Refresh: %v", err)
+			}
+			if !reflect.DeepEqual(got.StorageProfile, tt.want) {
+				t.Errorf("storage profile:\ngot  %+v\nwant %+v", got.StorageProfile, tt.want)
+			}
+		})
+	}
+}
+
+func TestRefresh_Errors(t *testing.T) {
 	tests := []struct {
 		name    string
 		prior   warehouse.ResourceModel
@@ -236,13 +284,6 @@ func TestRefresh_Errors(t *testing.T) {
 			name:    "unknown delete profile type",
 			w:       serverWarehouse(&api.GCSStorageProfile{Bucket: "b"}, &api.DeleteProfile{Type: "later"}),
 			wantErr: "incorrect delete profile type: later",
-		},
-		{
-			// Fixed by a later change; pinned here so the move keeps it.
-			name:    "storage profile type changed on the server",
-			prior:   warehouse.ResourceModel{StorageProfile: gcsSystemIdentity},
-			w:       serverWarehouse(serverS3(), nil),
-			wantErr: "incorrect storage credential type",
 		},
 	}
 
