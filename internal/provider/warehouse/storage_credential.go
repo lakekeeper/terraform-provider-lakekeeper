@@ -1,4 +1,4 @@
-package sdk
+package warehouse
 
 import (
 	"encoding/json"
@@ -10,9 +10,9 @@ import (
 )
 
 type (
-	StorageCredsModel interface {
-		ToAPI() (api.StorageCredential, error)
-		IsEmpty() bool
+	storageCredential interface {
+		toAPI() (api.StorageCredential, error)
+		isEmpty() bool
 	}
 
 	S3AccessKeyCredsModel struct {
@@ -55,19 +55,19 @@ type (
 )
 
 var (
-	_ StorageCredsModel = (*S3AccessKeyCredsModel)(nil)
-	_ StorageCredsModel = (*CloudflareR2CredsModel)(nil)
-	_ StorageCredsModel = (*AWSSystemIdentityCredsModel)(nil)
+	_ storageCredential = (*S3AccessKeyCredsModel)(nil)
+	_ storageCredential = (*CloudflareR2CredsModel)(nil)
+	_ storageCredential = (*AWSSystemIdentityCredsModel)(nil)
 
-	_ StorageCredsModel = (*AZClientCredentialsCredsModel)(nil)
-	_ StorageCredsModel = (*AZSharedAccessKeyCredsModel)(nil)
-	_ StorageCredsModel = (*AzureSystemIdentityCredsModel)(nil)
+	_ storageCredential = (*AZClientCredentialsCredsModel)(nil)
+	_ storageCredential = (*AZSharedAccessKeyCredsModel)(nil)
+	_ storageCredential = (*AzureSystemIdentityCredsModel)(nil)
 
-	_ StorageCredsModel = (*GCPSystemIdentityCredsModel)(nil)
-	_ StorageCredsModel = (*GCSServiceAccountKeyCredsModel)(nil)
+	_ storageCredential = (*GCPSystemIdentityCredsModel)(nil)
+	_ storageCredential = (*GCSServiceAccountKeyCredsModel)(nil)
 )
 
-func (m *S3AccessKeyCredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *S3AccessKeyCredsModel) toAPI() (api.StorageCredential, error) {
 	if m.AccessKeyID.IsNull() || m.AccessKeyID.IsUnknown() {
 		return nil, errors.New("access_key_id is required")
 	}
@@ -83,11 +83,11 @@ func (m *S3AccessKeyCredsModel) ToAPI() (api.StorageCredential, error) {
 	}, nil
 }
 
-func (m *S3AccessKeyCredsModel) IsEmpty() bool {
+func (m *S3AccessKeyCredsModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *AWSSystemIdentityCredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *AWSSystemIdentityCredsModel) toAPI() (api.StorageCredential, error) {
 	if m.ExternalID.IsNull() || m.ExternalID.IsUnknown() {
 		return nil, errors.New("external_id is required")
 	}
@@ -95,11 +95,11 @@ func (m *AWSSystemIdentityCredsModel) ToAPI() (api.StorageCredential, error) {
 	return &api.S3SystemIdentityCredential{ExternalID: m.ExternalID.ValueString()}, nil
 }
 
-func (m *AWSSystemIdentityCredsModel) IsEmpty() bool {
+func (m *AWSSystemIdentityCredsModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *CloudflareR2CredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *CloudflareR2CredsModel) toAPI() (api.StorageCredential, error) {
 	if m.AccessKeyID.IsNull() || m.AccessKeyID.IsUnknown() {
 		return nil, errors.New("access_key_id is required")
 	}
@@ -124,11 +124,11 @@ func (m *CloudflareR2CredsModel) ToAPI() (api.StorageCredential, error) {
 	}, nil
 }
 
-func (m *CloudflareR2CredsModel) IsEmpty() bool {
+func (m *CloudflareR2CredsModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *AZClientCredentialsCredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *AZClientCredentialsCredsModel) toAPI() (api.StorageCredential, error) {
 	if m.ClientID.IsNull() || m.ClientID.IsUnknown() {
 		return nil, errors.New("client_id is required")
 	}
@@ -148,11 +148,11 @@ func (m *AZClientCredentialsCredsModel) ToAPI() (api.StorageCredential, error) {
 	}, nil
 }
 
-func (m *AZClientCredentialsCredsModel) IsEmpty() bool {
+func (m *AZClientCredentialsCredsModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *AZSharedAccessKeyCredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *AZSharedAccessKeyCredsModel) toAPI() (api.StorageCredential, error) {
 	if m.Key.IsNull() || m.Key.IsUnknown() {
 		return nil, errors.New("key is required")
 	}
@@ -161,19 +161,19 @@ func (m *AZSharedAccessKeyCredsModel) ToAPI() (api.StorageCredential, error) {
 
 }
 
-func (m *AZSharedAccessKeyCredsModel) IsEmpty() bool {
+func (m *AZSharedAccessKeyCredsModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *AzureSystemIdentityCredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *AzureSystemIdentityCredsModel) toAPI() (api.StorageCredential, error) {
 	return &api.AzureManagedIdentityCredential{}, nil
 }
 
-func (m *AzureSystemIdentityCredsModel) IsEmpty() bool {
+func (m *AzureSystemIdentityCredsModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *GCSServiceAccountKeyCredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *GCSServiceAccountKeyCredsModel) toAPI() (api.StorageCredential, error) {
 	if m.Key.IsNull() || m.Key.IsUnknown() {
 		return nil, errors.New("key is required")
 	}
@@ -187,25 +187,25 @@ func (m *GCSServiceAccountKeyCredsModel) ToAPI() (api.StorageCredential, error) 
 	return &api.GCSServiceAccountKeyCredential{Key: key}, nil
 }
 
-func (m *GCSServiceAccountKeyCredsModel) IsEmpty() bool {
+func (m *GCSServiceAccountKeyCredsModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *GCPSystemIdentityCredsModel) ToAPI() (api.StorageCredential, error) {
+func (m *GCPSystemIdentityCredsModel) toAPI() (api.StorageCredential, error) {
 	return &api.GCSSystemIdentityCredential{}, nil
 }
 
-func (m *GCPSystemIdentityCredsModel) IsEmpty() bool {
+func (m *GCPSystemIdentityCredsModel) isEmpty() bool {
 	return m == nil
 }
 
-// OnlyOne returns the only non-nil argument, or an error if 0 or >1 are non-nil.
-func OnlyOneStorageCredential(args ...StorageCredsModel) (StorageCredsModel, error) {
+// onlyOneStorageCredential returns the only non-nil argument, or an error if 0 or >1 are non-nil.
+func onlyOneStorageCredential(args ...storageCredential) (storageCredential, error) {
 	count := 0
-	var selected StorageCredsModel
+	var selected storageCredential
 
 	for _, arg := range args {
-		if !arg.IsEmpty() {
+		if !arg.isEmpty() {
 			count++
 			selected = arg
 		}

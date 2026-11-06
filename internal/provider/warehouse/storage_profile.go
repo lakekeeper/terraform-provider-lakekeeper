@@ -1,24 +1,44 @@
-package sdk
+package warehouse
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 type (
-	StorageProfileModel interface {
-		CredentialToAPI() (api.StorageCredential, error)
-		AddCreds(StorageCredsModel) error
-		GetCredentials() (StorageCredsModel, error)
-		ToAPI() (api.StorageProfile, error)
-		IsEmpty() bool
+	// StorageProfileModel is the resource's storage_profile block. Exactly one
+	// of S3, ADLS or GCS is set.
+	StorageProfileModel struct {
+		S3   *S3StorageProfileModel   `tfsdk:"s3"`
+		ADLS *ADLSStorageProfileModel `tfsdk:"adls"`
+		GCS  *GCSStorageProfileModel  `tfsdk:"gcs"`
 	}
 
-	StorageProfileDataSourceModel interface {
-		FromResourceModel(StorageProfileModel) error
+	// StorageProfileDataSourceModel is the data source's storage_profile
+	// block. It never holds a storage credential.
+	StorageProfileDataSourceModel struct {
+		S3   *S3StorageProfileDataSourceModel   `tfsdk:"s3"`
+		ADLS *ADLSStorageProfileDataSourceModel `tfsdk:"adls"`
+		GCS  *GCSStorageProfileDataSourceModel  `tfsdk:"gcs"`
+	}
+
+	// storageProfile is one of the resource's storage profile models.
+	storageProfile interface {
+		credentialToAPI() (api.StorageCredential, error)
+		addCredential(storageCredential) error
+		credential() (storageCredential, error)
+		toAPI() (api.StorageProfile, error)
+		isEmpty() bool
+		// resourceModel wraps the profile into the resource's storage_profile
+		// block.
+		resourceModel() *StorageProfileModel
+		// dataSourceModel copies the profile into the data source's
+		// storage_profile block, leaving out its storage credential.
+		dataSourceModel() *StorageProfileDataSourceModel
 	}
 
 	S3StorageProfileModel struct {
@@ -107,16 +127,12 @@ type (
 )
 
 var (
-	_ StorageProfileModel = (*S3StorageProfileModel)(nil)
-	_ StorageProfileModel = (*ADLSStorageProfileModel)(nil)
-	_ StorageProfileModel = (*GCSStorageProfileModel)(nil)
-
-	_ StorageProfileDataSourceModel = (*S3StorageProfileDataSourceModel)(nil)
-	_ StorageProfileDataSourceModel = (*ADLSStorageProfileDataSourceModel)(nil)
-	_ StorageProfileDataSourceModel = (*GCSStorageProfileDataSourceModel)(nil)
+	_ storageProfile = (*S3StorageProfileModel)(nil)
+	_ storageProfile = (*ADLSStorageProfileModel)(nil)
+	_ storageProfile = (*GCSStorageProfileModel)(nil)
 )
 
-func (m *S3StorageProfileModel) ToAPI() (api.StorageProfile, error) {
+func (m *S3StorageProfileModel) toAPI() (api.StorageProfile, error) {
 	if m.Bucket.IsNull() || m.Bucket.IsUnknown() {
 		return nil, errors.New("bucket is required")
 	}
@@ -143,24 +159,24 @@ func (m *S3StorageProfileModel) ToAPI() (api.StorageProfile, error) {
 	}, nil
 }
 
-func (m *S3StorageProfileModel) CredentialToAPI() (api.StorageCredential, error) {
+func (m *S3StorageProfileModel) credentialToAPI() (api.StorageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
 
-	storage, err := OnlyOneStorageCredential(m.Credential.AccessKey, m.Credential.CloudflareR2, m.Credential.AWSSystemIdentity)
+	storage, err := onlyOneStorageCredential(m.Credential.AccessKey, m.Credential.CloudflareR2, m.Credential.AWSSystemIdentity)
 	if err != nil {
 		return nil, err
 	}
 
-	return storage.ToAPI()
+	return storage.toAPI()
 }
 
-func (m *S3StorageProfileModel) IsEmpty() bool {
+func (m *S3StorageProfileModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *S3StorageProfileModel) AddCreds(c StorageCredsModel) error {
+func (m *S3StorageProfileModel) addCredential(c storageCredential) error {
 	m.Credential = &S3CredentialWrapper{}
 
 	switch v := c.(type) {
@@ -176,15 +192,15 @@ func (m *S3StorageProfileModel) AddCreds(c StorageCredsModel) error {
 	return nil
 }
 
-func (m *S3StorageProfileModel) GetCredentials() (StorageCredsModel, error) {
+func (m *S3StorageProfileModel) credential() (storageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
 
-	return OnlyOneStorageCredential(m.Credential.AccessKey, m.Credential.AWSSystemIdentity, m.Credential.CloudflareR2)
+	return onlyOneStorageCredential(m.Credential.AccessKey, m.Credential.AWSSystemIdentity, m.Credential.CloudflareR2)
 }
 
-func (m *ADLSStorageProfileModel) ToAPI() (api.StorageProfile, error) {
+func (m *ADLSStorageProfileModel) toAPI() (api.StorageProfile, error) {
 	if m.AccountName.IsNull() || m.AccountName.IsUnknown() {
 		return nil, errors.New("account_name is required")
 	}
@@ -206,24 +222,24 @@ func (m *ADLSStorageProfileModel) ToAPI() (api.StorageProfile, error) {
 	}, nil
 }
 
-func (m *ADLSStorageProfileModel) CredentialToAPI() (api.StorageCredential, error) {
+func (m *ADLSStorageProfileModel) credentialToAPI() (api.StorageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
 
-	storage, err := OnlyOneStorageCredential(m.Credential.SharedAccessKey, m.Credential.ClientCredentials, m.Credential.SystemIdentity)
+	storage, err := onlyOneStorageCredential(m.Credential.SharedAccessKey, m.Credential.ClientCredentials, m.Credential.SystemIdentity)
 	if err != nil {
 		return nil, err
 	}
 
-	return storage.ToAPI()
+	return storage.toAPI()
 }
 
-func (m *GCSStorageProfileModel) IsEmpty() bool {
+func (m *GCSStorageProfileModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *GCSStorageProfileModel) AddCreds(c StorageCredsModel) error {
+func (m *GCSStorageProfileModel) addCredential(c storageCredential) error {
 	m.Credential = &GCSCredentialWrapper{}
 
 	switch v := c.(type) {
@@ -237,15 +253,15 @@ func (m *GCSStorageProfileModel) AddCreds(c StorageCredsModel) error {
 	return nil
 }
 
-func (m *GCSStorageProfileModel) GetCredentials() (StorageCredsModel, error) {
+func (m *GCSStorageProfileModel) credential() (storageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
 
-	return OnlyOneStorageCredential(m.Credential.ServiceAccountKey, m.Credential.SystemIdentity)
+	return onlyOneStorageCredential(m.Credential.ServiceAccountKey, m.Credential.SystemIdentity)
 }
 
-func (m *GCSStorageProfileModel) ToAPI() (api.StorageProfile, error) {
+func (m *GCSStorageProfileModel) toAPI() (api.StorageProfile, error) {
 	if m.Bucket.IsNull() || m.Bucket.IsUnknown() {
 		return nil, errors.New("bucket is required")
 	}
@@ -256,24 +272,24 @@ func (m *GCSStorageProfileModel) ToAPI() (api.StorageProfile, error) {
 	}, nil
 }
 
-func (m *GCSStorageProfileModel) CredentialToAPI() (api.StorageCredential, error) {
+func (m *GCSStorageProfileModel) credentialToAPI() (api.StorageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
 
-	creds, err := OnlyOneStorageCredential(m.Credential.ServiceAccountKey, m.Credential.SystemIdentity)
+	storageCredential, err := onlyOneStorageCredential(m.Credential.ServiceAccountKey, m.Credential.SystemIdentity)
 	if err != nil {
 		return nil, err
 	}
 
-	return creds.ToAPI()
+	return storageCredential.toAPI()
 }
 
-func (m *ADLSStorageProfileModel) IsEmpty() bool {
+func (m *ADLSStorageProfileModel) isEmpty() bool {
 	return m == nil
 }
 
-func (m *ADLSStorageProfileModel) AddCreds(c StorageCredsModel) error {
+func (m *ADLSStorageProfileModel) addCredential(c storageCredential) error {
 	m.Credential = &ADLSCredentialWrapper{}
 
 	switch v := c.(type) {
@@ -290,68 +306,71 @@ func (m *ADLSStorageProfileModel) AddCreds(c StorageCredsModel) error {
 	return nil
 }
 
-func (m *ADLSStorageProfileModel) GetCredentials() (StorageCredsModel, error) {
+func (m *ADLSStorageProfileModel) credential() (storageCredential, error) {
 	if m.Credential == nil {
 		return nil, errors.New("credential is required")
 	}
 
-	return OnlyOneStorageCredential(m.Credential.ClientCredentials, m.Credential.SharedAccessKey, m.Credential.SystemIdentity)
+	return onlyOneStorageCredential(m.Credential.ClientCredentials, m.Credential.SharedAccessKey, m.Credential.SystemIdentity)
 }
 
-func (m *S3StorageProfileDataSourceModel) FromResourceModel(s StorageProfileModel) error {
-	switch v := s.(type) {
-	case *S3StorageProfileModel:
-		m.Bucket = v.Bucket
-		m.Region = v.Region
-		m.KeyPrefix = v.KeyPrefix
-		m.AllowAlternativeProtocols = v.AllowAlternativeProtocols
-		m.AssumeRoleARN = v.AssumeRoleARN
-		m.AWSKMSKeyARN = v.AWSKMSKeyARN
-		m.Endpoint = v.Endpoint
-		m.Flavor = v.Flavor
-		m.PathStyleAccess = v.PathStyleAccess
-		m.PushS3DeleteDisabled = v.PushS3DeleteDisabled
-		m.RemoteSigningURLStyle = v.RemoteSigningURLStyle
-		m.STSEnabled = v.STSEnabled
-		m.STSRoleARN = v.STSRoleARN
-		m.STSTokenValiditySeconds = v.STSTokenValiditySeconds
-	default:
-		return fmt.Errorf("incorrect storage profile type %T", v)
-	}
-
-	return nil
+func (m *S3StorageProfileModel) resourceModel() *StorageProfileModel {
+	return &StorageProfileModel{S3: m}
 }
 
-func (m *ADLSStorageProfileDataSourceModel) FromResourceModel(s StorageProfileModel) error {
-	switch v := s.(type) {
-	case *ADLSStorageProfileModel:
-		m.AccountName = v.AccountName
-		m.Filesystem = v.Filesystem
-		m.Host = v.Host
-		m.AuthorityHost = v.AuthorityHost
-		m.KeyPrefix = v.KeyPrefix
-		m.SASTokenValiditySeconds = v.SASTokenValiditySeconds
-		m.AllowAlternativeProtocols = v.AllowAlternativeProtocols
-	default:
-		return fmt.Errorf("incorrect storage profile type %T", v)
-	}
-
-	return nil
+func (m *ADLSStorageProfileModel) resourceModel() *StorageProfileModel {
+	return &StorageProfileModel{ADLS: m}
 }
 
-func (m *GCSStorageProfileDataSourceModel) FromResourceModel(s StorageProfileModel) error {
-	switch v := s.(type) {
-	case *GCSStorageProfileModel:
-		m.Bucket = v.Bucket
-		m.KeyPrefix = v.KeyPrefix
-	default:
-		return fmt.Errorf("incorrect storage profile type %T", v)
-	}
-
-	return nil
+func (m *GCSStorageProfileModel) resourceModel() *StorageProfileModel {
+	return &StorageProfileModel{GCS: m}
 }
 
-func StorageProfileModelFromAPI(sp api.StorageProfile) (StorageProfileModel, error) {
+func (m *S3StorageProfileModel) dataSourceModel() *StorageProfileDataSourceModel {
+	return &StorageProfileDataSourceModel{S3: &S3StorageProfileDataSourceModel{
+		Bucket:                    m.Bucket,
+		Region:                    m.Region,
+		KeyPrefix:                 m.KeyPrefix,
+		AllowAlternativeProtocols: m.AllowAlternativeProtocols,
+		AssumeRoleARN:             m.AssumeRoleARN,
+		AWSKMSKeyARN:              m.AWSKMSKeyARN,
+		Endpoint:                  m.Endpoint,
+		Flavor:                    m.Flavor,
+		PathStyleAccess:           m.PathStyleAccess,
+		PushS3DeleteDisabled:      m.PushS3DeleteDisabled,
+		RemoteSigningURLStyle:     m.RemoteSigningURLStyle,
+		STSEnabled:                m.STSEnabled,
+		STSRoleARN:                m.STSRoleARN,
+		STSTokenValiditySeconds:   m.STSTokenValiditySeconds,
+	}}
+}
+
+func (m *ADLSStorageProfileModel) dataSourceModel() *StorageProfileDataSourceModel {
+	return &StorageProfileDataSourceModel{ADLS: &ADLSStorageProfileDataSourceModel{
+		AccountName:               m.AccountName,
+		Filesystem:                m.Filesystem,
+		Host:                      m.Host,
+		AuthorityHost:             m.AuthorityHost,
+		KeyPrefix:                 m.KeyPrefix,
+		SASTokenValiditySeconds:   m.SASTokenValiditySeconds,
+		AllowAlternativeProtocols: m.AllowAlternativeProtocols,
+	}}
+}
+
+func (m *GCSStorageProfileModel) dataSourceModel() *StorageProfileDataSourceModel {
+	return &StorageProfileDataSourceModel{GCS: &GCSStorageProfileDataSourceModel{
+		Bucket:    m.Bucket,
+		KeyPrefix: m.KeyPrefix,
+	}}
+}
+
+// selected returns the block's only storage profile, or an error if it holds
+// none or more than one.
+func (m *StorageProfileModel) selected() (storageProfile, error) {
+	return onlyOneStorageProfile(m.S3, m.ADLS, m.GCS)
+}
+
+func storageProfileFromAPI(sp api.StorageProfile) (storageProfile, error) {
 	switch cfg := sp.(type) {
 	case nil:
 		return nil, errors.New("storage profile is empty")
@@ -392,13 +411,14 @@ func StorageProfileModelFromAPI(sp api.StorageProfile) (StorageProfileModel, err
 	return nil, errors.New("unsupported storage profile")
 }
 
-// OnlyOne returns the only non-nil argument, or an error if 0 or >1 are non-nil.
-func OnlyOneStorageProfile(args ...StorageProfileModel) (StorageProfileModel, error) {
+// onlyOneStorageProfile returns the only non-nil argument, or an error if 0
+// or >1 are non-nil.
+func onlyOneStorageProfile(args ...storageProfile) (storageProfile, error) {
 	count := 0
-	var selected StorageProfileModel
+	var selected storageProfile
 
 	for _, arg := range args {
-		if !arg.IsEmpty() {
+		if !arg.isEmpty() {
 			count++
 			selected = arg
 		}
