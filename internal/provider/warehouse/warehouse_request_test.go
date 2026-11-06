@@ -155,7 +155,12 @@ func TestWarehouseRequest_StorageProfileAndCredential(t *testing.T) {
 				t.Fatalf("WarehouseRequest: %v", err)
 			}
 
-			want := &api.CreateWarehouseRequest{Name: "wh", StorageProfile: tt.wantProfile, StorageCredential: tt.wantCred}
+			want := &api.CreateWarehouseRequest{
+				Name:              "wh",
+				StorageProfile:    tt.wantProfile,
+				StorageCredential: tt.wantCred,
+				DeleteProfile:     &api.DeleteProfile{Type: api.DeleteProfileTypeHard},
+			}
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("got  %#v\nwant %#v", got, want)
 			}
@@ -185,9 +190,9 @@ func TestWarehouseRequest_DeleteProfile(t *testing.T) {
 			want:  &api.DeleteProfile{Type: api.DeleteProfileTypeHard},
 		},
 		{
-			name:  "absent is left to the server",
+			name:  "absent means hard",
 			model: nil,
-			want:  nil,
+			want:  &api.DeleteProfile{Type: api.DeleteProfileTypeHard},
 		},
 	}
 

@@ -45,6 +45,15 @@ var (
 	}
 )
 
+// Equal reports whether two delete profiles have the same type and
+// expiration. Either may be nil; nil equals only nil.
+func (d *DeleteProfileModel) Equal(o *DeleteProfileModel) bool {
+	if d == nil || o == nil {
+		return d == o
+	}
+	return d.Type.Equal(o.Type) && d.ExpirationSeconds.Equal(o.ExpirationSeconds)
+}
+
 func deleteProfileResourceSchema() rschema.SingleNestedAttribute {
 	return rschema.SingleNestedAttribute{
 		MarkdownDescription: deleteProfileDescription + " Default: `" + api.DeleteProfileTypeHard + "`",

@@ -256,8 +256,9 @@ func (r *lakekeeperWarehouseResource) Update(ctx context.Context, req resource.U
 		return
 	}
 
-	// Update the delete profile
-	if !plan.DeleteProfile.Type.Equal(state.DeleteProfile.Type) || !plan.DeleteProfile.ExpirationSeconds.Equal(state.DeleteProfile.ExpirationSeconds) {
+	// Update the delete profile. opts.DeleteProfile is always resolved (absent
+	// means hard); a missing plan or state profile is treated as a change.
+	if plan.DeleteProfile == nil || !plan.DeleteProfile.Equal(state.DeleteProfile) {
 		if err := r.client.UpdateWarehouseDeleteProfile(ctx, projectID, warehouseID, *opts.DeleteProfile); err != nil {
 			resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to update delete profile for warehouse %s in project %s, %v", warehouseID, projectID, err))
 			return

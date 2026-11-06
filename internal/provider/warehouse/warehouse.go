@@ -49,7 +49,8 @@ type DataSourceModel struct {
 
 // WarehouseRequest converts the resource model (the plan) into a warehouse
 // request. Create sends all of it; Update sends its storage profile, storage
-// credential and delete profile.
+// credential and delete profile. The delete profile is always resolved: an
+// absent one becomes hard, the schema's default.
 func (m ResourceModel) WarehouseRequest() (*api.CreateWarehouseRequest, error) {
 	req := api.CreateWarehouseRequest{
 		Name: m.Name.ValueString(),
@@ -76,14 +77,11 @@ func (m ResourceModel) WarehouseRequest() (*api.CreateWarehouseRequest, error) {
 	}
 	req.StorageCredential = storageCredential
 
-	if m.DeleteProfile != nil {
-		settings, err := m.DeleteProfile.toAPI()
-		if err != nil {
-			return nil, err
-		}
-
-		req.DeleteProfile = settings
+	deleteProfile, err := m.DeleteProfile.toAPI()
+	if err != nil {
+		return nil, err
 	}
+	req.DeleteProfile = deleteProfile
 
 	return &req, nil
 }
@@ -193,10 +191,10 @@ func readServerWarehouse(w *api.Warehouse) (serverWarehouse, error) {
 	}, nil
 }
 
-// toAPI converts a configured delete profile into its api form. A null or
-// unknown type means hard.
+// toAPI converts a delete profile into its api form and never returns nil
+// without an error. An absent profile, or a null or unknown type, means hard.
 func (d *DeleteProfileModel) toAPI() (*api.DeleteProfile, error) {
-	if d.Type.IsNull() || d.Type.IsUnknown() {
+	if d == nil || d.Type.IsNull() || d.Type.IsUnknown() {
 		return &api.DeleteProfile{Type: api.DeleteProfileTypeHard}, nil
 	}
 
