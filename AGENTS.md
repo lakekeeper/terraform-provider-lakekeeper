@@ -27,7 +27,7 @@ All provider code lives in `internal/provider/`: one `resource_*.go` or `datasou
 
 [`architecture/README.md`](architecture/README.md) has the diagrams of this structure; read it to orient yourself before exploring code.
 
-**Diagram drift rule**: when a change touches source listed in that README's drift table, update the diagram's `architecture/<slug>.json`, re-render it with Archify, run `make diagrams`, and set its row's commit to the one you checked it against.
+**Diagram drift rule**: when a change touches source listed in that README's drift table, update the diagram as [Reading and updating the diagrams](architecture/README.md#reading-and-updating-the-diagrams) describes.
 
 - **Registration**: each resource and data source registers itself via `registerResource` / `registerDataSource` in an `init()` (`registry.go`). Adding the file is the whole wiring.
 - **Client layer**: all API calls go through `r.client`, an `*api.Client` injected via `Configure`. The `api/` package wraps the Lakekeeper Go SDK ([`github.com/baptistegh/go-lakekeeper`](https://github.com/baptistegh/go-lakekeeper)) and exposes SDK-neutral types (`api.Warehouse`, `api.Assignment`, `api.StorageProfile`, …), enum constants, and `api.IsNotFound`. It is the only package allowed to import the SDK; a depguard rule in `.golangci.yml` enforces this. When an endpoint is missing, add a method to `api/`; do not import the SDK in a resource. Client construction (OIDC, TLS) is in `api/config.go`.
