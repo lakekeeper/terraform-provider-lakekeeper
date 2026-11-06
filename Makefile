@@ -26,7 +26,7 @@ fmt: tool-terraform ## Format files and fix issues.
 	$(GOBIN)/terraform fmt -recursive -list ./examples ./playground
 	go run mvdan.cc/sh/v3/cmd/shfmt -l -s -w ./examples
 
-lint: lint-golangci lint-examples-tf lint-examples-sh lint-actions lint-generated
+lint: lint-golangci lint-examples-tf lint-examples-sh lint-actions lint-links lint-generated
 
 lint-golangci: ## Run golangci-lint linter (same as fmt but without modifying files).
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --build-tags acceptance
@@ -53,6 +53,21 @@ lint-zizmor: ## Audit GitHub Actions workflows with zizmor (requires uv).
 
 zizmor-version: ## Print the pinned zizmor version (used by CI).
 	@echo $(ZIZMOR_VERSION)
+
+# renovate: datasource=docker depName=lycheeverse/lychee
+LYCHEE_VERSION ?= 0.24.2
+
+# Tracked Markdown, minus the release-please changelog and the generated graph.
+LINK_CHECK_FILES = $(shell git ls-files '*.md' ':!:CHANGELOG.md' ':!:graphify-out/')
+
+lint-links: ## Check relative links and anchors in tracked Markdown, offline (requires Docker).
+	docker run --rm -v "$(CURDIR)":/input:ro -w /input lycheeverse/lychee:$(LYCHEE_VERSION) --config lychee.toml $(LINK_CHECK_FILES)
+
+lint-links-files: ## Print the Markdown files the link check covers (used by CI).
+	@echo $(LINK_CHECK_FILES)
+
+lychee-version: ## Print the pinned lychee version (used by CI).
+	@echo v$(LYCHEE_VERSION)
 
 lint-generated: generate ## Check that "make generate" was called. Note this only works if the git workspace is clean.
 	@echo "Checking git status"

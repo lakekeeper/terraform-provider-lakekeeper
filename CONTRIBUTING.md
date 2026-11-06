@@ -68,6 +68,8 @@ Formatting and linting are enforced by `gofmt`, [`golangci-lint`](https://golang
 
 GitHub Actions workflows in `.github/workflows/` are checked with [`actionlint`](https://github.com/rhysd/actionlint) and [`zizmor`](https://docs.zizmor.sh/). Run `make lint-actions` after changing them; it needs [`uv`](https://docs.astral.sh/uv/) for zizmor. CI also runs zizmor's online audits (e.g. known-vulnerable actions); set `GH_TOKEN` to run them locally too.
 
+Links in the repository's tracked Markdown are checked with [lychee](https://lychee.cli.rs/), offline: relative file links and `#anchor` fragments must resolve, and external URLs are never fetched. `CHANGELOG.md` and `graphify-out/` are skipped. Run `make lint-links` after renaming a file or heading; it runs lychee's Docker image, configured by `lychee.toml`.
+
 ### Knowledge graph (optional)
 
 If you use a coding agent, the [graphify](https://github.com/safishamsi/graphify) knowledge graph of the code in `graphify-out/graph.json` gives it a map of the repository. The graph is committed and shared, following graphify's [shared team graph](https://docs.graphify.com/cookbooks/shared-team-graph) recipe; the other files in `graphify-out/` are gitignored and rebuilt locally. `.graphifyignore` lists files the graph skips.
