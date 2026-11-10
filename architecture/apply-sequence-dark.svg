@@ -905,11 +905,11 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
         </g>
         </g>
 
-        <g data-edge-from="apiclient" data-edge-to="sdk" data-edge-label="RoleV1(project).Create" data-edge-key="11" data-edge-id="m12">
+        <g data-edge-from="apiclient" data-edge-to="sdk" data-edge-label="Roles.Create(WithProject)" data-edge-key="11" data-edge-id="m12">
           <path data-composition-edge-from="apiclient" data-composition-edge-to="sdk" data-composition-edge-id="m12" data-composition-points="551.5,964;679.8333333333334,964" d="M 551.5 964 L 679.8333333333334 964" class="a-emphasis" data-animate="edge" style="--step: 11;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <g>
-          <rect x="537.0666666666667" y="944" width="157.2" height="18" rx="3" class="c-mask"/>
-          <text x="615.6666666666667" y="954" class="t-edge-emphasis" font-size="11" text-anchor="middle">RoleV1(project).Create</text>
+          <rect x="527.1666666666667" y="944" width="177" height="18" rx="3" class="c-mask"/>
+          <text x="615.6666666666667" y="954" class="t-edge-emphasis" font-size="11" text-anchor="middle">Roles.Create(WithProject)</text>
         </g>
         </g>
 
@@ -973,11 +973,11 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
         </g>
         </g>
 
-        <g data-edge-from="apiclient" data-edge-to="sdk" data-edge-label="RoleV1(project).Get" data-edge-key="19" data-edge-id="m20">
+        <g data-edge-from="apiclient" data-edge-to="sdk" data-edge-label="Roles.Get(WithProject)" data-edge-key="19" data-edge-id="m20">
           <path data-composition-edge-from="apiclient" data-composition-edge-to="sdk" data-composition-edge-id="m20" data-composition-points="551.5,1434;679.8333333333334,1434" d="M 551.5 1434 L 679.8333333333334 1434" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <g>
-          <rect x="546.9666666666667" y="1414" width="137.39999999999998" height="18" rx="3" class="c-mask"/>
-          <text x="615.6666666666667" y="1424" class="t-muted" font-size="11" text-anchor="middle">RoleV1(project).Get</text>
+          <rect x="537.0666666666667" y="1414" width="157.2" height="18" rx="3" class="c-mask"/>
+          <text x="615.6666666666667" y="1424" class="t-muted" font-size="11" text-anchor="middle">Roles.Get(WithProject)</text>
         </g>
         </g>
 

@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
-	managementv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1"
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
+	managementv1 "github.com/lakekeeper/go-lakekeeper/pkg/apis/management/v1"
+	lakekeeper "github.com/lakekeeper/go-lakekeeper/pkg/client"
+	"github.com/lakekeeper/go-lakekeeper/pkg/core"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
@@ -63,7 +63,7 @@ func (c *Config) NewLakekeeperClient(ctx context.Context) (*Client, error) {
 	t.TLSClientConfig = tlsConfig
 	t.MaxIdleConnsPerHost = 100
 
-	opts := []lakekeeper.ClientOptionFunc{
+	opts := []lakekeeper.Option{
 		lakekeeper.WithHTTPClient(
 			&http.Client{
 				Transport: t,
@@ -72,8 +72,8 @@ func (c *Config) NewLakekeeperClient(ctx context.Context) (*Client, error) {
 	}
 
 	if c.InitialBootstrap {
-		opts = append(opts, lakekeeper.WithInitialBootstrapV1Enabled(
-			true, true, new(managementv1.ApplicationUserType),
+		opts = append(opts, lakekeeper.WithInitialBootstrap(
+			true, true, new(managementv1.USERTYPE_APPLICATION),
 		))
 	}
 
@@ -93,9 +93,9 @@ func (c *Config) NewLakekeeperClient(ctx context.Context) (*Client, error) {
 	httpClient := &http.Client{Timeout: 2 * time.Second}
 	oauthCtx = context.WithValue(oauthCtx, oauth2.HTTPClient, httpClient)
 
-	client, err := lakekeeper.NewAuthSourceClient(ctx, &core.OAuthTokenSource{
+	client, err := lakekeeper.NewWithAuthSource(ctx, c.BaseURL, &core.OAuthClientCredentialsAuthSource{
 		TokenSource: oauthConfig.TokenSource(oauthCtx),
-	}, c.BaseURL, opts...)
+	}, opts...)
 	if err != nil {
 		return nil, err
 	}

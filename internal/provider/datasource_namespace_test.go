@@ -23,8 +23,13 @@ func TestExistingNamespaceRead(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			catalogReads := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodGet || r.Header.Get("x-project-id") != project {
-					t.Errorf("unexpected method or project: %s %s", r.Method, r.URL.Path)
+				if r.Method != http.MethodGet {
+					t.Errorf("unexpected method: %s %s", r.Method, r.URL.Path)
+				}
+				// Management API calls address the warehouse and namespace by ID;
+				// the catalog request names the project.
+				if strings.HasPrefix(r.URL.Path, "/catalog/") && r.Header.Get("x-project-id") != project {
+					t.Errorf("missing project header: %s", r.URL.Path)
 				}
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
@@ -39,7 +44,11 @@ func TestExistingNamespaceRead(t *testing.T) {
 					if scenario == "inactive" {
 						status = "inactive"
 					}
-					_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "project-id": p, "name": "renamed-warehouse", "status": status})
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"id": id, "warehouse-id": id, "project-id": p, "name": "renamed-warehouse", "status": status, "protected": false,
+						"allowed-format-versions": []int{1, 2}, "delete-profile": map[string]any{"type": "hard"},
+						"storage-profile": map[string]any{"type": "gcs", "bucket": "b"},
+					})
 				case "/catalog/v1/" + warehouse + "/namespaces/operational\x1flims\x1finventory\x1fgold":
 					catalogReads++
 					if scenario == "missing namespace" || scenario == "forbidden" {
@@ -60,7 +69,7 @@ func TestExistingNamespaceRead(t *testing.T) {
 					}
 					_ = json.NewEncoder(w).Encode(map[string]any{"namespace": parts, "properties": map[string]string{"namespace_id": id}})
 				case "/management/v1/permissions/namespace/" + namespace:
-					body := map[string]bool{}
+					body := map[string]bool{"managed-access-inherited": false}
 					if scenario != "missing managed access" {
 						body["managed-access"] = true
 					}

@@ -52,16 +52,14 @@ terraform {
 
 ## Supported Versions
 
-This provider will officially support the latest three last versions of Lakekeeper, although older versions may still work.
+This provider supports Lakekeeper v0.15.0 and later.
 
 The following Lakekeeper versions are used when running acceptance tests in CI:
 
 - Unreleased (latest-main)
-- v0.10.4
-- v0.10.3
-- v0.10.2
+- v0.15.0
 
-_The provider should be compatible with Lakekeeper >= v0.9.3._
+_The provider requires Lakekeeper >= v0.15.0, the minimum version supported by the [Lakekeeper Go SDK](https://github.com/lakekeeper/go-lakekeeper) it is built on._
 
 _Acceptance tests in CI are executed using Terraform v1.17.1._
 

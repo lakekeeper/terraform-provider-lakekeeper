@@ -18,12 +18,12 @@ Check first that the method doesn't already exist. The package is split by area:
 
 | File | Holds |
 | --- | --- |
-| [`client.go`](../internal/provider/api/client.go) | `Client`, the `Error` type, `wrapErr`, `IsNotFound` and `StatusCode` |
+| [`client.go`](../internal/provider/api/client.go) | `Client`, the `Error` type, `wrapErr`, `wrapGenErr`, `IsNotFound` and `StatusCode` |
 | [`management.go`](../internal/provider/api/management.go) | server info, projects, roles, users |
 | [`warehouses.go`](../internal/provider/api/warehouses.go) | warehouses |
 | [`storage.go`](../internal/provider/api/storage.go) | storage profile, storage credential and delete profile conversions |
 | [`permissions.go`](../internal/provider/api/permissions.go) | assignments, access checks and managed access for server, project, warehouse and role |
-| [`namespaces.go`](../internal/provider/api/namespaces.go) | namespace calls the SDK has no typed method for, made as raw HTTP requests |
+| [`namespaces.go`](../internal/provider/api/namespaces.go) | namespace permissions, and `LoadNamespace`, a raw Iceberg REST request |
 | [`constants.go`](../internal/provider/api/constants.go) | enum constants |
 | [`config.go`](../internal/provider/api/config.go) | client construction (OIDC, TLS) |
 
@@ -32,8 +32,8 @@ Check first that the method doesn't already exist. The package is split by area:
 Below, `<Thing>` is the object the endpoint returns, for example `Role`.
 
 1. **Pick the file and the method to copy.** Put the method in the file for its area. Then copy the closest existing method:
-   - If the SDK has a typed method for the endpoint, copy [`GetRole`](../internal/provider/api/management.go) (read), `CreateRole` or `UpdateRole` (write with a body), or `DeleteRole` (no result), all in `management.go`.
-   - If it doesn't, copy a method in [`namespaces.go`](../internal/provider/api/namespaces.go) that uses the `c.do` helper: `GetNamespaceManagedAccess` (read) or `UpdateNamespaceAssignments` (write). `c.do` sends a management API request with the `x-project-id` header and wraps the error for you.
+   - If the SDK has a resource façade method for the endpoint (`c.sdk.Warehouses`, `Projects`, `Roles`, `Users`, `Server`, `Permissions`), copy [`GetRole`](../internal/provider/api/management.go) (read), `CreateRole` or `UpdateRole` (write with a body), or `DeleteRole` (no result), all in `management.go`. Name the project with `lakekeeper.WithProject(projectID)`.
+   - If it doesn't, call the generated client embedded in the SDK client (`c.sdk.WarehouseAPI`, `c.sdk.PermissionsOpenfgaAPI`, …), as `GetNamespaceManagedAccess` (read) and `UpdateNamespaceAssignments` (write) in [`namespaces.go`](../internal/provider/api/namespaces.go) do. Missing functionality belongs in the [SDK](https://github.com/lakekeeper/go-lakekeeper) rather than in a raw HTTP request here.
 
 2. **Define SDK-neutral types.** The method's parameters and results use only Go types and types from this package, never SDK types.
    - The result is a struct of plain fields, like `Role`. Optional values are pointers: `nil` means not set, as the package comment in `client.go` says.
@@ -42,22 +42,22 @@ Below, `<Thing>` is the object the endpoint returns, for example `Role`.
 
 3. **Expose enums as string constants.** An enum field is a plain `string`, with a comment naming its constants (`UserType string`, see `User`). Add the constants to [`constants.go`](../internal/provider/api/constants.go) in their own `const` block; their values are the Lakekeeper wire values. Convert at the boundary: `string(u.UserType)` in `userFromSDK`, and `managementv1.UserType(*req.UserType)` in `ProvisionUser`. Resources use the constants in schemas, validators and descriptions, as [`datasource_user.go`](../internal/provider/datasource_user.go) does with `api.UserTypeHuman`.
 
-4. **Write the method and wrap its error.** The signature takes `ctx context.Context` first and returns the SDK-neutral type and an `error`. Pass every error from an SDK call through `wrapErr(resp, err)`:
+4. **Write the method and wrap its error.** The signature takes `ctx context.Context` first and returns the SDK-neutral type and an `error`. Pass every error from a façade call through `wrapErr(err)`:
 
    ```go
    // GetRole returns a role.
    func (c *Client) GetRole(ctx context.Context, projectID, roleID string) (*Role, error) {
-   	r, resp, err := c.sdk.RoleV1(projectID).Get(ctx, roleID)
+   	r, err := c.sdk.Roles.Get(ctx, roleID, lakekeeper.WithProject(projectID))
    	if err != nil {
-   		return nil, wrapErr(resp, err)
+   		return nil, wrapErr(err)
    	}
    	return roleFromSDK(r), nil
    }
    ```
 
-   `wrapErr` returns an `*api.Error` that keeps the SDK's message and adds the HTTP status code, taken from the response or from the SDK's `*core.APIError`. That status is what `api.IsNotFound` and `api.StatusCode` read. A method without a result returns `wrapErr(resp, err)` directly, as `DeleteRole` does. If the endpoint answers 404 for a reason other than "object not found", say so in the doc comment, as `GetWarehouseManagedAccess` in [`permissions.go`](../internal/provider/api/permissions.go) does.
+   A generated-client call returns the raw `*http.Response` too; pass it through `wrapGenErr("<operation>", resp, err)` instead, which builds the same error the façades return. Either returns an `*api.Error` that keeps the SDK's message and adds the HTTP status code from the SDK's `*client.APIError`. That status is what `api.IsNotFound` and `api.StatusCode` read. A method without a result returns the wrapped error directly, as `DeleteRole` does. If the endpoint answers 404 for a reason other than "object not found", say so in the doc comment, as `GetWarehouseManagedAccess` in [`permissions.go`](../internal/provider/api/permissions.go) does.
 
-5. **Write a unit test** in [`internal/provider/api/client_test.go`](../internal/provider/api/client_test.go). It has no build tag, so `make test` runs it without a server. Start an `httptest` server and build the client with `NewStaticTokenClient(ctx, s.URL, "test")`. Copy `TestNamespaceAssignmentsWireFormat` to check the request your method sends, and `TestErrorsCarryStatusCode` to check that a 404 response satisfies `IsNotFound`. Run it with `RUN=Test<Name> make test`.
+5. **Pin its wire format and test it.** Add a `step` for the method to `TestWire` in [`internal/provider/api/wire_test.go`](../internal/provider/api/wire_test.go), with a canned response in `wireRoutes` that has every field the Management API spec marks as required. Run `go test ./internal/provider/api -run TestWire -update` and review the new lines in `testdata/wire.golden`: they are the request your method sends and the value it returns. For behaviour beyond that, add a test to [`client_test.go`](../internal/provider/api/client_test.go); copy `TestErrorsCarryStatusCode` to check that a 404 response satisfies `IsNotFound`. Neither has a build tag, so `make test` runs them without a server. Run one with `RUN=Test<Name> make test`.
 
 6. **Call it from the resource.** Use `r.client.<Method>(ctx, …)`. On error, add a diagnostic as the resource already does (`"Lakekeeper API error occurred"` in [`resource_role.go`](../internal/provider/resource_role.go)). Check `api.IsNotFound(err)` only where a 404 has a specific meaning; see [Not found](#not-found-and-removing-from-state) below.
 
@@ -82,12 +82,12 @@ If your resource should remove a deleted object from state, use the snippet abov
 
 ## Pitfalls
 
-- **The SDK import.** Importing `github.com/baptistegh/go-lakekeeper` (any of its packages) outside `internal/provider/api` fails `make lint` with `use the client layer in internal/provider/api instead`. That is the depguard rule `lakekeeper-sdk` in [`.golangci.yml`](../.golangci.yml). `make lint-golangci` runs with `--build-tags acceptance`, so acceptance test files count too. The fix is always a method on `*api.Client`, never an exclusion in `.golangci.yml`.
+- **The SDK import.** Importing `github.com/lakekeeper/go-lakekeeper` (any of its packages) outside `internal/provider/api` fails `make lint` with `use the client layer in internal/provider/api instead`. That is the depguard rule `lakekeeper-sdk` in [`.golangci.yml`](../.golangci.yml). `make lint-golangci` runs with `--build-tags acceptance`, so acceptance test files count too. The fix is always a method on `*api.Client`, never an exclusion in `.golangci.yml`.
 - **SDK types leaking through the API.** The depguard rule only checks imports. An exported method or field that uses an SDK type still compiles and lints, and a resource can use the value without importing the SDK. Keep SDK types in unexported functions only.
-- **A bare SDK error.** Returning the SDK's `err` without `wrapErr` makes `api.IsNotFound` and `api.StatusCode` see no status code, so a resource's 404 handling silently never runs. Errors the API client layer makes itself, such as a conversion error or a missing list in a response, carry no status code; that is intended.
-- **A typed nil from `c.sdk.Do`.** `Do` returns a `*core.APIError`, not an `error`. Compare it with `nil` before converting it, as `do` and `LoadNamespace` in `namespaces.go` do. Assigning it to an `error` variable first turns a nil pointer into a non-nil error.
+- **A bare SDK error.** Returning the SDK's `err` without `wrapErr` or `wrapGenErr` makes `api.IsNotFound` and `api.StatusCode` see no status code, so a resource's 404 handling silently never runs. Errors the API client layer makes itself, such as a conversion error or a missing list in a response, carry no status code; that is intended.
+- **A generated call without `Execute`.** The generated client builds a request in steps; nothing is sent until `.Execute()`. Its errors carry no status code until they pass through `wrapGenErr`.
 - **A 404 is not always "object deleted".** On the managed-access endpoints it means "no authorization backend". Check what the endpoint means by 404 before you remove a resource from state on it.
-- **IDs that contain `/`.** A user ID can contain `/`, and the SDK puts IDs into the path unescaped. `GetUser` and `DeleteUser` in `management.go` pass `url.PathEscape(id)`.
+- **IDs that contain `/`.** A user ID can contain `/`. The SDK path-escapes IDs, so pass them as they are: escaping them again sends `%252F`. `TestWire` pins this for `GetUser` and `DeleteUser`.
 - **Enum values.** A constant's value must be the exact wire value, because the conversion to the SDK type is a plain type conversion that checks nothing. Don't redefine the values in a resource; use the `api` constant.
 
 ## Before you open the PR

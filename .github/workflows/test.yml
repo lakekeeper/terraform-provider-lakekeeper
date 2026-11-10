@@ -132,12 +132,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # we currently support the last 3 patchs within a minor
+        # v0.15.0 is the minimum version the Lakekeeper Go SDK supports
         lakekeeper-version:
           - 'latest-main'
-          - 'v0.10.4'
-          - 'v0.10.3'
-          - 'v0.10.2'
+          - 'v0.15.0'
     env:
       LAKEKEEPER_VERSION: ${{ matrix.lakekeeper-version }}
     steps:

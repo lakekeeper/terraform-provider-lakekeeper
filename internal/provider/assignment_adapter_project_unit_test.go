@@ -57,7 +57,7 @@ func TestProjectScopeAdapterListGrants(t *testing.T) {
 	if !reflect.DeepEqual(grants, want) {
 		t.Fatalf("grants %+v", grants)
 	}
-	if r := (*requests)[0]; r.method != "GET" || r.path != "/management/v1/permissions/project/p1/assignments" {
+	if r := (*requests)[0]; r.method != "GET" || r.path != "/management/v1/permissions/project/assignments" || r.header.Get("x-project-id") != "p1" {
 		t.Fatalf("request %s %s", r.method, r.path)
 	}
 
@@ -101,7 +101,7 @@ func TestProjectScopeAdapterApplyGrants(t *testing.T) {
 		t.Fatalf("want one request, got %d", len(*requests))
 	}
 	r := (*requests)[0]
-	if r.method != "POST" || r.path != "/management/v1/permissions/project/p1/assignments" {
+	if r.method != "POST" || r.path != "/management/v1/permissions/project/assignments" || r.header.Get("x-project-id") != "p1" {
 		t.Fatalf("request %s %s", r.method, r.path)
 	}
 	wantBody := map[string]any{

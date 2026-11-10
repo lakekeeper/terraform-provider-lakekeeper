@@ -620,15 +620,15 @@ svg[data-node-ui][data-preset="editorial"] :is([data-graph-role="structural-fram
         <text x="645" y="176" class="t-backend" font-size="7" text-anchor="middle">*api.Client</text>
         </g>
 
-        <g id="node-sdk" data-node-id="sdk" data-node-label="Lakekeeper Go SDK" tabindex="0" role="button" aria-label="Focus Lakekeeper Go SDK, baptistegh/go-lakekeeper, Provider binary" aria-pressed="false" data-node-kind="backend" data-node-sublabel="baptistegh/go-lakekeeper" data-node-context="Provider binary">
-          <title>Lakekeeper Go SDK · baptistegh/go-lakekeeper · Provider binary</title>
+        <g id="node-sdk" data-node-id="sdk" data-node-label="Lakekeeper Go SDK" tabindex="0" role="button" aria-label="Focus Lakekeeper Go SDK, lakekeeper/go-lakekeeper, Provider binary" aria-pressed="false" data-node-kind="backend" data-node-sublabel="lakekeeper/go-lakekeeper" data-node-context="Provider binary">
+          <title>Lakekeeper Go SDK · lakekeeper/go-lakekeeper · Provider binary</title>
           <rect x="810" y="120" width="150" height="64" rx="8" class="c-mask"/>
           <rect x="810" y="120" width="150" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(816 126) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" x="885" y="150" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Lakekeeper Go SDK</text>
-        <text x="885" y="166" class="t-muted" font-size="9" text-anchor="middle">baptistegh/go-lakekeeper</text>
+        <text x="885" y="166" class="t-muted" font-size="9" text-anchor="middle">lakekeeper/go-lakekeeper</text>
         </g>
 
         <g id="node-lakekeeper" data-node-id="lakekeeper" data-node-label="Lakekeeper server" tabindex="0" role="button" aria-label="Focus Lakekeeper server, REST API, Architecture component" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="REST API" data-node-context="Architecture component">

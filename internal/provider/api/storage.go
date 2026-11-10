@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/credential"
-	"github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1/storage/profile"
+	managementv1 "github.com/lakekeeper/go-lakekeeper/pkg/apis/management/v1"
+	"github.com/lakekeeper/go-lakekeeper/pkg/storage/credential"
+	"github.com/lakekeeper/go-lakekeeper/pkg/storage/profile"
 )
 
 // ---------------------------------------------------------------------------
@@ -64,13 +65,30 @@ func isSet(s *string) bool    { return s != nil && *s != "" }
 func isTrue(b *bool) bool     { return b != nil && *b }
 func isNonZero(i *int64) bool { return i != nil && *i != 0 }
 
-func storageProfileToSDK(sp StorageProfile) (profile.StorageProfile, error) {
+// S3 defaults sent when the user leaves a field unset. The previous SDK
+// injected them on the client side; keeping them preserves what the server
+// stores for existing configurations.
+const (
+	defaultS3Flavor                  = S3FlavorAWS
+	defaultS3STSTokenValiditySeconds = 3600
+	defaultS3RemoteSigningURLStyle   = RemoteSigningURLStyleAuto
+)
+
+// defaultADLSSASTokenValiditySeconds replaces an explicit 0, as the previous
+// SDK did. An unset value is not sent at all.
+const defaultADLSSASTokenValiditySeconds = 3600
+
+func storageProfileToSDK(sp StorageProfile) (managementv1.StorageProfile, error) {
 	switch p := sp.(type) {
 	case *S3StorageProfile:
-		// Unset fields keep the defaults of profile.NewS3StorageSettings
-		// (flavor aws, sts token validity 3600, push-s3-delete-disabled true,
-		// remote signing url style auto).
-		var opts []profile.S3StorageSettingsOptions
+		opts := []profile.S3Option{
+			profile.WithS3Flavor(profile.S3Flavor(defaultS3Flavor)),
+			profile.WithS3RemoteSigningURLStyle(profile.S3UrlStyleDetectionMode(defaultS3RemoteSigningURLStyle)),
+			s3STSTokenValiditySeconds(defaultS3STSTokenValiditySeconds),
+			// push-s3-delete-disabled is always sent as true: it defaulted to
+			// true and an explicit false was never sent.
+			profile.WithS3PushS3DeleteDisabled(true),
+		}
 		if isSet(p.KeyPrefix) {
 			opts = append(opts, profile.WithS3KeyPrefix(*p.KeyPrefix))
 		}
@@ -78,62 +96,39 @@ func storageProfileToSDK(sp StorageProfile) (profile.StorageProfile, error) {
 			opts = append(opts, profile.WithS3AlternativeProtocols())
 		}
 		if isSet(p.AssumeRoleARN) {
-			opts = append(opts, profile.WithAssumeRoleARN(*p.AssumeRoleARN))
+			opts = append(opts, profile.WithS3AssumeRoleARN(*p.AssumeRoleARN))
 		}
 		if isSet(p.AWSKMSKeyARN) {
-			opts = append(opts, profile.WithAWSKMSKeyARN(*p.AWSKMSKeyARN))
+			opts = append(opts, profile.WithS3AWSKMSKeyARN(*p.AWSKMSKeyARN))
 		}
 		if isSet(p.Endpoint) {
-			opts = append(opts, profile.WithEndpoint(*p.Endpoint))
+			opts = append(opts, profile.WithS3Endpoint(*p.Endpoint))
 		}
 		if isSet(p.Flavor) {
-			opts = append(opts, profile.WithFlavor(profile.S3Flavor(*p.Flavor)))
+			opts = append(opts, profile.WithS3Flavor(profile.S3Flavor(*p.Flavor)))
 		}
 		if isTrue(p.PathStyleAccess) {
-			opts = append(opts, profile.WithPathStyleAccess())
-		}
-		if isTrue(p.PushS3DeleteDisabled) {
-			opts = append(opts, profile.WithPushS3DeleteDisabled(true))
+			opts = append(opts, profile.WithS3PathStyleAccess())
 		}
 		if isSet(p.RemoteSigningURLStyle) {
-			opts = append(opts, profile.WithRemoteSigningURLStyle(profile.RemoteSigningURLStyle(*p.RemoteSigningURLStyle)))
+			opts = append(opts, profile.WithS3RemoteSigningURLStyle(profile.S3UrlStyleDetectionMode(*p.RemoteSigningURLStyle)))
 		}
 		if p.STSEnabled {
-			opts = append(opts, profile.WithSTSEnabled())
+			opts = append(opts, profile.WithS3STSEnabled())
 		}
 		if isSet(p.STSRoleARN) {
-			opts = append(opts, profile.WithSTSRoleARN(*p.STSRoleARN))
+			opts = append(opts, profile.WithS3STSRoleARN(*p.STSRoleARN))
 		}
 		if isNonZero(p.STSTokenValiditySeconds) {
-			opts = append(opts, profile.WithSTSTokenValiditySeconds(*p.STSTokenValiditySeconds))
+			opts = append(opts, s3STSTokenValiditySeconds(*p.STSTokenValiditySeconds))
 		}
-		return profile.NewS3StorageSettings(p.Bucket, p.Region, opts...).AsProfile(), nil
+		return profile.NewS3Profile(p.Bucket, p.Region, opts...), nil
 
 	case *ADLSStorageProfile:
-		var opts []profile.ADLSStorageSettingsOptions
-		if isSet(p.AuthorityHost) {
-			opts = append(opts, profile.WithAuthorityHost(*p.AuthorityHost))
-		}
-		if isSet(p.Host) {
-			opts = append(opts, profile.WithHost(*p.Host))
-		}
-		if isSet(p.KeyPrefix) {
-			opts = append(opts, profile.WithADLSKeyPrefix(*p.KeyPrefix))
-		}
-		if isNonZero(p.SASTokenValiditySeconds) {
-			opts = append(opts, profile.WithSASTokenValiditySeconds(*p.SASTokenValiditySeconds))
-		}
-		if isTrue(p.AllowAlternativeProtocols) {
-			opts = append(opts, profile.WithADLSAlternativeProtocols())
-		}
-		s := profile.NewADLSStorageSettings(p.AccountName, p.Filesystem, opts...)
-
-		// NewADLSStorageSettings injects client-side defaults for several optional
-		// fields (host = "dfs.core.windows.net", authority_host =
-		// "https://login.microsoftonline.com", sas_token_validity_seconds = 3600).
-		// The Lakekeeper server, like the UI, expects these to be omitted unless
-		// explicitly set: it stores null and applies its own defaults at runtime.
-		// Sending the injected defaults instead breaks in field-specific ways:
+		// Optional fields are omitted unless set explicitly. The Lakekeeper
+		// server, like the UI, stores null for them and applies its own
+		// defaults at runtime. Sending defaults instead breaks in
+		// field-specific ways:
 		//   - host: a non-empty host becomes CloudLocation::Custom, which reuses the
 		//     dfs URI for the blob service client and breaks the blob-only "Get User
 		//     Delegation Key" SAS minting (400 InvalidUri from the Windows-Azure-HDFS
@@ -143,85 +138,93 @@ func storageProfileToSDK(sp StorageProfile) (profile.StorageProfile, error) {
 		//     loss of data").
 		//   - sas_token_validity_seconds: Optional+Computed stored as null, so a sent
 		//     3600 triggers a "provider produced inconsistent result" error.
-		// Mirror the UI and omit each value when the user has not set it explicitly,
-		// letting the server apply its defaults.
-		if !isSet(p.Host) {
-			s.Host = nil
+		var opts []profile.ADLSOption
+		if isSet(p.AuthorityHost) {
+			opts = append(opts, profile.WithADLSAuthorityHost(*p.AuthorityHost))
 		}
-		if !isSet(p.AuthorityHost) {
-			s.AuthorityHost = nil
+		if isSet(p.Host) {
+			opts = append(opts, profile.WithADLSHost(*p.Host))
 		}
-		if p.SASTokenValiditySeconds == nil {
-			s.SASTokenValiditySeconds = nil
+		if isSet(p.KeyPrefix) {
+			opts = append(opts, profile.WithADLSKeyPrefix(*p.KeyPrefix))
 		}
-		return s.AsProfile(), nil
+		if p.SASTokenValiditySeconds != nil {
+			v := *p.SASTokenValiditySeconds
+			if v == 0 {
+				v = defaultADLSSASTokenValiditySeconds
+			}
+			opts = append(opts, adlsSASTokenValiditySeconds(v))
+		}
+		if isTrue(p.AllowAlternativeProtocols) {
+			opts = append(opts, profile.WithADLSAlternativeProtocols())
+		}
+		return profile.NewADLSProfile(p.AccountName, p.Filesystem, opts...), nil
 
 	case *GCSStorageProfile:
-		var opts []profile.GCSStorageSettingsOptions
+		var opts []profile.GCSOption
 		if isSet(p.KeyPrefix) {
 			opts = append(opts, profile.WithGCSKeyPrefix(*p.KeyPrefix))
 		}
-		return profile.NewGCSStorageSettings(p.Bucket, opts...).AsProfile(), nil
+		return profile.NewGCSProfile(p.Bucket, opts...), nil
 	}
-	return profile.StorageProfile{}, fmt.Errorf("unsupported storage profile type %T", sp)
+	return managementv1.StorageProfile{}, fmt.Errorf("unsupported storage profile type %T", sp)
+}
+
+// s3STSTokenValiditySeconds sets the STS token validity in whole seconds.
+func s3STSTokenValiditySeconds(seconds int64) profile.S3Option {
+	return func(s *managementv1.StorageProfileS3) { s.StsTokenValiditySeconds = &seconds }
+}
+
+// adlsSASTokenValiditySeconds sets the SAS token validity in whole seconds.
+func adlsSASTokenValiditySeconds(seconds int64) profile.ADLSOption {
+	return func(s *managementv1.StorageProfileAdls) { s.SetSasTokenValiditySeconds(seconds) }
 }
 
 // storageProfileFromSDK converts a storage profile read from the server. It
 // returns nil if the profile is empty.
-func storageProfileFromSDK(sp profile.StorageProfile) (StorageProfile, error) {
-	if sp.StorageSettings == nil {
-		return nil, nil
-	}
-	switch sp.StorageSettings.GetStorageFamily() {
-	case profile.StorageFamilyS3:
-		cfg, ok := sp.AsS3()
-		if !ok {
-			return nil, errors.New("invalid storage profile")
-		}
+func storageProfileFromSDK(sp managementv1.StorageProfile) (StorageProfile, error) {
+	if cfg, ok := profile.AsS3(sp); ok {
 		out := &S3StorageProfile{
 			Bucket:                    cfg.Bucket,
 			Region:                    cfg.Region,
-			STSEnabled:                cfg.STSEnabled,
-			KeyPrefix:                 cfg.KeyPrefix,
-			AllowAlternativeProtocols: cfg.AllowAlternativeProtocols,
-			AssumeRoleARN:             cfg.AssumeRoleARN,
-			AWSKMSKeyARN:              cfg.AWSKMSKeyARN,
-			Endpoint:                  cfg.Endpoint,
-			PathStyleAccess:           cfg.PathStyleAccess,
+			STSEnabled:                cfg.StsEnabled,
+			KeyPrefix:                 cfg.KeyPrefix.Get(),
+			AllowAlternativeProtocols: cfg.AllowAlternativeProtocols.Get(),
+			AssumeRoleARN:             cfg.AssumeRoleArn.Get(),
+			AWSKMSKeyARN:              cfg.AwsKmsKeyArn.Get(),
+			Endpoint:                  cfg.Endpoint.Get(),
+			PathStyleAccess:           cfg.PathStyleAccess.Get(),
 			PushS3DeleteDisabled:      cfg.PushS3DeleteDisabled,
-			STSRoleARN:                cfg.STSRoleARN,
-			STSTokenValiditySeconds:   cfg.STSTokenValiditySeconds,
+			STSRoleARN:                cfg.StsRoleArn.Get(),
+			STSTokenValiditySeconds:   cfg.StsTokenValiditySeconds,
 		}
 		if cfg.Flavor != nil {
 			out.Flavor = new(string(*cfg.Flavor))
 		}
-		if cfg.RemoteSigningURLStyle != nil {
-			out.RemoteSigningURLStyle = new(string(*cfg.RemoteSigningURLStyle))
+		if cfg.RemoteSigningUrlStyle != nil {
+			out.RemoteSigningURLStyle = new(string(*cfg.RemoteSigningUrlStyle))
 		}
 		return out, nil
-	case profile.StorageFamilyADLS:
-		cfg, ok := sp.AsADLS()
-		if !ok {
-			return nil, errors.New("invalid storage profile")
-		}
+	}
+	if cfg, ok := profile.AsADLS(sp); ok {
 		return &ADLSStorageProfile{
 			AccountName:               cfg.AccountName,
 			Filesystem:                cfg.Filesystem,
-			Host:                      cfg.Host,
-			AuthorityHost:             cfg.AuthorityHost,
-			KeyPrefix:                 cfg.KeyPrefix,
-			SASTokenValiditySeconds:   cfg.SASTokenValiditySeconds,
+			Host:                      cfg.Host.Get(),
+			AuthorityHost:             cfg.AuthorityHost.Get(),
+			KeyPrefix:                 cfg.KeyPrefix.Get(),
+			SASTokenValiditySeconds:   cfg.SasTokenValiditySeconds.Get(),
 			AllowAlternativeProtocols: cfg.AllowAlternativeProtocols,
 		}, nil
-	case profile.StorageFamilyGCS:
-		cfg, ok := sp.AsGCS()
-		if !ok {
-			return nil, errors.New("invalid storage profile")
-		}
+	}
+	if cfg, ok := profile.AsGCS(sp); ok {
 		return &GCSStorageProfile{
 			Bucket:    cfg.Bucket,
-			KeyPrefix: cfg.KeyPrefix,
+			KeyPrefix: cfg.KeyPrefix.Get(),
 		}, nil
+	}
+	if sp == (managementv1.StorageProfile{}) {
+		return nil, nil
 	}
 	return nil, errors.New("unsupported storage profile")
 }
@@ -305,30 +308,45 @@ func (*AzureManagedIdentityCredential) isStorageCredential() {}
 func (*GCSServiceAccountKeyCredential) isStorageCredential() {}
 func (*GCSSystemIdentityCredential) isStorageCredential()    {}
 
-func storageCredentialToSDK(sc StorageCredential) (credential.StorageCredential, error) {
+func storageCredentialToSDK(sc StorageCredential) (managementv1.StorageCredential, error) {
 	switch c := sc.(type) {
 	case *S3AccessKeyCredential:
-		var opts []credential.S3CredentialAccessKeyOptions
 		if isSet(c.ExternalID) {
-			opts = append(opts, credential.WithExternalID(*c.ExternalID))
+			return credential.NewS3AccessKeyWithExternalID(c.AccessKeyID, c.SecretAccessKey, *c.ExternalID), nil
 		}
-		return credential.NewS3CredentialAccessKey(c.AccessKeyID, c.SecretAccessKey, opts...).AsCredential(), nil
+		return credential.NewS3AccessKey(c.AccessKeyID, c.SecretAccessKey), nil
 	case *S3SystemIdentityCredential:
-		return credential.NewS3CredentialSystemIdentity(c.ExternalID).AsCredential(), nil
+		if c.ExternalID != "" {
+			return credential.NewS3AwsSystemIdentityWithExternalID(c.ExternalID), nil
+		}
+		return credential.NewS3AwsSystemIdentity(), nil
 	case *CloudflareR2Credential:
-		return credential.NewCloudflareR2Credential(c.AccessKeyID, c.SecretAccessKey, c.AccountID, c.Token).AsCredential(), nil
+		return credential.NewS3CloudflareR2(c.AccessKeyID, c.SecretAccessKey, c.AccountID, c.Token), nil
 	case *AzureClientCredentials:
-		return credential.NewAZCredentialClientCredentials(c.ClientID, c.ClientSecret, c.TenantID).AsCredential(), nil
+		return credential.NewAZClientCredentials(c.TenantID, c.ClientID, c.ClientSecret), nil
 	case *AzureSharedAccessKeyCredential:
-		return credential.NewAZCredentialSharedAccessKey(c.Key).AsCredential(), nil
+		return credential.NewAZSharedAccessKey(c.Key), nil
 	case *AzureManagedIdentityCredential:
-		return credential.NewAZCredentialManagedIdentity().AsCredential(), nil
+		return credential.NewAZManagedIdentity(), nil
 	case *GCSServiceAccountKeyCredential:
-		return credential.NewGCSCredentialServiceAccountKey(credential.GCSServiceKey(c.Key)).AsCredential(), nil
+		k := c.Key
+		return credential.NewGCSServiceAccountKey(managementv1.GcsServiceKey{
+			AuthProviderX509CertUrl: k.AuthProviderX509CertURL,
+			AuthUri:                 k.AuthURI,
+			ClientEmail:             k.ClientEmail,
+			ClientId:                k.ClientID,
+			ClientX509CertUrl:       k.ClientX509CertURL,
+			PrivateKey:              k.PrivateKey,
+			PrivateKeyId:            k.PrivateKeyID,
+			ProjectId:               k.ProjectID,
+			TokenUri:                k.TokenURI,
+			Type:                    k.Type,
+			UniverseDomain:          k.UniverseDomain,
+		}), nil
 	case *GCSSystemIdentityCredential:
-		return credential.NewGCSCredentialSystemIdentity().AsCredential(), nil
+		return credential.NewGCSSystemIdentity(), nil
 	}
-	return credential.StorageCredential{}, fmt.Errorf("unsupported storage credential type %T", sc)
+	return managementv1.StorageCredential{}, fmt.Errorf("unsupported storage credential type %T", sc)
 }
 
 // ---------------------------------------------------------------------------
@@ -342,26 +360,24 @@ type DeleteProfile struct {
 	ExpirationSeconds int32
 }
 
-func deleteProfileToSDK(d DeleteProfile) (*profile.DeleteProfile, error) {
+func deleteProfileToSDK(d DeleteProfile) (managementv1.TabularDeleteProfile, error) {
 	switch d.Type {
 	case DeleteProfileTypeHard:
-		return profile.NewTabularDeleteProfileHard().AsProfile(), nil
+		return managementv1.TabularDeleteProfileHardAsTabularDeleteProfile(managementv1.NewTabularDeleteProfileHard(DeleteProfileTypeHard)), nil
 	case DeleteProfileTypeSoft:
-		return profile.NewTabularDeleteProfileSoft(d.ExpirationSeconds).AsProfile(), nil
+		return managementv1.TabularDeleteProfileSoftAsTabularDeleteProfile(managementv1.NewTabularDeleteProfileSoft(int64(d.ExpirationSeconds), DeleteProfileTypeSoft)), nil
 	}
-	return nil, fmt.Errorf("incorrect delete profile definition, type must be [soft,hard]")
+	return managementv1.TabularDeleteProfile{}, fmt.Errorf("incorrect delete profile definition, type must be [soft,hard]")
 }
 
-func deleteProfileFromSDK(d *profile.DeleteProfile) (*DeleteProfile, error) {
-	if d == nil || d.DeleteProfileSettings == nil {
-		return nil, nil
-	}
-	switch p := d.DeleteProfileSettings.(type) {
-	case *profile.TabularDeleteProfileSoft:
-		return &DeleteProfile{Type: DeleteProfileTypeSoft, ExpirationSeconds: p.ExpirationSeconds}, nil
-	case *profile.TabularDeleteProfileHard:
+// deleteProfileFromSDK converts a delete profile read from the server. It
+// returns nil if the profile is empty.
+func deleteProfileFromSDK(d managementv1.TabularDeleteProfile) (*DeleteProfile, error) {
+	switch {
+	case d.TabularDeleteProfileSoft != nil:
+		return &DeleteProfile{Type: DeleteProfileTypeSoft, ExpirationSeconds: int32(d.TabularDeleteProfileSoft.ExpirationSeconds)}, nil
+	case d.TabularDeleteProfileHard != nil:
 		return &DeleteProfile{Type: DeleteProfileTypeHard}, nil
-	default:
-		return nil, fmt.Errorf("incorrect delete profile type: %T, valid: [soft,hard]", p)
 	}
+	return nil, nil
 }

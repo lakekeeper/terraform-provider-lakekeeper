@@ -13,8 +13,6 @@ linters:
             - "$all"
             - "!**/internal/provider/api/*.go"
           deny:
-            - pkg: github.com/baptistegh/go-lakekeeper
-              desc: use the client layer in internal/provider/api instead
             - pkg: github.com/lakekeeper/go-lakekeeper
               desc: use the client layer in internal/provider/api instead
   exclusions:
