@@ -74,6 +74,10 @@ const (
 	defaultS3RemoteSigningURLStyle   = RemoteSigningURLStyleAuto
 )
 
+// defaultADLSSASTokenValiditySeconds replaces an explicit 0, as the previous
+// SDK did. An unset value is not sent at all.
+const defaultADLSSASTokenValiditySeconds = 3600
+
 func storageProfileToSDK(sp StorageProfile) (managementv1.StorageProfile, error) {
 	switch p := sp.(type) {
 	case *S3StorageProfile:
@@ -145,12 +149,11 @@ func storageProfileToSDK(sp StorageProfile) (managementv1.StorageProfile, error)
 			opts = append(opts, profile.WithADLSKeyPrefix(*p.KeyPrefix))
 		}
 		if p.SASTokenValiditySeconds != nil {
-			// An explicit 0 is sent as the default 3600, as before.
 			v := *p.SASTokenValiditySeconds
 			if v == 0 {
-				v = 3600
+				v = defaultADLSSASTokenValiditySeconds
 			}
-			opts = append(opts, func(s *managementv1.StorageProfileAdls) { s.SetSasTokenValiditySeconds(v) })
+			opts = append(opts, adlsSASTokenValiditySeconds(v))
 		}
 		if isTrue(p.AllowAlternativeProtocols) {
 			opts = append(opts, profile.WithADLSAlternativeProtocols())
@@ -170,6 +173,11 @@ func storageProfileToSDK(sp StorageProfile) (managementv1.StorageProfile, error)
 // s3STSTokenValiditySeconds sets the STS token validity in whole seconds.
 func s3STSTokenValiditySeconds(seconds int64) profile.S3Option {
 	return func(s *managementv1.StorageProfileS3) { s.StsTokenValiditySeconds = &seconds }
+}
+
+// adlsSASTokenValiditySeconds sets the SAS token validity in whole seconds.
+func adlsSASTokenValiditySeconds(seconds int64) profile.ADLSOption {
+	return func(s *managementv1.StorageProfileAdls) { s.SetSasTokenValiditySeconds(seconds) }
 }
 
 // storageProfileFromSDK converts a storage profile read from the server. It

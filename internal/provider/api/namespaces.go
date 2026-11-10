@@ -35,7 +35,9 @@ func (c *Client) UpdateNamespaceAssignments(ctx context.Context, projectID, name
 	return wrapGenErr("update namespace assignments", resp, err)
 }
 
-// GetNamespaceManagedAccess returns the namespace's managed-access flag.
+// GetNamespaceManagedAccess returns the namespace's managed-access flag. It
+// never returns nil without an error: a response without the flag fails to
+// decode.
 func (c *Client) GetNamespaceManagedAccess(ctx context.Context, projectID, namespaceID string) (*bool, error) {
 	r, resp, err := c.sdk.PermissionsOpenfgaAPI.GetNamespaceById(ctx, namespaceID).Execute()
 	if err != nil {

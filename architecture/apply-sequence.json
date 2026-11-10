@@ -274,7 +274,7 @@
       "from": "apiclient",
       "to": "sdk",
       "y": 964,
-      "label": "RoleV1(project).Create",
+      "label": "Roles.Create(WithProject)",
       "variant": "emphasis"
     },
     {
@@ -342,7 +342,7 @@
       "from": "apiclient",
       "to": "sdk",
       "y": 1434,
-      "label": "RoleV1(project).Get",
+      "label": "Roles.Get(WithProject)",
       "variant": "default"
     },
     {
