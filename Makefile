@@ -125,7 +125,7 @@ tool-terraform:
 	@[ -f $(GOBIN)/terraform ] || { mkdir -p tmp; cd tmp; rm -rf terraform; git clone --branch $(TERRAFORM_VERSION) --depth 1 https://github.com/hashicorp/terraform.git; cd terraform; GOBIN=$(GOBIN) go install; cd ../..; rm -rf tmp; }
 
 # renovate: datasource=pypi depName=graphifyy
-GRAPHIFY_VERSION ?= 0.9.105
+GRAPHIFY_VERSION ?= 0.9.106
 
 GRAPHIFY = uvx --from 'graphifyy[terraform]==$(GRAPHIFY_VERSION)' graphify
 
