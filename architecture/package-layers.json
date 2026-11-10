@@ -3,14 +3,14 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "Package layers: terraform-provider-lakekeeper",
-    "output": ".archify/architecture-package-layers-20261110-140649/package-layers.html",
+    "output": ".archify/architecture-package-layers-20261110-141010/package-layers.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "53497791db066643f06cb6c43cfd9febae2ada9f"
+      "revision": "ba0f0b6579f42ee9543ab2be0320818ffdb74c34"
     }
   },
   "components": [

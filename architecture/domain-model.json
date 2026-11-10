@@ -3,14 +3,14 @@
   "diagram_type": "class",
   "meta": {
     "title": "Domain model: what the provider manages",
-    "output": ".archify/class-domain-model-20261106-131445/domain-model.html",
+    "output": ".archify/class-domain-model-20261110-141006/domain-model.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+      "revision": "ba0f0b6579f42ee9543ab2be0320818ffdb74c34"
     }
   },
   "layout": {

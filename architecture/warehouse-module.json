@@ -3,14 +3,14 @@
   "diagram_type": "dataflow",
   "meta": {
     "title": "Warehouse module: terraform-provider-lakekeeper",
-    "output": ".archify/dataflow-warehouse-module-20261106-130104/warehouse-module.html",
+    "output": ".archify/dataflow-warehouse-module-20261110-141018/warehouse-module.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "818c1a6ab6eb8fb83d53b6a55474d32ad8095b3a"
+      "revision": "ba0f0b6579f42ee9543ab2be0320818ffdb74c34"
     },
     "legend": {
       "entries": {
