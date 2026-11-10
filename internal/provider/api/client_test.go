@@ -161,13 +161,18 @@ func TestErrorsCarryStatusCode(t *testing.T) {
 	if !IsNotFound(err) {
 		t.Fatalf("SetWarehouseManagedAccess: IsNotFound(%v) = false", err)
 	}
-	if want := "api error, code=404 message=no authz backend type=NotFound"; err.Error() != want {
+	if want := `set warehouse managed access: 404 Not Found: {"error":{"code":404,"message":"no authz backend","type":"NotFound"}}`; err.Error() != want {
 		t.Errorf("message changed: %q, want %q", err.Error(), want)
 	}
 
-	// Raw request.
+	// Generated client.
 	if _, err := c.GetNamespaceManagedAccess(ctx, "p", "n"); !IsNotFound(err) {
 		t.Fatalf("GetNamespaceManagedAccess: IsNotFound(%v) = false", err)
+	}
+
+	// Raw Iceberg REST request.
+	if _, err := c.LoadNamespace(ctx, "p", "w", []string{"n"}); !IsNotFound(err) {
+		t.Fatalf("LoadNamespace: IsNotFound(%v) = false", err)
 	}
 
 	if IsNotFound(nil) || StatusCode(context.Canceled) != 0 {
@@ -179,9 +184,6 @@ func TestNamespaceAssignmentsWireFormat(t *testing.T) {
 	var body map[string]any
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Header.Get("x-project-id") != "p" {
-			t.Errorf("missing project header")
-		}
 		if r.Method == http.MethodGet {
 			_, _ = w.Write([]byte(`{"assignments":[{"type":"select","role":"r1"},{"type":"describe","user":"u1"}]}`))
 			return
@@ -254,7 +256,7 @@ func TestGetAssignmentsRejectsMalformedResponses(t *testing.T) {
 		})
 	}
 
-	c := cannedServer(t, http.StatusOK, `{"assignments":[]}`)
+	c := cannedServer(t, http.StatusOK, `{"project-id":"p","assignments":[]}`)
 	if got, err := c.GetProjectAssignments(t.Context(), "p"); err != nil || got == nil || len(got) != 0 {
 		t.Errorf("GetProjectAssignments with an empty list: %+v, %v", got, err)
 	}

@@ -1,0 +1,271 @@
+## GetServerInfo
+> GET /management/v1/info
+< *api.ServerInfo {"AuthzBackend":"openfga","Bootstrapped":true,"DefaultProjectID":"00000000-0000-0000-0000-000000000000","AWSSystemIdentitiesEnabled":true,"AzureSystemIdentitiesEnabled":false,"GCPSystemIdentitiesEnabled":true,"ServerID":"s1","Version":"0.15.0","Queues":["tabular_expiration"]}
+
+## CreateProject
+> POST /management/v1/project
+  {"project-name":"proj"}
+< string "p1"
+
+## GetProject
+> GET /management/v1/project [x-project-id: p1]
+< *api.Project {"ID":"p1","Name":"proj"}
+
+## RenameProject
+> POST /management/v1/project/rename [x-project-id: p1]
+  {"new-name":"new"}
+
+## DeleteProject
+> DELETE /management/v1/project [x-project-id: p1]
+
+## CreateRole
+> POST /management/v1/role [x-project-id: p1]
+  {"description":"desc","name":"role"}
+< *api.Role {"ID":"r1","ProjectID":"p1","Name":"role","Description":"desc","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z"}
+
+## CreateRole without description
+> POST /management/v1/role [x-project-id: p1]
+  {"description":null,"name":"role"}
+< *api.Role {"ID":"r1","ProjectID":"p1","Name":"role","Description":"desc","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z"}
+
+## GetRole
+> GET /management/v1/role/r1 [x-project-id: p1]
+< *api.Role {"ID":"r1","ProjectID":"p1","Name":"role","Description":"desc","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z"}
+
+## UpdateRole
+> POST /management/v1/role/r1 [x-project-id: p1]
+  {"description":"desc","name":"role"}
+< *api.Role {"ID":"r1","ProjectID":"p1","Name":"role","Description":"desc","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z"}
+
+## DeleteRole
+> DELETE /management/v1/role/r1 [x-project-id: p1]
+
+## ProvisionUser
+> POST /management/v1/user
+  {"email":"u@example.com","id":"oidc~a/b","name":"user","update-if-exists":true,"user-type":"human"}
+< *api.User {"ID":"oidc~a/b","Name":"user","Email":"u@example.com","UserType":"human","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z","LastUpdatedWith":"create-endpoint"}
+
+## ProvisionUser minimal
+> POST /management/v1/user
+  {"update-if-exists":false}
+< *api.User {"ID":"oidc~a/b","Name":"user","Email":"u@example.com","UserType":"human","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z","LastUpdatedWith":"create-endpoint"}
+
+## GetUser
+> GET /management/v1/user/oidc~a%2Fb
+< *api.User {"ID":"oidc~a/b","Name":"user","Email":"u@example.com","UserType":"human","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z","LastUpdatedWith":"create-endpoint"}
+
+## Whoami
+> GET /management/v1/whoami
+< *api.User {"ID":"oidc~a/b","Name":"user","Email":"u@example.com","UserType":"human","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z","LastUpdatedWith":"create-endpoint"}
+
+## DeleteUser
+> DELETE /management/v1/user/oidc~a%2Fb
+
+## CreateWarehouse s3 access key
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"access-key-id":"ak","credential-type":"access-key","secret-access-key":"sk","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage s3 access key
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"access-key-id":"ak","credential-type":"access-key","secret-access-key":"sk","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"}}
+
+## CreateWarehouse s3 access key external id
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"access-key-id":"ak","credential-type":"access-key","external-id":"ext","secret-access-key":"sk","type":"s3"},"storage-profile":{"allow-alternative-protocols":true,"assume-role-arn":"arn:a","aws-kms-key-arn":"arn:k","bucket":"b","endpoint":"http://e","flavor":"s3-compat","key-prefix":"p","path-style-access":true,"push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"path","sts-enabled":true,"sts-role-arn":"arn:s","sts-token-validity-seconds":60,"type":"s3"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage s3 access key external id
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"access-key-id":"ak","credential-type":"access-key","external-id":"ext","secret-access-key":"sk","type":"s3"},"storage-profile":{"allow-alternative-protocols":true,"assume-role-arn":"arn:a","aws-kms-key-arn":"arn:k","bucket":"b","endpoint":"http://e","flavor":"s3-compat","key-prefix":"p","path-style-access":true,"push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"path","sts-enabled":true,"sts-role-arn":"arn:s","sts-token-validity-seconds":60,"type":"s3"}}
+
+## CreateWarehouse s3 push delete disabled false
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"credential-type":"aws-system-identity","external-id":"ext","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage s3 push delete disabled false
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"credential-type":"aws-system-identity","external-id":"ext","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"}}
+
+## CreateWarehouse s3 system identity
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"credential-type":"aws-system-identity","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage s3 system identity
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"credential-type":"aws-system-identity","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"}}
+
+## CreateWarehouse cloudflare r2
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"access-key-id":"ak","account-id":"acc","credential-type":"cloudflare-r2","secret-access-key":"sk","token":"tok","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage cloudflare r2
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"access-key-id":"ak","account-id":"acc","credential-type":"cloudflare-r2","secret-access-key":"sk","token":"tok","type":"s3"},"storage-profile":{"bucket":"b","flavor":"aws","push-s3-delete-disabled":true,"region":"r","remote-signing-url-style":"auto","sts-enabled":false,"sts-token-validity-seconds":3600,"type":"s3"}}
+
+## CreateWarehouse adls client credentials
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"client-id":"cid","client-secret":"cs","credential-type":"client-credentials","tenant-id":"tid","type":"az"},"storage-profile":{"account-name":"a","filesystem":"f","type":"adls"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage adls client credentials
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"client-id":"cid","client-secret":"cs","credential-type":"client-credentials","tenant-id":"tid","type":"az"},"storage-profile":{"account-name":"a","filesystem":"f","type":"adls"}}
+
+## CreateWarehouse adls shared key
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"credential-type":"shared-access-key","key":"k","type":"az"},"storage-profile":{"account-name":"a","allow-alternative-protocols":true,"authority-host":"ah","filesystem":"f","host":"h","key-prefix":"p","sas-token-validity-seconds":60,"type":"adls"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage adls shared key
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"credential-type":"shared-access-key","key":"k","type":"az"},"storage-profile":{"account-name":"a","allow-alternative-protocols":true,"authority-host":"ah","filesystem":"f","host":"h","key-prefix":"p","sas-token-validity-seconds":60,"type":"adls"}}
+
+## CreateWarehouse adls managed identity
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"credential-type":"azure-system-identity","type":"az"},"storage-profile":{"account-name":"a","filesystem":"f","type":"adls"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage adls managed identity
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"credential-type":"azure-system-identity","type":"az"},"storage-profile":{"account-name":"a","filesystem":"f","type":"adls"}}
+
+## CreateWarehouse gcs service account key
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"credential-type":"service-account-key","key":{"auth_provider_x509_cert_url":"a","auth_uri":"b","client_email":"c","client_id":"d","client_x509_cert_url":"e","private_key":"f","private_key_id":"g","project_id":"h","token_uri":"i","type":"service_account","universe_domain":"j"},"type":"gcs"},"storage-profile":{"bucket":"b","key-prefix":"p","type":"gcs"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage gcs service account key
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"credential-type":"service-account-key","key":{"auth_provider_x509_cert_url":"a","auth_uri":"b","client_email":"c","client_id":"d","client_x509_cert_url":"e","private_key":"f","private_key_id":"g","project_id":"h","token_uri":"i","type":"service_account","universe_domain":"j"},"type":"gcs"},"storage-profile":{"bucket":"b","key-prefix":"p","type":"gcs"}}
+
+## CreateWarehouse gcs system identity
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"storage-credential":{"credential-type":"gcp-system-identity","type":"gcs"},"storage-profile":{"bucket":"b","type":"gcs"},"warehouse-name":"wh"}
+< string "w1"
+
+## UpdateWarehouseStorage gcs system identity
+> POST /management/v1/warehouse/w1/storage
+  {"storage-credential":{"credential-type":"gcp-system-identity","type":"gcs"},"storage-profile":{"bucket":"b","type":"gcs"}}
+
+## CreateWarehouse hard delete profile
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"delete-profile":{"type":"hard"},"storage-credential":{"credential-type":"gcp-system-identity","type":"gcs"},"storage-profile":{"bucket":"b","type":"gcs"},"warehouse-name":"wh"}
+< string "w1"
+
+## CreateWarehouse soft delete profile
+> POST /management/v1/warehouse [x-project-id: p1]
+  {"delete-profile":{"expiration-seconds":600,"type":"soft"},"storage-credential":{"credential-type":"gcp-system-identity","type":"gcs"},"storage-profile":{"bucket":"b","type":"gcs"},"warehouse-name":"wh"}
+< string "w1"
+
+## GetWarehouse
+> GET /management/v1/warehouse/w1
+< *api.Warehouse {"ID":"w1","ProjectID":"p1","Name":"wh","Protected":true,"Status":"active","StorageProfile":{"Bucket":"b","Region":"r","STSEnabled":true,"KeyPrefix":"p","AllowAlternativeProtocols":true,"AssumeRoleARN":"arn:a","AWSKMSKeyARN":"arn:k","Endpoint":"http://e","Flavor":"s3-compat","PathStyleAccess":true,"PushS3DeleteDisabled":false,"RemoteSigningURLStyle":"path","STSRoleARN":"arn:s","STSTokenValiditySeconds":60},"DeleteProfile":{"Type":"soft","ExpirationSeconds":600}}
+
+## DeleteWarehouse
+> DELETE /management/v1/warehouse/w1?force=false
+
+## DeleteWarehouse force
+> DELETE /management/v1/warehouse/w1?force=true
+
+## ActivateWarehouse
+> POST /management/v1/warehouse/w1/activate
+
+## DeactivateWarehouse
+> POST /management/v1/warehouse/w1/deactivate
+
+## RenameWarehouse
+> POST /management/v1/warehouse/w1/rename
+  {"new-name":"new"}
+
+## SetWarehouseProtection
+> POST /management/v1/warehouse/w1/protection
+  {"protected":true}
+
+## UpdateWarehouseDeleteProfile soft
+> POST /management/v1/warehouse/w1/delete-profile
+  {"delete-profile":{"expiration-seconds":600,"type":"soft"}}
+
+## UpdateWarehouseDeleteProfile hard
+> POST /management/v1/warehouse/w1/delete-profile
+  {"delete-profile":{"type":"hard"}}
+
+## GetServerAssignments
+> GET /management/v1/permissions/server/assignments
+< []api.Assignment [{"Assignee":{"Type":"user","ID":"u1"},"Assignment":"operator"},{"Assignee":{"Type":"role","ID":"r1"},"Assignment":"admin"}]
+
+## UpdateServerAssignments
+> POST /management/v1/permissions/server/assignments
+  {"deletes":[{"role":"r1","type":"operator"}],"writes":[{"type":"admin","user":"u1"}]}
+
+## GetProjectAssignments
+> GET /management/v1/permissions/project/assignments [x-project-id: p1]
+< []api.Assignment [{"Assignee":{"Type":"user","ID":"u1"},"Assignment":"project_admin"},{"Assignee":{"Type":"role","ID":"r1"},"Assignment":"select"}]
+
+## UpdateProjectAssignments
+> POST /management/v1/permissions/project/assignments [x-project-id: p1]
+  {"deletes":[{"role":"r1","type":"describe"}],"writes":[{"type":"select","user":"u1"}]}
+
+## UpdateProjectAssignments writes only
+> POST /management/v1/permissions/project/assignments [x-project-id: p1]
+  {"writes":[{"type":"select","user":"u1"}]}
+
+## GetProjectAccess user
+> GET /management/v1/permissions/project/access?principalUser=u1 [x-project-id: p1]
+< []string ["create_warehouse","list_roles"]
+
+## GetProjectAccess role
+> GET /management/v1/permissions/project/access?principalRole=r1 [x-project-id: p1]
+< []string ["create_warehouse","list_roles"]
+
+## GetWarehouseAssignments
+> GET /management/v1/permissions/warehouse/w1/assignments
+< []api.Assignment [{"Assignee":{"Type":"user","ID":"u1"},"Assignment":"ownership"},{"Assignee":{"Type":"role","ID":"r1"},"Assignment":"describe"}]
+
+## UpdateWarehouseAssignments
+> POST /management/v1/permissions/warehouse/w1/assignments
+  {"deletes":[{"role":"r1","type":"describe"}],"writes":[{"type":"select","user":"u1"}]}
+
+## GetWarehouseAccess
+> GET /management/v1/permissions/warehouse/w1/access?principalUser=u1
+< []string ["create_namespace","get_config"]
+
+## GetWarehouseManagedAccess
+> GET /management/v1/permissions/warehouse/w1
+< bool true
+
+## SetWarehouseManagedAccess
+> POST /management/v1/permissions/warehouse/w1/managed-access
+  {"managed-access":true}
+
+## GetRoleAssignments
+> GET /management/v1/permissions/role/r1/assignments
+< []api.Assignment [{"Assignee":{"Type":"user","ID":"u1"},"Assignment":"ownership"},{"Assignee":{"Type":"role","ID":"r2"},"Assignment":"assignee"}]
+
+## UpdateRoleAssignments
+> POST /management/v1/permissions/role/r1/assignments
+  {"deletes":[{"type":"ownership","user":"u1"}],"writes":[{"role":"r2","type":"assignee"}]}
+
+## GetNamespaceAssignments
+> GET /management/v1/permissions/namespace/n1/assignments
+< []api.Assignment [{"Assignee":{"Type":"role","ID":"r1"},"Assignment":"select"},{"Assignee":{"Type":"user","ID":"u1"},"Assignment":"describe"}]
+
+## UpdateNamespaceAssignments
+> POST /management/v1/permissions/namespace/n1/assignments
+  {"deletes":[{"role":"r1","type":"describe"}],"writes":[{"type":"select","user":"u1"}]}
+
+## GetNamespaceManagedAccess
+> GET /management/v1/permissions/namespace/n1
+< *bool true
+
+## SetNamespaceManagedAccess
+> POST /management/v1/permissions/namespace/n1/managed-access
+  {"managed-access":false}
+
+## LoadNamespace
+> GET /catalog/v1/w1/namespaces/sales%1Fbronze [x-project-id: p1]
+< *api.Namespace {"Path":["sales","bronze"],"Properties":{"owner":"me"}}
+

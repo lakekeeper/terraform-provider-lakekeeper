@@ -110,7 +110,7 @@
       "id": "sdk",
       "type": "external",
       "label": "Lakekeeper Go SDK",
-      "sublabel": "baptistegh/go-lakekeeper",
+      "sublabel": "lakekeeper/go-lakekeeper",
       "pos": [660, 760],
       "size": [190, 64],
       "sources": [

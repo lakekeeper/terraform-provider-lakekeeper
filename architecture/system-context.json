@@ -57,7 +57,7 @@
       "id": "sdk",
       "type": "backend",
       "label": "Lakekeeper Go SDK",
-      "sublabel": "baptistegh/go-lakekeeper",
+      "sublabel": "lakekeeper/go-lakekeeper",
       "pos": [810, 120],
       "size": [150, 64],
       "sources": [

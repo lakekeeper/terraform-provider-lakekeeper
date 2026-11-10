@@ -3,7 +3,8 @@ package api
 import (
 	"context"
 
-	managementv1 "github.com/baptistegh/go-lakekeeper/pkg/apis/management/v1"
+	managementv1 "github.com/lakekeeper/go-lakekeeper/pkg/apis/management/v1"
+	lakekeeper "github.com/lakekeeper/go-lakekeeper/pkg/client"
 )
 
 // Warehouse is a Lakekeeper warehouse.
@@ -40,28 +41,29 @@ func (c *Client) CreateWarehouse(ctx context.Context, projectID string, req Crea
 	if err != nil {
 		return "", err
 	}
-	opts := managementv1.CreateWarehouseOptions{
-		Name:              req.Name,
-		StorageProfile:    sp,
-		StorageCredential: sc,
-	}
+	body := managementv1.NewCreateWarehouseRequest(sp, req.Name)
+	body.SetStorageCredential(sc)
 	if req.DeleteProfile != nil {
-		if opts.DeleteProfile, err = deleteProfileToSDK(*req.DeleteProfile); err != nil {
+		dp, err := deleteProfileToSDK(*req.DeleteProfile)
+		if err != nil {
 			return "", err
 		}
+		body.SetDeleteProfile(dp)
 	}
-	w, resp, err := c.sdk.WarehouseV1(projectID).Create(ctx, &opts)
+	w, err := c.sdk.Warehouses.Create(ctx, body, lakekeeper.WithProject(projectID))
 	if err != nil {
-		return "", wrapErr(resp, err)
+		return "", wrapErr(err)
 	}
-	return w.ID, nil
+	return w.Id, nil
 }
 
 // GetWarehouse returns a warehouse.
+//
+// The warehouse ID selects the project, so projectID is not sent.
 func (c *Client) GetWarehouse(ctx context.Context, projectID, warehouseID string) (*Warehouse, error) {
-	w, resp, err := c.sdk.WarehouseV1(projectID).Get(ctx, warehouseID)
+	w, err := c.sdk.Warehouses.Get(ctx, warehouseID)
 	if err != nil {
-		return nil, wrapErr(resp, err)
+		return nil, wrapErr(err)
 	}
 	sp, err := storageProfileFromSDK(w.StorageProfile)
 	if err != nil {
@@ -72,8 +74,8 @@ func (c *Client) GetWarehouse(ctx context.Context, projectID, warehouseID string
 		return nil, err
 	}
 	return &Warehouse{
-		ID:             w.ID,
-		ProjectID:      w.ProjectID,
+		ID:             w.Id,
+		ProjectID:      w.ProjectId,
 		Name:           w.Name,
 		Protected:      w.Protected,
 		Status:         string(w.Status),
@@ -85,32 +87,31 @@ func (c *Client) GetWarehouse(ctx context.Context, projectID, warehouseID string
 // DeleteWarehouse deletes a warehouse. With force, the warehouse is deleted
 // even if it is protected or not empty.
 func (c *Client) DeleteWarehouse(ctx context.Context, projectID, warehouseID string, force bool) error {
-	resp, err := c.sdk.WarehouseV1(projectID).Delete(ctx, warehouseID, &managementv1.DeleteWarehouseOptions{Force: new(force)})
-	return wrapErr(resp, err)
+	// The Warehouses façade has no force flag.
+	resp, err := c.sdk.WarehouseAPI.DeleteWarehouse(ctx, warehouseID).Force(force).Execute()
+	return wrapGenErr("delete warehouse", resp, err)
 }
 
 // ActivateWarehouse activates a warehouse.
 func (c *Client) ActivateWarehouse(ctx context.Context, projectID, warehouseID string) error {
-	resp, err := c.sdk.WarehouseV1(projectID).Activate(ctx, warehouseID)
-	return wrapErr(resp, err)
+	return wrapErr(c.sdk.Warehouses.Activate(ctx, warehouseID))
 }
 
 // DeactivateWarehouse deactivates a warehouse.
 func (c *Client) DeactivateWarehouse(ctx context.Context, projectID, warehouseID string) error {
-	resp, err := c.sdk.WarehouseV1(projectID).Deactivate(ctx, warehouseID)
-	return wrapErr(resp, err)
+	return wrapErr(c.sdk.Warehouses.Deactivate(ctx, warehouseID))
 }
 
 // RenameWarehouse renames a warehouse.
 func (c *Client) RenameWarehouse(ctx context.Context, projectID, warehouseID, newName string) error {
-	resp, err := c.sdk.WarehouseV1(projectID).Rename(ctx, warehouseID, &managementv1.RenameWarehouseOptions{NewName: newName})
-	return wrapErr(resp, err)
+	_, err := c.sdk.Warehouses.Rename(ctx, warehouseID, managementv1.NewRenameWarehouseRequest(newName))
+	return wrapErr(err)
 }
 
 // SetWarehouseProtection sets the protection flag of a warehouse.
 func (c *Client) SetWarehouseProtection(ctx context.Context, projectID, warehouseID string, protected bool) error {
-	_, resp, err := c.sdk.WarehouseV1(projectID).SetWarehouseProtection(ctx, warehouseID, &managementv1.SetProtectionOptions{Protected: protected})
-	return wrapErr(resp, err)
+	_, err := c.sdk.Warehouses.SetProtection(ctx, warehouseID, managementv1.NewSetProtectionRequest(protected))
+	return wrapErr(err)
 }
 
 // UpdateWarehouseDeleteProfile replaces the delete profile of a warehouse.
@@ -119,8 +120,9 @@ func (c *Client) UpdateWarehouseDeleteProfile(ctx context.Context, projectID, wa
 	if err != nil {
 		return err
 	}
-	resp, err := c.sdk.WarehouseV1(projectID).UpdateDeleteProfile(ctx, warehouseID, &managementv1.UpdateDeleteProfileOptions{DeleteProfile: *p})
-	return wrapErr(resp, err)
+	_, resp, err := c.sdk.WarehouseAPI.UpdateWarehouseDeleteProfile(ctx, warehouseID).
+		UpdateWarehouseDeleteProfileRequest(*managementv1.NewUpdateWarehouseDeleteProfileRequest(p)).Execute()
+	return wrapGenErr("update warehouse delete profile", resp, err)
 }
 
 // UpdateWarehouseStorage replaces the storage profile and storage credential
@@ -134,9 +136,8 @@ func (c *Client) UpdateWarehouseStorage(ctx context.Context, projectID, warehous
 	if err != nil {
 		return err
 	}
-	resp, err := c.sdk.WarehouseV1(projectID).UpdateStorageProfile(ctx, warehouseID, &managementv1.UpdateStorageProfileOptions{
-		StorageProfile:    p,
-		StorageCredential: &cred,
-	})
-	return wrapErr(resp, err)
+	body := managementv1.NewUpdateWarehouseStorageRequest(p)
+	body.SetStorageCredential(cred)
+	_, resp, err := c.sdk.WarehouseAPI.UpdateStorageProfile(ctx, warehouseID).UpdateWarehouseStorageRequest(*body).Execute()
+	return wrapGenErr("update warehouse storage", resp, err)
 }

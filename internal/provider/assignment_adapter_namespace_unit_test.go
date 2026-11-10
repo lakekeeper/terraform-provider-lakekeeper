@@ -28,7 +28,8 @@ func TestNamespaceScopeAdapterListGrants(t *testing.T) {
 	if r.method != "GET" || r.path != testNamespacePath {
 		t.Fatalf("request %s %s", r.method, r.path)
 	}
-	if got := r.header.Get("x-project-id"); got != "p1" {
+	// The namespace ID alone addresses the namespace; no project is sent.
+	if got := r.header.Get("x-project-id"); got != "" {
 		t.Fatalf("project header %q", got)
 	}
 
@@ -80,7 +81,8 @@ func TestNamespaceScopeAdapterApplyGrants(t *testing.T) {
 	if r.method != "POST" || r.path != testNamespacePath {
 		t.Fatalf("request %s %s", r.method, r.path)
 	}
-	if got := r.header.Get("x-project-id"); got != "p1" {
+	// The namespace ID alone addresses the namespace; no project is sent.
+	if got := r.header.Get("x-project-id"); got != "" {
 		t.Fatalf("project header %q", got)
 	}
 	wantBody := map[string]any{

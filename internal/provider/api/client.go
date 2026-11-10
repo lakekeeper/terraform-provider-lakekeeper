@@ -22,8 +22,7 @@ import (
 	"net/http"
 
 	"github.com/apache/iceberg-go/catalog/rest"
-	lakekeeper "github.com/baptistegh/go-lakekeeper/pkg/client"
-	"github.com/baptistegh/go-lakekeeper/pkg/core"
+	lakekeeper "github.com/lakekeeper/go-lakekeeper/pkg/client"
 )
 
 // Client is the provider's Lakekeeper client. Create it with
@@ -36,7 +35,7 @@ type Client struct {
 // bearer token and does not retry failed requests. It is meant for unit tests
 // that run against an httptest server.
 func NewStaticTokenClient(ctx context.Context, baseURL, token string) (*Client, error) {
-	c, err := lakekeeper.NewClient(ctx, token, baseURL, lakekeeper.WithoutRetries())
+	c, err := lakekeeper.New(ctx, baseURL, token, lakekeeper.WithoutRetries())
 	if err != nil {
 		return nil, err
 	}
@@ -74,19 +73,21 @@ func IsNotFound(err error) bool {
 	return StatusCode(err) == http.StatusNotFound
 }
 
-// wrapErr converts an SDK error into an *Error, taking the status code from
-// the HTTP response or, failing that, from the SDK's API error.
-func wrapErr(resp *http.Response, err error) error {
+// wrapErr converts an error returned by an SDK façade into an *Error, taking
+// the status code from the SDK's API error.
+func wrapErr(err error) error {
 	if err == nil {
 		return nil
 	}
 	status := 0
-	if resp != nil {
-		status = resp.StatusCode
-	} else {
-		if apiErr, ok := errors.AsType[*core.APIError](err); ok {
-			status = apiErr.StatusCode
-		}
+	if apiErr, ok := errors.AsType[*lakekeeper.APIError](err); ok {
+		status = apiErr.StatusCode
 	}
 	return &Error{StatusCode: status, err: err}
+}
+
+// wrapGenErr is wrapErr for calls made with the generated client, which
+// return the raw response and error. op names the operation in the message.
+func wrapGenErr(op string, resp *http.Response, err error) error {
+	return wrapErr(lakekeeper.WrapAPIError(op, err, resp))
 }
