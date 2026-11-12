@@ -1,6 +1,55 @@
 # Changelog
 
 
+## [0.6.0](https://github.com/lakekeeper/terraform-provider-lakekeeper/compare/v0.5.0...v0.6.0) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* build the API client layer on lakekeeper/go-lakekeeper ([#25](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/25))
+* move server, warehouse and role assignments onto the assignment module ([#15](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/15))
+* reconcile assignments against the server via a shared assignment module ([#14](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/14))
+
+### Features
+
+* build the API client layer on lakekeeper/go-lakekeeper ([#25](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/25)) ([ef579ef](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/ef579ef84db64a3bf039d0d039049ad48781dbb9))
+* move server, warehouse and role assignments onto the assignment module ([#15](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/15)) ([e3880db](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/e3880db20f35fd0cdbd9c663e61553128a7cec11))
+* reconcile assignments against the server via a shared assignment module ([#14](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/14)) ([a5c07dd](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/a5c07dd338fb7d7d9b43d83ed3297adfb2454d4f))
+
+
+### Bug Fixes
+
+* **deps:** update github.com/lakekeeper/go-lakekeeper digest to c8e8148 ([#26](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/26)) ([00766d7](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/00766d7555599fdb0792d4f89ba816a4f0b8e7d0))
+* **deps:** update module golang.org/x/oauth2 to v0.38.0 ([#24](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/24)) ([8759970](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/875997023aeae2c75c13f5585cd7fb6453a0191b))
+* list the actual remote_signing_url_style values in data source and S3 guide docs ([#19](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/19)) ([d6a9543](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/d6a95435864cf1d7bcd17c4605dd39edecc99e13))
+
+
+### Documentation
+
+* add architecture diagrams ([#20](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/20)) ([687e757](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/687e75779cd383161da6aabb3fcd1b350c531133))
+* add contributor guides ([#21](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/21)) ([5323b8f](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/5323b8f7739681ca8ab52e7741116580494ef4f6))
+
+
+### Miscellaneous Chores
+
+* add optional graphify knowledge graph setup ([#6](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/6)) ([05fa237](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/05fa237abbcf6ac4b0f2c4a78f4cfbd4b460bcdc))
+* **deps:** update amannn/action-semantic-pull-request action to v6.1.2 ([#13](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/13)) ([2cc800c](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/2cc800c88a231ffe4ae6b723f90174de27a8f669))
+* **deps:** update dependency goreleaser/goreleaser to v2.20.0 ([#10](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/10)) ([db0ae45](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/db0ae455817c4f7756c5036251cdec656591f148))
+* **deps:** update dependency goreleaser/goreleaser to v2.20.1 ([#28](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/28)) ([964eca5](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/964eca5f2f6a6d88799a9517d9387b2d3e4e7b23))
+* **deps:** update dependency goreleaser/goreleaser to v2.20.2 ([#32](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/32)) ([6f57c66](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/6f57c664cf5ac2a3aa05ac0dc857eb3599a49fd2))
+* **deps:** update dependency graphifyy to v0.9.103 ([#17](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/17)) ([e57c98c](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/e57c98ccb7006d5b5ed4005136d20f68b366054c))
+* **deps:** update dependency graphifyy to v0.9.104 ([#22](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/22)) ([39bbcdc](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/39bbcdc4baea96c1bca1b583222c9958ad567613))
+* **deps:** update dependency graphifyy to v0.9.105 ([#23](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/23)) ([e54cd2d](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/e54cd2db2e3a280ec9b7be4be3cac32915902468))
+* **deps:** update dependency graphifyy to v0.9.106 ([#27](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/27)) ([fb04b70](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/fb04b70be0725b306f9cf3dd9bf0f1767b38fcf5))
+* **deps:** update dependency graphifyy to v0.9.107 ([#31](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/31)) ([679174e](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/679174ece427547ebf826050d265235e4f9b10e5))
+* **deps:** update dependency graphifyy to v0.9.108 ([#33](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/33)) ([8323790](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/8323790c6317e6737a4e52144ffd86dcbac4d844))
+* **deps:** update dependency zizmor to v1.32.0 ([#8](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/8)) ([866a7ec](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/866a7eca289d010633ef32679fdbfe4862112ae1))
+* **deps:** update quay.io/keycloak/keycloak docker tag to v26.8.2 ([#18](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/18)) ([ae700b8](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/ae700b87f3b4c4db3baef23a1f16f22be75f85eb))
+* **deps:** update terraform monorepo to v1.17.2 ([#30](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/30)) ([836a053](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/836a053c44d7c91915018df7c6ac1d28d8962fad))
+* **deps:** update zizmorcore/zizmor-action action to v0.8.1 ([#7](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/7)) ([e15733a](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/e15733af0419be79e4a73c7408fa939f0d3cf7af))
+* move warehouse schemas, models and conversions into a warehouse module ([#16](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/16)) ([01c036b](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/01c036bef3bf63e1290e1f539fcaa9c977429af9))
+* wrap the Lakekeeper Go SDK in an internal api client layer ([#12](https://github.com/lakekeeper/terraform-provider-lakekeeper/issues/12)) ([d79cee0](https://github.com/lakekeeper/terraform-provider-lakekeeper/commit/d79cee0147a10f968476dfdae3482cf133978cd4))
+
 ## [0.5.0](https://github.com/lakekeeper/terraform-provider-lakekeeper/compare/v0.4.12...v0.5.0) (2026-11-04)
 
 
