@@ -94,3 +94,43 @@ func testAccCheckNamespaceRoleGrantsRevoked(projectID, roleID string) resource.T
 		return nil
 	}
 }
+
+// Lakekeeper 0.15 added the `write` privilege. It must be accepted on a
+// namespace, read back from the server and stay stable across plans.
+func TestAccLakekeeperNamespaceRoleAssignment_write(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	role := testutil.CreateRole(t, project.ID)
+	address := "lakekeeper_namespace_role_assignment.test"
+
+	config := fmt.Sprintf(`
+		resource "lakekeeper_namespace" "test" {
+			project_id     = "%s"
+			warehouse_name = "%s"
+			name           = "%s"
+		}
+
+		resource "lakekeeper_namespace_role_assignment" "test" {
+			project_id   = "%s"
+			namespace_id = lakekeeper_namespace.test.namespace_id
+			role_id      = "%s"
+			assignments  = ["describe", "select", "write"]
+		}
+	`, project.ID, warehouse.Name, acctest.RandString(8), project.ID, role.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(address, "assignments.#", "3"),
+					resource.TestCheckTypeSetElemAttr(address, "assignments.*", "write"),
+				),
+			},
+			// The same config must plan clean: write is read back, not revoked.
+			{Config: config, PlanOnly: true},
+			{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		},
+	})
+}
