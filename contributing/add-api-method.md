@@ -72,13 +72,16 @@ if api.IsNotFound(err) {
 }
 ```
 
-The current code doesn't do this yet:
+`Delete` treats the same 404 as success, because the object is already gone: `if err != nil && !api.IsNotFound(err)`.
 
-- No resource calls `resp.State.RemoveResource` on `api.IsNotFound` in `Read`. `Read` in [`resource_role.go`](../internal/provider/resource_role.go), `resource_project.go`, `resource_user.go` and `resource_warehouse.go` adds an error for every failed call, including a 404.
-- [`resource_namespace.go`](../internal/provider/resource_namespace.go) is the only `Read` that removes a deleted object from state. It loads the namespace through the Iceberg REST catalog client from `Client.Catalog`, which returns an `iceberg-go` error rather than an `*api.Error`, so it checks `errors.Is(err, catalog.ErrNoSuchNamespace)`.
-- [`resource_warehouse.go`](../internal/provider/resource_warehouse.go) uses `api.IsNotFound` for a different meaning: the managed-access endpoints answer 404 when the server has no authorization backend, so it adds a warning and carries on.
+Where the code does this:
 
-If your resource should remove a deleted object from state, use the snippet above in `Read`, and copy the shape of `Read` in `resource_namespace.go`.
+- `Read` and `Delete` in [`resource_role.go`](../internal/provider/resource_role.go), `resource_project.go`, `resource_user.go` and `resource_warehouse.go` use the snippet above. Copy `resource_role.go`.
+- [`resource_namespace.go`](../internal/provider/resource_namespace.go) loads the namespace through the Iceberg REST catalog client from `Client.Catalog`, which returns an `iceberg-go` error rather than an `*api.Error`, so it checks `errors.Is(err, catalog.ErrNoSuchNamespace)`.
+- [`assignment_resource.go`](../internal/provider/assignment_resource.go) removes an assignment whose scope is gone, in `scopeGone`. A 404 counts directly. A 403 counts only when the scope adapter implements `scopeExistenceChecker` and confirms the object is missing, as the warehouse adapter does with `GetWarehouse`.
+- [`resource_warehouse.go`](../internal/provider/resource_warehouse.go) also uses `api.IsNotFound` for a different meaning: the managed-access endpoints answer 404 when the server has no authorization backend, so it adds a warning and carries on.
+
+**With OpenFGA, a missing object can answer 403, not 404.** The local stack runs OpenFGA. There, `GetProject` and every `permissions/…/assignments` call answer 403 for an object that no longer exists, which is the same answer as for lost permissions. Never treat 403 alone as "gone": confirm it with a lookup that does answer 404, or keep the resource in state. `GetWarehouse`, `GetRole` and `GetUser` answer 404.
 
 ## Pitfalls
 

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the direct grants of one role on the namespace. Grants that other users and roles hold on the namespace are left untouched. Use one resource per namespace and role.
   Create fails if the role already holds any direct grant on the namespace. Bring existing grants under Terraform with terraform import first, using the ID {{project_id}}/{{namespace_id}}/{{role_id}}.
-  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the namespace itself as not found, the resource leaves state instead.
   Requires Lakekeeper's OpenFGA authorization backend. Namespace grants apply to descendants according to Lakekeeper's authorization model. A missing permissions endpoint is an error, including with allow-all.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_namespace_assignments
 ---
@@ -16,7 +16,7 @@ Manages the direct grants of one role on the namespace. Grants that other users 
 
 Create fails if the role already holds any direct grant on the namespace. Bring existing grants under Terraform with `terraform import` first, using the ID `{{project_id}}/{{namespace_id}}/{{role_id}}`.
 
-Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the namespace itself as not found, the resource leaves state instead.
 
 Requires Lakekeeper's OpenFGA authorization backend. Namespace grants apply to descendants according to Lakekeeper's authorization model. A missing permissions endpoint is an error, including with allow-all.
 

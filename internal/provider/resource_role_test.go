@@ -184,6 +184,33 @@ func TestAccLakekeeperRole_project(t *testing.T) {
 	})
 }
 
+// A role deleted outside Terraform leaves state on refresh, so the next plan
+// recreates it instead of failing.
+func TestAccLakekeeperRole_disappears(t *testing.T) {
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperRoleDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+				data "lakekeeper_default_project" "default" {}
+				resource "lakekeeper_role" "foo" {
+				  name = "%s"
+				  project_id = data.lakekeeper_default_project.default.id
+				}
+				`, rName),
+				Check: testAccDeleteOutOfBand("lakekeeper_role.foo", func(ctx context.Context, id string) error {
+					projectID, roleID := splitInternalID(types.StringValue(id))
+					return testutil.TestLakekeeperClient.DeleteRole(ctx, projectID, roleID)
+				}),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
 // Moving a role to another project replaces it: the API cannot move a role.
 func TestAccLakekeeperRole_projectChangeReplaces(t *testing.T) {
 	rName := acctest.RandString(8)

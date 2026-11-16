@@ -56,6 +56,12 @@ type Error struct {
 	err        error
 }
 
+// NewError returns an *Error carrying statusCode, for code outside this package
+// that has to produce one, such as tests of how callers react to a status.
+func NewError(statusCode int, err error) error {
+	return &Error{StatusCode: statusCode, err: err}
+}
+
 func (e *Error) Error() string { return e.err.Error() }
 func (e *Error) Unwrap() error { return e.err }
 

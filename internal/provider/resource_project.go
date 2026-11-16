@@ -125,6 +125,10 @@ func (r *lakekeeperProjectResource) Read(ctx context.Context, req resource.ReadR
 
 	project, err := r.client.GetProject(ctx, id)
 	if err != nil {
+		if api.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read project %s, %v", id, err.Error()))
 		return
 	}
@@ -179,7 +183,7 @@ func (r *lakekeeperProjectResource) Delete(ctx context.Context, req resource.Del
 	id := state.ID.ValueString()
 
 	err := r.client.DeleteProject(ctx, id)
-	if err != nil {
+	if err != nil && !api.IsNotFound(err) {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete project %s, %v", id, err))
 		return
 	}

@@ -176,6 +176,10 @@ func (r *lakekeeperWarehouseResource) Read(ctx context.Context, req resource.Rea
 	projectID, warehouseID := splitInternalID(state.ID)
 	wh, err := r.client.GetWarehouse(ctx, projectID, warehouseID)
 	if err != nil {
+		if api.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read warehouse %s in project %s, %s", warehouseID, projectID, err))
 		return
 	}
@@ -317,6 +321,10 @@ func (r *lakekeeperWarehouseResource) Delete(ctx context.Context, req resource.D
 	// is protected, which would defeat the `protected` attribute. A protected
 	// warehouse has to be unprotected (protected = false) before it is destroyed.
 	if err := r.client.DeleteWarehouse(ctx, projectID, warehouseID, false); err != nil {
+		if api.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete warehouse %s in project %s, %v", warehouseID, projectID, err))
 		return
 	}

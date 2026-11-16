@@ -233,7 +233,7 @@ func (r *lakekeeperNamespaceResource) Delete(ctx context.Context, req resource.D
 
 	name := state.Name.ValueString()
 
-	if err := cat.DropNamespace(ctx, catalog.ToIdentifier(name)); err != nil {
+	if err := cat.DropNamespace(ctx, catalog.ToIdentifier(name)); err != nil && !errors.Is(err, catalog.ErrNoSuchNamespace) {
 		resp.Diagnostics.AddError("REST Catalog API error occurred", fmt.Sprintf("Unable to delete namespace %s, %v", name, err.Error()))
 		return
 	}
