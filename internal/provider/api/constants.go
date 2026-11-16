@@ -30,6 +30,7 @@ const (
 	ProjectAssignmentDescribe      = "describe"
 	ProjectAssignmentSelect        = "select"
 	ProjectAssignmentCreate        = "create"
+	ProjectAssignmentWrite         = "write"
 	ProjectAssignmentModify        = "modify"
 )
 
@@ -41,6 +42,7 @@ const (
 	WarehouseAssignmentDescribe     = "describe"
 	WarehouseAssignmentSelect       = "select"
 	WarehouseAssignmentCreate       = "create"
+	WarehouseAssignmentWrite        = "write"
 	WarehouseAssignmentModify       = "modify"
 )
 

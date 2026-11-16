@@ -38,7 +38,7 @@ resource "lakekeeper_namespace_role_assignment" "readers" {
 
 ### Required
 
-- `assignments` (Set of String) The direct grants of the role on the namespace. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `modify`. An empty set revokes all of them.
+- `assignments` (Set of String) The direct grants of the role on the namespace. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `write`, `modify`. An empty set revokes all of them.
 - `namespace_id` (String) The ID of the namespace, available as `lakekeeper_namespace.<name>.namespace_id`.
 - `project_id` (String) The ID of the project containing both the namespace and the role.
 - `role_id` (String) The ID of the role.

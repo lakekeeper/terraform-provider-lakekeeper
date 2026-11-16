@@ -34,7 +34,7 @@ resource "lakekeeper_project_role_assignment" "data_analysts" {
 
 ### Required
 
-- `assignments` (Set of String) The direct grants of the role on the project. Allowed values: `project_admin`, `security_admin`, `data_admin`, `role_creator`, `describe`, `select`, `create`, `modify`. An empty set revokes all of them.
+- `assignments` (Set of String) The direct grants of the role on the project. Allowed values: `project_admin`, `security_admin`, `data_admin`, `role_creator`, `describe`, `select`, `create`, `write`, `modify`. An empty set revokes all of them.
 - `project_id` (String) The ID of the project.
 - `role_id` (String) The ID of the role.
 

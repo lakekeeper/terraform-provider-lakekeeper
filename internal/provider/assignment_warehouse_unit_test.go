@@ -108,7 +108,7 @@ func TestWarehouseAssignmentSchema(t *testing.T) {
 				grants []string
 				ok     bool
 			}{
-				{[]string{"ownership", "pass_grants", "manage_grants", "describe", "select", "create", "modify"}, true},
+				{[]string{"ownership", "pass_grants", "manage_grants", "describe", "select", "create", "write", "modify"}, true},
 				{[]string{}, true},
 				{[]string{"select", "project_admin"}, false},
 			} {

@@ -172,3 +172,47 @@ func testAccCheckLakekeeperWarehouseRoleAssignmentDestroy(s *terraform.State) er
 
 	return nil
 }
+
+// Lakekeeper 0.15 added the `write` privilege. It must be accepted, read back
+// from the server and stay stable across plans (no drift, no revocation).
+func TestAccLakekeeperWarehouseRoleAssignment_write(t *testing.T) {
+	project := testutil.CreateProject(t)
+
+	keyPrefix := fmt.Sprintf("key-prefix-%d", rand.Int())
+	warehouse := testutil.CreateWarehouse(t, project.ID, keyPrefix)
+
+	role := testutil.CreateRole(t, project.ID)
+
+	config := fmt.Sprintf(`
+		resource "lakekeeper_warehouse_role_assignment" "test" {
+			warehouse_id = "%s"
+			role_id = "%s"
+			assignments = ["describe", "select", "write"]
+		}
+	`, warehouse.ID, role.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_warehouse_role_assignment.test", "assignments.#", "3"),
+					resource.TestCheckTypeSetElemAttr("lakekeeper_warehouse_role_assignment.test", "assignments.*", "write"),
+				),
+			},
+			// The same config must plan clean: write is read back, not revoked.
+			{
+				Config:             config,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+			{
+				ResourceName:      "lakekeeper_warehouse_role_assignment.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}

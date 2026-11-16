@@ -29,5 +29,6 @@ var projectGrantTypes = []string{
 	api.ProjectAssignmentDescribe,
 	api.ProjectAssignmentSelect,
 	api.ProjectAssignmentCreate,
+	api.ProjectAssignmentWrite,
 	api.ProjectAssignmentModify,
 }
