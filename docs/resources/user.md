@@ -32,7 +32,7 @@ resource "lakekeeper_user" "john_doe" {
 
 ### Required
 
-- `id` (String) The ID of the user. The id must be identical to the subject in JWT tokens, prefixed with`<idp-identifier>~`. For example: `oidc~1234567890` for OIDC users or `kubernetes~1234567890` for Kubernetes users.
+- `id` (String) The ID of the user. The id must be identical to the subject in JWT tokens, prefixed with`<idp-identifier>~`. For example: `oidc~1234567890` for OIDC users or `kubernetes~1234567890` for Kubernetes users. Changing it replaces the user.
 - `name` (String) The name of the user.
 - `user_type` (String) The type of the user, must be `human` or `application`
 

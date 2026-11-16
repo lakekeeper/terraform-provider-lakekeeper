@@ -73,10 +73,10 @@ func (r *lakekeeperRoleResource) Schema(ctx context.Context, req resource.Schema
 				},
 			},
 			"project_id": schema.StringAttribute{
-				MarkdownDescription: `The ID of the project the role belongs to.`,
+				MarkdownDescription: `The ID of the project the role belongs to. Changing it replaces the role.`,
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"name": schema.StringAttribute{

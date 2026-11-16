@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -134,6 +135,52 @@ func TestAccLakekeeperUser_invalidType(t *testing.T) {
 				}
 				`, rID, rName, rName),
 				ExpectError: regexp.MustCompile("required"),
+			},
+		},
+	})
+}
+
+// Changing a user's ID replaces it: the old user is deleted, not left behind
+// next to a second one.
+func TestAccLakekeeperUser_idChangeReplaces(t *testing.T) {
+	rID := acctest.RandomWithPrefix("oidc~")
+	rNewID := acctest.RandomWithPrefix("oidc~")
+	rName := acctest.RandString(8)
+
+	config := func(id string) string {
+		return fmt.Sprintf(`
+		resource "lakekeeper_user" "foo" {
+		  id = "%s"
+		  name = "%s"
+		  user_type = "human"
+		}
+		`, id, rName)
+	}
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperUserDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config(rID),
+				Check:  resource.TestCheckResourceAttr("lakekeeper_user.foo", "id", rID),
+			},
+			{
+				Config: config(rNewID),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("lakekeeper_user.foo", plancheck.ResourceActionReplace),
+					},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_user.foo", "id", rNewID),
+					func(*terraform.State) error {
+						if _, err := testutil.TestLakekeeperClient.GetUser(context.Background(), rID); err == nil {
+							return fmt.Errorf("the user %s was left behind after its ID changed", rID)
+						}
+						return nil
+					},
+				),
 			},
 		},
 	})
