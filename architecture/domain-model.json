@@ -3,14 +3,14 @@
   "diagram_type": "class",
   "meta": {
     "title": "Domain model: what the provider manages",
-    "output": ".archify/class-domain-model-20261110-141006/domain-model.html",
+    "output": ".archify/class-domain-model-20261116-111134/domain-model.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "ba0f0b6579f42ee9543ab2be0320818ffdb74c34"
+      "revision": "5906cea5e150aa2a530e9c1869cef7dca85af72f"
     }
   },
   "layout": {
@@ -326,11 +326,11 @@
         },
         {
           "name": "project",
-          "type": "project_admin, security_admin, data_admin, role_creator, describe, select, create, modify"
+          "type": "project_admin, security_admin, data_admin, role_creator, describe, select, create, write, modify"
         },
         {
           "name": "warehouse",
-          "type": "ownership, pass_grants, manage_grants, describe, select, create, modify"
+          "type": "ownership, pass_grants, manage_grants, describe, select, create, write, modify"
         },
         {
           "name": "role",
@@ -338,14 +338,14 @@
         },
         {
           "name": "namespace",
-          "type": "ownership, pass_grants, manage_grants, describe, select, create, modify"
+          "type": "ownership, pass_grants, manage_grants, describe, select, create, write, modify"
         }
       ],
       "sources": [
         {
           "path": "internal/provider/api/constants.go",
           "line": 18,
-          "end_line": 51,
+          "end_line": 53,
           "label": "grant type constants"
         },
         {
