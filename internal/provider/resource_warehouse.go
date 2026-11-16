@@ -313,7 +313,10 @@ func (r *lakekeeperWarehouseResource) Delete(ctx context.Context, req resource.D
 
 	projectID, warehouseID := splitInternalID(state.ID)
 
-	if err := r.client.DeleteWarehouse(ctx, projectID, warehouseID, true); err != nil {
+	// force is not sent: the API's force flag deletes the warehouse even when it
+	// is protected, which would defeat the `protected` attribute. A protected
+	// warehouse has to be unprotected (protected = false) before it is destroyed.
+	if err := r.client.DeleteWarehouse(ctx, projectID, warehouseID, false); err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete warehouse %s in project %s, %v", warehouseID, projectID, err))
 		return
 	}

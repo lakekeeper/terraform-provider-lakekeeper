@@ -45,7 +45,7 @@ func ResourceSchema() rschema.Schema {
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"protected": rschema.BoolAttribute{
-				MarkdownDescription: "Whether the warehouse is protected from being deleted. Default is `false`.",
+				MarkdownDescription: "Whether the warehouse is protected from being deleted. While it is `true`, destroying or replacing the warehouse fails: set it to `false` and apply first. Default is `false`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),

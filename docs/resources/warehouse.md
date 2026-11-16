@@ -101,7 +101,7 @@ resource "lakekeeper_warehouse" "adls" {
 - `active` (Boolean) Whether the warehouse is active. Default is `true`.
 - `delete_profile` (Attributes) The delete profile for the warehouse. It can be either a soft or hard delete profile. Default: `hard` (see [below for nested schema](#nestedatt--delete_profile))
 - `managed_access` (Boolean) Whether the managed access is configured on this warehouse. Default is `false`.
-- `protected` (Boolean) Whether the warehouse is protected from being deleted. Default is `false`.
+- `protected` (Boolean) Whether the warehouse is protected from being deleted. While it is `true`, destroying or replacing the warehouse fails: set it to `false` and apply first. Default is `false`.
 
 ### Read-Only
 
