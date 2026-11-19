@@ -123,6 +123,10 @@ func (r *lakekeeperProjectResource) Read(ctx context.Context, req resource.ReadR
 
 	id := state.ID.ValueString()
 
+	// Under OpenFGA, GetProject answers a deleted project with 403, the same
+	// answer as for lost permissions, and no project lookup answers 404, so a
+	// project deleted outside Terraform still fails the refresh there. Only a
+	// 404 (other authorization backends) removes it from state.
 	project, err := r.client.GetProject(ctx, id)
 	if err != nil {
 		if api.IsNotFound(err) {

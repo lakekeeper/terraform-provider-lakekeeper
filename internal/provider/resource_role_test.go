@@ -206,6 +206,7 @@ func TestAccLakekeeperRole_disappears(t *testing.T) {
 					return testutil.TestLakekeeperClient.DeleteRole(ctx, projectID, roleID)
 				}),
 				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_role.foo"),
 			},
 		},
 	})

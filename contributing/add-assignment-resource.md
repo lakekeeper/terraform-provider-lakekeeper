@@ -94,6 +94,7 @@ Below, `<scope>` is the new kind of scope, for example `table`.
    - It implements `scopeAdapter` from [`assignment_adapter.go`](../internal/provider/assignment_adapter.go): `ListGrants` returns every direct grant at the scope, for all assignees, and `ApplyGrants` sends revokes and grants in one request.
    - It reads the scope from `assignmentScope` by attribute name. Add a `<scope>IDAttributeName` constant to [`assignment_validators.go`](../internal/provider/assignment_validators.go).
    - Convert with `grantsFromAPI` and `grantsToAPI`. Note the argument order: `Update<Scope>Assignments(…, grantsToAPI(grants), grantsToAPI(revokes))`.
+   - If an `*api.Client` lookup answers a missing scope object with 404, also implement `scopeExistenceChecker` (`ScopeExists`), as the warehouse and role adapters do. Under OpenFGA the grants of a deleted object answer 403, and only this check lets the module drop the assignment from state. If no lookup answers 404, say so in the adapter's comment, as the project and namespace adapters do. See [Add an API method](add-api-method.md).
 
 3. **Test the adapter** in `internal/provider/assignment_adapter_<scope>_unit_test.go`. Copy [`assignment_adapter_warehouse_unit_test.go`](../internal/provider/assignment_adapter_warehouse_unit_test.go): it checks the HTTP method and path against a fake server, and that malformed responses are errors, never an empty list.
 

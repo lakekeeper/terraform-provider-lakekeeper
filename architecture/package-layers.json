@@ -101,7 +101,7 @@
       "pos": [660, 580],
       "size": [190, 64],
       "sources": [
-        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 26, "label": "only package that imports the SDK" },
+        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 29, "label": "only package that imports the SDK" },
         { "path": "internal/provider/api/management.go", "line": 55, "end_line": 61, "label": "a method wraps one SDK call" },
         { "path": "internal/provider/api/config.go", "line": 37, "end_line": 37, "label": "Config.NewLakekeeperClient" }
       ]

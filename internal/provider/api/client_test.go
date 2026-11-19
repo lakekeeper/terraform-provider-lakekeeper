@@ -175,6 +175,11 @@ func TestErrorsCarryStatusCode(t *testing.T) {
 		t.Fatalf("LoadNamespace: IsNotFound(%v) = false", err)
 	}
 
+	// Iceberg catalog client, whose config request finds no warehouse.
+	if _, err := c.Catalog(ctx, "p", "w"); !IsNotFound(err) {
+		t.Fatalf("Catalog: IsNotFound(%v) = false", err)
+	}
+
 	if IsNotFound(nil) || StatusCode(context.Canceled) != 0 {
 		t.Error("non-API errors must not report a status code")
 	}
@@ -296,5 +301,44 @@ func TestUserIDIsPathEscaped(t *testing.T) {
 	want := []string{"GET /management/v1/user/oidc~a%2Fb", "DELETE /management/v1/user/oidc~a%2Fb"}
 	if !reflect.DeepEqual(paths, want) {
 		t.Errorf("paths %q, want %q", paths, want)
+	}
+}
+
+func TestRoleExists(t *testing.T) {
+	for name, tc := range map[string]struct {
+		status     int
+		wantExists bool
+		wantErr    bool
+	}{
+		"found":     {status: http.StatusOK, wantExists: true},
+		"missing":   {status: http.StatusNotFound},
+		"forbidden": {status: http.StatusForbidden, wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var gotPath, gotProject string
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath, gotProject = r.URL.Path, r.Header.Get("x-project-id")
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.status == http.StatusOK {
+					_, _ = w.Write([]byte(`{"id":"r","ident":"lakekeeper~r","provider-id":"lakekeeper","source-id":"r","name":"n","project-id":"p","created-at":"2026-01-01T00:00:00Z"}`))
+					return
+				}
+				_, _ = w.Write([]byte(`{"error":{"message":"m","type":"T"}}`))
+			}))
+			defer s.Close()
+			c, err := NewStaticTokenClient(context.Background(), s.URL, "test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			exists, err := c.RoleExists(context.Background(), "r")
+			if (err != nil) != tc.wantErr || exists != tc.wantExists {
+				t.Fatalf("RoleExists = %v, %v; want exists %v, error %v", exists, err, tc.wantExists, tc.wantErr)
+			}
+			// The lookup must not depend on a project: roles live in any project.
+			if gotPath != "/management/v1/role/r/metadata" || gotProject != "" {
+				t.Errorf("request to %q with project %q", gotPath, gotProject)
+			}
+		})
 	}
 }

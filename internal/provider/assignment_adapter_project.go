@@ -9,6 +9,11 @@ import (
 // projectScopeAdapter is the scope adapter for projects. It wraps the api
 // client's project assignment methods and reads the project from
 // scope[projectIDAttributeName].
+//
+// It does not implement scopeExistenceChecker: under OpenFGA every project
+// lookup answers a deleted project with 403, like lost permissions, and the
+// project list leaves out both. A project-level assignment whose project was
+// deleted outside Terraform therefore still fails on refresh.
 type projectScopeAdapter struct{ client *api.Client }
 
 func newProjectScopeAdapter(client *api.Client) scopeAdapter {

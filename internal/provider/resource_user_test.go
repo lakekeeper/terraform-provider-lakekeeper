@@ -162,6 +162,7 @@ func TestAccLakekeeperUser_disappears(t *testing.T) {
 					return testutil.TestLakekeeperClient.DeleteUser(ctx, id)
 				}),
 				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_user.foo"),
 			},
 		},
 	})

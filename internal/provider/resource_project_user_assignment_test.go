@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -179,4 +180,38 @@ func testAccCheckLakekeeperProjectUserAssignmentDestroy(s *terraform.State) erro
 	}
 
 	return nil
+}
+
+// Revoking the grants outside Terraform leaves the assignment in state with no
+// grants, so the next plan grants them again.
+//
+// The project itself is not deleted here: under OpenFGA a deleted project
+// answers 403 to every lookup, so the provider cannot tell it from lost
+// permissions and keeps the assignment in state (see projectScopeAdapter).
+func TestAccLakekeeperProjectUserAssignment_revokedOutOfBand(t *testing.T) {
+	project := testutil.CreateProject(t)
+	assignee := testutil.CreateUser(t, fmt.Sprintf("oidc~%s", acctest.RandString(32)))
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperProjectUserAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_project_user_assignment" "test" {
+						project_id = "%s"
+						user_id = "%s"
+						assignments = ["describe"]
+					}
+				`, project.ID, assignee.ID),
+				Check: func(*terraform.State) error {
+					return testutil.TestLakekeeperClient.UpdateProjectAssignments(context.Background(), project.ID, nil, []api.Assignment{
+						{Assignee: api.UserAssignee(assignee.ID), Assignment: api.ProjectAssignmentDescribe},
+					})
+				},
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionUpdate, "lakekeeper_project_user_assignment.test"),
+			},
+		},
+	})
 }

@@ -48,7 +48,7 @@
       "pos": [570, 120],
       "size": [150, 64],
       "sources": [
-        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 33, "label": "only package that uses the SDK" },
+        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 36, "label": "only package that uses the SDK" },
         { "path": "internal/provider/api/config.go", "line": 37, "end_line": 104, "label": "OIDC token source and TLS" },
         { "path": "internal/provider/api/management.go", "line": 55, "end_line": 61, "label": "CreateProject calls the SDK" }
       ]

@@ -37,8 +37,8 @@
       "sources": [
         {
           "path": "internal/provider/api/management.go",
-          "line": 156,
-          "end_line": 165,
+          "line": 171,
+          "end_line": 180,
           "label": "api.User"
         },
         {

@@ -100,8 +100,8 @@
         },
         {
           "path": "internal/provider/api/client.go",
-          "line": 51,
-          "end_line": 92,
+          "line": 84,
+          "end_line": 125,
           "label": "api.Error, IsNotFound, wrapErr"
         }
       ]

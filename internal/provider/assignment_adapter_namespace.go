@@ -10,6 +10,12 @@ import (
 // client's namespace assignment methods, which address the namespace within a
 // project; it reads them from scope[projectIDAttributeName] and
 // scope[namespaceIDAttributeName].
+//
+// It does not implement scopeExistenceChecker: under OpenFGA the namespace
+// lookup by ID answers a deleted namespace with 403, and the catalog lookup
+// needs the warehouse, which the scope does not hold. A namespace assignment
+// whose namespace was deleted outside Terraform therefore still fails on
+// refresh.
 type namespaceScopeAdapter struct{ client *api.Client }
 
 func newNamespaceScopeAdapter(client *api.Client) scopeAdapter {

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -206,6 +207,7 @@ func TestAccLakekeeperWarehouseRoleAssignment_scopeDisappears(t *testing.T) {
 					return testutil.TestLakekeeperClient.DeleteWarehouse(ctx, projectID, warehouseID, false)
 				}),
 				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_warehouse.this", "lakekeeper_warehouse_role_assignment.test"),
 			},
 		},
 	})

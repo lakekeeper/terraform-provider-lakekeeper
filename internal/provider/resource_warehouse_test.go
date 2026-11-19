@@ -715,6 +715,7 @@ func TestAccLakekeeperWarehouse_disappears(t *testing.T) {
 					return testutil.TestLakekeeperClient.DeleteWarehouse(ctx, projectID, warehouseID, false)
 				}),
 				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_warehouse.this"),
 			},
 		},
 	})

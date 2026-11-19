@@ -282,7 +282,7 @@
         {
           "path": "internal/provider/assignment_adapter_project.go",
           "line": 1,
-          "end_line": 28,
+          "end_line": 33,
           "label": "projectScopeAdapter"
         }
       ]
@@ -326,7 +326,7 @@
         {
           "path": "internal/provider/assignment_adapter_role.go",
           "line": 1,
-          "end_line": 27,
+          "end_line": 33,
           "label": "roleScopeAdapter"
         }
       ]
@@ -348,7 +348,7 @@
         {
           "path": "internal/provider/assignment_adapter_namespace.go",
           "line": 1,
-          "end_line": 31,
+          "end_line": 37,
           "label": "namespaceScopeAdapter"
         }
       ]
