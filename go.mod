@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-log v0.11.0
 	github.com/hashicorp/terraform-plugin-testing v1.16.0
-	github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261116020550-d08a4e8b5eef
+	github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261119072441-e15371bce6ed
 	github.com/terraform-community-providers/terraform-plugin-framework-utils v0.4.0
 	golang.org/x/oauth2 v0.38.0
 )
@@ -97,7 +97,7 @@ require (
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
-	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 )
 
 require (
@@ -320,15 +320,15 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/crypto v0.59.0 // indirect
 	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260811152304-ee035b5b010f // indirect
-	golang.org/x/mod v0.42.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
-	golang.org/x/term v0.47.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
-	golang.org/x/tools v0.52.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/term v0.48.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
+	golang.org/x/tools v0.53.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
 	google.golang.org/grpc v1.83.2 // indirect
