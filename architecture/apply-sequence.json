@@ -3,14 +3,14 @@
   "diagram_type": "sequence",
   "meta": {
     "title": "Apply sequence: one terraform apply through the provider",
-    "output": ".archify/sequence-apply-sequence-20261110-140954/apply-sequence.html",
+    "output": ".archify/sequence-apply-sequence-20261119-131956/apply-sequence.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "ba0f0b6579f42ee9543ab2be0320818ffdb74c34"
+      "revision": "c97fb219665e8d783cf6a92d2c60f5d8364724bb"
     }
   },
   "participants": [
