@@ -173,7 +173,11 @@ func (r *lakekeeperWarehouseResource) Read(ctx context.Context, req resource.Rea
 		return
 	}
 
-	projectID, warehouseID := splitInternalID(state.ID)
+	projectID, warehouseID, err := splitInternalID(state.ID)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid resource ID", err.Error())
+		return
+	}
 	wh, err := r.client.GetWarehouse(ctx, projectID, warehouseID)
 	if err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read warehouse %s in project %s, %s", warehouseID, projectID, err))
@@ -220,7 +224,11 @@ func (r *lakekeeperWarehouseResource) Update(ctx context.Context, req resource.U
 		return
 	}
 
-	projectID, warehouseID := splitInternalID(state.ID)
+	projectID, warehouseID, err := splitInternalID(state.ID)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid resource ID", err.Error())
+		return
+	}
 
 	if plan.Active.ValueBool() {
 		if err := r.client.ActivateWarehouse(ctx, projectID, warehouseID); err != nil {
@@ -311,7 +319,11 @@ func (r *lakekeeperWarehouseResource) Delete(ctx context.Context, req resource.D
 		return
 	}
 
-	projectID, warehouseID := splitInternalID(state.ID)
+	projectID, warehouseID, err := splitInternalID(state.ID)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid resource ID", err.Error())
+		return
+	}
 
 	if err := r.client.DeleteWarehouse(ctx, projectID, warehouseID, true); err != nil {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete warehouse %s in project %s, %v", warehouseID, projectID, err))

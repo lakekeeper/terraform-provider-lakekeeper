@@ -84,7 +84,7 @@ The steps are the same, with these differences:
 
 - **`docs/` is generated.** Never edit it by hand: the next `make generate` overwrites your edit, and CI's `make lint-generated` fails when `docs/` differs from what the sources produce. Change the schema description or the example, then run `make generate`.
 - **The acceptance build tag.** A missing tag breaks `make test`; see [Testing's pitfalls](testing.md#pitfalls). With the tag, only `make testacc` compiles the file, so `make reviewable` never does. Check it compiles without a server: `go vet -tags acceptance ./internal/provider/`.
-- **`splitInternalID` doesn't validate.** It panics on an ID with fewer than two parts. That is safe in `Read`, `Update` and `Delete`, because the provider built the ID. In `ImportState`, the ID comes from the user, so check the number of parts yourself first.
+- **`splitInternalID` validates format.** It returns an error on an ID with fewer or more than two parts, allowing callers to return a clear diagnostic instead of panicking. In `ImportState`, the ID comes from the user, so check the number of parts yourself first.
 - **Resource and data source clients differ.** A resource's `Configure` asserts `req.ProviderData` to `*LakekeeperResourceData`, a data source's to `*LakekeeperDatasourceData`. Copying `Configure` across panics at runtime.
 - **The SDK import.** Importing the Lakekeeper Go SDK in the provider package fails `make lint`; see [Add an API method](add-api-method.md#pitfalls).
 - **Fields the server never returns.** Some values, like a warehouse's storage credential, are sent but never read back. Copy them from the plan or prior state in `Read`; the test must ignore them on import (see [Testing](testing.md#steps), step 4).

@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -23,9 +24,12 @@ func registerResource(fn func() resource.Resource) {
 	allResources = append(allResources, fn)
 }
 
-func splitInternalID(s types.String) (string, string) {
+func splitInternalID(s types.String) (string, string, error) {
 	splitted := strings.Split(s.ValueString(), "/")
-	return splitted[0], splitted[1]
+	if len(splitted) != 2 || splitted[0] == "" || splitted[1] == "" {
+		return "", "", fmt.Errorf("invalid internal ID %q: expected format <project_id>/<resource_id>", s.ValueString())
+	}
+	return splitted[0], splitted[1], nil
 }
 
 func DiffTypedStrings(oldList, newList []types.String) (added, removed []types.String) {
