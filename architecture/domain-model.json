@@ -326,11 +326,11 @@
         },
         {
           "name": "project",
-          "type": "project_admin, security_admin, data_admin, role_creator, describe, select, create, write, modify"
+          "type": "project_admin, security_admin, data_admin, role_creator, describe, select, create, write, modify, tag_creator"
         },
         {
           "name": "warehouse",
-          "type": "ownership, pass_grants, manage_grants, describe, select, create, write, modify"
+          "type": "ownership, pass_grants, manage_grants, describe, select, create, write, modify, manage_tags"
         },
         {
           "name": "role",
@@ -338,7 +338,7 @@
         },
         {
           "name": "namespace",
-          "type": "ownership, pass_grants, manage_grants, describe, select, create, write, modify"
+          "type": "ownership, pass_grants, manage_grants, describe, select, create, write, modify, manage_tags"
         }
       ],
       "sources": [

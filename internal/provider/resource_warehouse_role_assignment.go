@@ -30,4 +30,5 @@ var warehouseGrantTypes = []string{
 	api.WarehouseAssignmentCreate,
 	api.WarehouseAssignmentWrite,
 	api.WarehouseAssignmentModify,
+	api.WarehouseAssignmentManageTags,
 }

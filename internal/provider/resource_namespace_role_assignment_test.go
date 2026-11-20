@@ -95,6 +95,45 @@ func testAccCheckNamespaceRoleGrantsRevoked(projectID, roleID string) resource.T
 	}
 }
 
+// The tag grant `manage_tags` must be accepted on a namespace, read back and
+// stay stable across plans.
+func TestAccLakekeeperNamespaceRoleAssignment_manageTags(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	role := testutil.CreateRole(t, project.ID)
+	address := "lakekeeper_namespace_role_assignment.test"
+
+	config := fmt.Sprintf(`
+		resource "lakekeeper_namespace" "test" {
+			project_id     = "%s"
+			warehouse_name = "%s"
+			name           = "%s"
+		}
+
+		resource "lakekeeper_namespace_role_assignment" "test" {
+			project_id   = "%s"
+			namespace_id = lakekeeper_namespace.test.namespace_id
+			role_id      = "%s"
+			assignments  = ["describe", "manage_tags"]
+		}
+	`, project.ID, warehouse.Name, acctest.RandString(8), project.ID, role.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(address, "assignments.#", "2"),
+					resource.TestCheckTypeSetElemAttr(address, "assignments.*", "manage_tags"),
+				),
+			},
+			{Config: config, PlanOnly: true},
+			{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		},
+	})
+}
+
 // Lakekeeper 0.15 added the `write` privilege. It must be accepted on a
 // namespace, read back from the server and stay stable across plans.
 func TestAccLakekeeperNamespaceRoleAssignment_write(t *testing.T) {

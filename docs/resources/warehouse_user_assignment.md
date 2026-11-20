@@ -34,7 +34,7 @@ resource "lakekeeper_warehouse_user_assignment" "gcs" {
 
 ### Required
 
-- `assignments` (Set of String) The direct grants of the user on the warehouse. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `write`, `modify`. An empty set revokes all of them.
+- `assignments` (Set of String) The direct grants of the user on the warehouse. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `write`, `modify`, `manage_tags`. An empty set revokes all of them.
 - `user_id` (String) The ID of the user, in the form `<idp>~<subject>`.
 - `warehouse_id` (String) The ID of the warehouse.
 

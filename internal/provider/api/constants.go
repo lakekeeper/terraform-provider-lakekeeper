@@ -32,6 +32,7 @@ const (
 	ProjectAssignmentCreate        = "create"
 	ProjectAssignmentWrite         = "write"
 	ProjectAssignmentModify        = "modify"
+	ProjectAssignmentTagCreator    = "tag_creator"
 )
 
 // Warehouse assignments.
@@ -44,6 +45,7 @@ const (
 	WarehouseAssignmentCreate       = "create"
 	WarehouseAssignmentWrite        = "write"
 	WarehouseAssignmentModify       = "modify"
+	WarehouseAssignmentManageTags   = "manage_tags"
 )
 
 // Role assignments.

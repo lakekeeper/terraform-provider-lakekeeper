@@ -34,7 +34,7 @@ resource "lakekeeper_warehouse_role_assignment" "s3" {
 
 ### Required
 
-- `assignments` (Set of String) The direct grants of the role on the warehouse. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `write`, `modify`. An empty set revokes all of them.
+- `assignments` (Set of String) The direct grants of the role on the warehouse. Allowed values: `ownership`, `pass_grants`, `manage_grants`, `describe`, `select`, `create`, `write`, `modify`, `manage_tags`. An empty set revokes all of them.
 - `role_id` (String) The ID of the role.
 - `warehouse_id` (String) The ID of the warehouse.
 

@@ -15,6 +15,38 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
+// The tag grant `tag_creator` must be accepted on a project, read back and stay
+// stable across plans.
+func TestAccLakekeeperProjectRoleAssignment_tagCreator(t *testing.T) {
+	project := testutil.CreateProject(t)
+	role := testutil.CreateRole(t, project.ID)
+	address := "lakekeeper_project_role_assignment.test"
+
+	config := fmt.Sprintf(`
+		resource "lakekeeper_project_role_assignment" "test" {
+			project_id = "%s"
+			role_id = "%s"
+			assignments = ["describe", "tag_creator"]
+		}
+	`, project.ID, role.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperProjectRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(address, "assignments.#", "2"),
+					resource.TestCheckTypeSetElemAttr(address, "assignments.*", "tag_creator"),
+				),
+			},
+			{Config: config, PlanOnly: true},
+			{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		},
+	})
+}
+
 func TestAccLakekeeperProjectRoleAssignment_basic(t *testing.T) {
 
 	project := testutil.CreateProject(t)

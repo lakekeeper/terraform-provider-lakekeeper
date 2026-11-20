@@ -216,3 +216,43 @@ func TestAccLakekeeperWarehouseRoleAssignment_write(t *testing.T) {
 		},
 	})
 }
+
+// The tag grant `manage_tags` must be accepted, read back and stay stable
+// across plans, like every other warehouse grant.
+func TestAccLakekeeperWarehouseRoleAssignment_manageTags(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	role := testutil.CreateRole(t, project.ID)
+
+	config := fmt.Sprintf(`
+		resource "lakekeeper_warehouse_role_assignment" "test" {
+			warehouse_id = "%s"
+			role_id = "%s"
+			assignments = ["describe", "manage_tags"]
+		}
+	`, warehouse.ID, role.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_warehouse_role_assignment.test", "assignments.#", "2"),
+					resource.TestCheckTypeSetElemAttr("lakekeeper_warehouse_role_assignment.test", "assignments.*", "manage_tags"),
+				),
+			},
+			{
+				Config:             config,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+			{
+				ResourceName:      "lakekeeper_warehouse_role_assignment.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
