@@ -33,6 +33,7 @@ var wireRoutes = map[string]string{
 	"GET /management/v1/info":                     `{"authz-backend":"openfga","bootstrapped":true,"default-project-id":"00000000-0000-0000-0000-000000000000","aws-system-identities-enabled":true,"azure-system-identities-enabled":false,"gcp-system-identities-enabled":true,"server-id":"s1","version":"0.15.0","lakekeeper-version":"0.15.0","queues":["tabular_expiration"],"license-status":{"valid":true,"license-type":"Apache-2.0"},"managed-role-providers":[]}`,
 	"POST /management/v1/project":                 `{"project-id":"p1"}`,
 	"GET /management/v1/project":                  `{"project-id":"p1","project-name":"proj"}`,
+	"GET /management/v1/project-list":             `{"projects":[{"project-id":"p1","project-name":"proj"},{"project-id":"p2","project-name":"other"}]}`,
 	"POST /management/v1/role":                    roleJSON,
 	"GET /management/v1/role/r1":                  roleJSON,
 	"POST /management/v1/role/r1":                 roleJSON,
@@ -42,6 +43,7 @@ var wireRoutes = map[string]string{
 	"GET /management/v1/whoami":                   strings.TrimSuffix(userJSON, "}") + `,"is-instance-admin":false}`,
 	"POST /management/v1/warehouse":               warehouseJSON,
 	"GET /management/v1/warehouse/w1":             warehouseJSON,
+	"GET /management/v1/warehouse":                `{"warehouses":[` + warehouseJSON + `,` + strings.NewReplacer(`"w1"`, `"w2"`, `"wh"`, `"other"`, `"protected":true`, `"protected":false`).Replace(warehouseJSON) + `]}`,
 	"POST /management/v1/warehouse/w1/rename":     warehouseJSON,
 	"POST /management/v1/warehouse/w1/protection": `{"protected":true}`,
 
@@ -58,6 +60,7 @@ var wireRoutes = map[string]string{
 	"GET /management/v1/permissions/namespace/n1":             `{"managed-access":true,"managed-access-inherited":false}`,
 
 	"GET /catalog/v1/w1/namespaces/sales\x1fbronze": `{"namespace":["sales","bronze"],"properties":{"owner":"me"}}`,
+	"GET /catalog/v1/w1/namespaces":                 `{"namespaces":[["sales"],["catalog"]],"namespace-uuids":["11111111-1111-1111-1111-111111111111","22222222-2222-2222-2222-222222222222"]}`,
 }
 
 // TestWire pins what every Client method sends to Lakekeeper and what it
@@ -125,6 +128,8 @@ func TestWire(t *testing.T) {
 	step("GetProject", func() (any, error) { return c.GetProject(ctx, "p1") })
 	step("RenameProject", func() (any, error) { return none(c.RenameProject(ctx, "p1", "new")) })
 	step("DeleteProject", func() (any, error) { return none(c.DeleteProject(ctx, "p1")) })
+
+	step("ListProjects", func() (any, error) { return c.ListProjects(ctx) })
 
 	step("CreateRole", func() (any, error) {
 		return c.CreateRole(ctx, "p1", RoleRequest{Name: "role", Description: new("desc")})
@@ -196,6 +201,8 @@ func TestWire(t *testing.T) {
 	step("UpdateWarehouseDeleteProfile soft", func() (any, error) {
 		return none(c.UpdateWarehouseDeleteProfile(ctx, "p1", "w1", DeleteProfile{Type: DeleteProfileTypeSoft, ExpirationSeconds: 600}))
 	})
+
+	step("ListWarehouses", func() (any, error) { return c.ListWarehouses(ctx, "p1") })
 	step("UpdateWarehouseDeleteProfile hard", func() (any, error) {
 		return none(c.UpdateWarehouseDeleteProfile(ctx, "p1", "w1", DeleteProfile{Type: DeleteProfileTypeHard}))
 	})
@@ -222,6 +229,9 @@ func TestWire(t *testing.T) {
 	step("UpdateNamespaceAssignments", func() (any, error) {
 		return none(c.UpdateNamespaceAssignments(ctx, "p1", "n1", writes, deletes))
 	})
+
+	step("ListNamespaces", func() (any, error) { return c.ListNamespaces(ctx, "w1", nil) })
+	step("ListNamespaces with parent", func() (any, error) { return c.ListNamespaces(ctx, "w1", []string{"sales"}) })
 	step("GetNamespaceManagedAccess", func() (any, error) { return c.GetNamespaceManagedAccess(ctx, "p1", "n1") })
 	step("SetNamespaceManagedAccess", func() (any, error) { return none(c.SetNamespaceManagedAccess(ctx, "p1", "n1", false)) })
 	step("LoadNamespace", func() (any, error) { return c.LoadNamespace(ctx, "p1", "w1", []string{"sales", "bronze"}) })

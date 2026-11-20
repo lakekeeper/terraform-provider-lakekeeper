@@ -91,6 +91,19 @@ func (c *Client) DeleteProject(ctx context.Context, id string) error {
 	return wrapErr(c.sdk.Projects.Delete(ctx, lakekeeper.WithProject(id)))
 }
 
+// ListProjects lists all projects the caller can see.
+func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
+	list, err := c.sdk.Projects.List(ctx)
+	if err != nil {
+		return nil, wrapErr(err)
+	}
+	projects := make([]Project, len(list.Projects))
+	for i, p := range list.Projects {
+		projects[i] = Project{ID: p.ProjectId, Name: p.ProjectName}
+	}
+	return projects, nil
+}
+
 // ---------------------------------------------------------------------------
 // Roles
 

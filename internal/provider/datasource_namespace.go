@@ -80,10 +80,8 @@ func readExistingNamespace(ctx context.Context, client *api.Client, project, war
 		}
 	}
 	parts := strings.Split(name, ".")
-	for _, part := range parts {
-		if part == "" || strings.ContainsAny(part, "/\x1f") {
-			return "", false, fmt.Errorf("invalid namespace path")
-		}
+	if _, err := api.EncodeNamespacePath(parts); err != nil {
+		return "", false, err
 	}
 	w, err := client.GetWarehouse(ctx, project, warehouse)
 	if err != nil {

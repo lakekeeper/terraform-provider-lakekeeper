@@ -141,3 +141,30 @@ func (c *Client) UpdateWarehouseStorage(ctx context.Context, projectID, warehous
 	_, resp, err := c.sdk.WarehouseAPI.UpdateStorageProfile(ctx, warehouseID).UpdateWarehouseStorageRequest(*body).Execute()
 	return wrapGenErr("update warehouse storage", resp, err)
 }
+
+// WarehouseListItem is a warehouse as returned by the list endpoint.
+type WarehouseListItem struct {
+	ID        string
+	ProjectID string
+	Name      string
+	Protected bool
+}
+
+// ListWarehouses lists warehouses in a project that the caller can see.
+// Lakekeeper lists only active warehouses when no status filter is sent.
+func (c *Client) ListWarehouses(ctx context.Context, projectID string) ([]WarehouseListItem, error) {
+	list, err := c.sdk.Warehouses.List(ctx, nil, lakekeeper.WithProject(projectID))
+	if err != nil {
+		return nil, wrapErr(err)
+	}
+	warehouses := make([]WarehouseListItem, 0, len(list.Warehouses))
+	for _, w := range list.Warehouses {
+		warehouses = append(warehouses, WarehouseListItem{
+			ID:        w.Id,
+			ProjectID: w.ProjectId,
+			Name:      w.Name,
+			Protected: w.Protected,
+		})
+	}
+	return warehouses, nil
+}

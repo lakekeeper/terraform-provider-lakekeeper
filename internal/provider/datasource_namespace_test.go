@@ -19,7 +19,7 @@ func TestExistingNamespaceRead(t *testing.T) {
 	const warehouse = "22222222-2222-4222-8222-222222222222"
 	const namespace = "33333333-3333-4333-8333-333333333333"
 	const name = "operational.lims.inventory.gold"
-	for _, scenario := range []string{"nested", "wrong project", "wrong warehouse", "inactive", "missing namespace", "wrong path", "missing UUID", "missing managed access", "forbidden"} {
+	for _, scenario := range []string{"nested", "invalid path", "wrong project", "wrong warehouse", "inactive", "missing namespace", "wrong path", "missing UUID", "missing managed access", "forbidden"} {
 		t.Run(scenario, func(t *testing.T) {
 			catalogReads := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +89,12 @@ func TestExistingNamespaceRead(t *testing.T) {
 			var schema datasource.SchemaResponse
 			d.Schema(ctx, datasource.SchemaRequest{}, &schema)
 			state := tfsdk.State{Schema: schema.Schema}
+			testName := name
+			if scenario == "invalid path" {
+				testName = "operational..gold"
+			}
 			model := lakekeeperNamespaceDataSourceModel{
-				ProjectID: types.StringValue(project), WarehouseID: types.StringValue(warehouse), Name: types.StringValue(name),
+				ProjectID: types.StringValue(project), WarehouseID: types.StringValue(warehouse), Name: types.StringValue(testName),
 			}
 			if diags := state.Set(ctx, &model); diags.HasError() {
 				t.Fatal(diags)
@@ -108,8 +112,8 @@ func TestExistingNamespaceRead(t *testing.T) {
 					t.Fatalf("unexpected state: %+v", model)
 				}
 			}
-			if (scenario == "wrong project" || scenario == "wrong warehouse" || scenario == "inactive") && catalogReads != 0 {
-				t.Fatal("read namespace after warehouse scope validation failed")
+			if (scenario == "invalid path" || scenario == "wrong project" || scenario == "wrong warehouse" || scenario == "inactive") && catalogReads != 0 {
+				t.Fatal("read namespace after validation failed")
 			}
 		})
 	}

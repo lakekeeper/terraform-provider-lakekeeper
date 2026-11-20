@@ -18,6 +18,10 @@
 ## DeleteProject
 > DELETE /management/v1/project [x-project-id: p1]
 
+## ListProjects
+> GET /management/v1/project-list
+< []api.Project [{"ID":"p1","Name":"proj"},{"ID":"p2","Name":"other"}]
+
 ## CreateRole
 > POST /management/v1/role [x-project-id: p1]
   {"description":"desc","name":"role"}
@@ -189,6 +193,10 @@
 > POST /management/v1/warehouse/w1/delete-profile
   {"delete-profile":{"expiration-seconds":600,"type":"soft"}}
 
+## ListWarehouses
+> GET /management/v1/warehouse [x-project-id: p1]
+< []api.WarehouseListItem [{"ID":"w1","ProjectID":"p1","Name":"wh","Protected":true},{"ID":"w2","ProjectID":"p1","Name":"other","Protected":false}]
+
 ## UpdateWarehouseDeleteProfile hard
 > POST /management/v1/warehouse/w1/delete-profile
   {"delete-profile":{"type":"hard"}}
@@ -256,6 +264,14 @@
 ## UpdateNamespaceAssignments
 > POST /management/v1/permissions/namespace/n1/assignments
   {"deletes":[{"role":"r1","type":"describe"}],"writes":[{"type":"select","user":"u1"}]}
+
+## ListNamespaces
+> GET /catalog/v1/w1/namespaces?returnUuids=true
+< []api.NamespaceListItem [{"ID":"11111111-1111-1111-1111-111111111111","Parts":["sales"]},{"ID":"22222222-2222-2222-2222-222222222222","Parts":["catalog"]}]
+
+## ListNamespaces with parent
+> GET /catalog/v1/w1/namespaces?parent=sales&returnUuids=true
+< []api.NamespaceListItem [{"ID":"11111111-1111-1111-1111-111111111111","Parts":["sales"]},{"ID":"22222222-2222-2222-2222-222222222222","Parts":["catalog"]}]
 
 ## GetNamespaceManagedAccess
 > GET /management/v1/permissions/namespace/n1
