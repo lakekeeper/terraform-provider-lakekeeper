@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	managementv1 "github.com/lakekeeper/go-lakekeeper/pkg/apis/management/v1"
@@ -65,10 +66,24 @@ type Namespace struct {
 //
 // The SDK's catalog client addresses warehouses by name, so this is a plain
 // request sent through the SDK's authenticated HTTP client.
+//
+// As the Iceberg REST spec requires, each level is percent-encoded on its own
+// and the levels are joined with the encoded unit separator %1F, so a level
+// containing a reserved character such as "/" stays one path segment.
 func (c *Client) LoadNamespace(ctx context.Context, projectID, warehouseID string, path []string) (*Namespace, error) {
 	const op = "load namespace"
 	u := c.sdk.BaseURL()
-	u.Path = strings.TrimSuffix(u.Path, "/") + "/catalog/v1/" + warehouseID + "/namespaces/" + strings.Join(path, "\x1f")
+	levels := make([]string, len(path))
+	for i, level := range path {
+		levels[i] = url.PathEscape(level)
+	}
+	base := strings.TrimSuffix(u.EscapedPath(), "/") + "/catalog/v1/" + url.PathEscape(warehouseID) + "/namespaces/"
+	u.RawPath = base + strings.Join(levels, "%1F")
+	unescaped, err := url.PathUnescape(u.RawPath)
+	if err != nil {
+		return nil, fmt.Errorf("%s: build path: %w", op, err)
+	}
+	u.Path = unescaped
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err

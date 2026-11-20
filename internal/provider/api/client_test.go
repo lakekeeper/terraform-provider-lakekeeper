@@ -298,3 +298,31 @@ func TestUserIDIsPathEscaped(t *testing.T) {
 		t.Errorf("paths %q, want %q", paths, want)
 	}
 }
+
+// Each namespace level is percent-encoded on its own and the levels are joined
+// with %1F, so a "/" inside a level never splits the path.
+func TestNamespaceLevelsArePathEscaped(t *testing.T) {
+	var path string
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.EscapedPath()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"namespace":["a/b","c d%"],"properties":{}}`))
+	}))
+	defer s.Close()
+	ctx := t.Context()
+	c, err := NewStaticTokenClient(ctx, s.URL, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ns, err := c.LoadNamespace(ctx, "p", "w", []string{"a/b", "c d%"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "/catalog/v1/w/namespaces/a%2Fb%1Fc%20d%25"; path != want {
+		t.Errorf("path %q, want %q", path, want)
+	}
+	if !reflect.DeepEqual(ns.Path, []string{"a/b", "c d%"}) {
+		t.Errorf("namespace path %q", ns.Path)
+	}
+}
