@@ -25,3 +25,9 @@ func (a roleScopeAdapter) ListGrants(ctx context.Context, scope assignmentScope)
 func (a roleScopeAdapter) ApplyGrants(ctx context.Context, scope assignmentScope, revokes, grants []assignmentGrant) error {
 	return a.client.UpdateRoleAssignments(ctx, scope[roleIDAttributeName], grantsToAPI(grants), grantsToAPI(revokes))
 }
+
+// ScopeExists reports whether the role exists. The scope holds only the role
+// ID, and RoleExists needs no project.
+func (a roleScopeAdapter) ScopeExists(ctx context.Context, scope assignmentScope) (bool, error) {
+	return a.client.RoleExists(ctx, scope[roleIDAttributeName])
+}

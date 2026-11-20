@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the direct grants of one assignee role on the scope role. Grants that other users and roles hold on the scope role are left untouched. Use one resource per scope role and assignee role.
   Create fails if the assignee role already holds any direct grant on the scope role. Bring existing grants under Terraform with terraform import first, using the ID {{role_id}}/{{assignee_id}}.
-  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the scope role itself as not found, the resource leaves state instead.
   Lakekeeper rejects assigning a role to itself.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments
 ---
@@ -16,7 +16,7 @@ Manages the direct grants of one assignee role on the scope role. Grants that ot
 
 Create fails if the assignee role already holds any direct grant on the scope role. Bring existing grants under Terraform with `terraform import` first, using the ID `{{role_id}}/{{assignee_id}}`.
 
-Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the scope role itself as not found, the resource leaves state instead.
 
 Lakekeeper rejects assigning a role to itself.
 

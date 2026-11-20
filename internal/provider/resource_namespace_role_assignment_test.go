@@ -9,10 +9,12 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -131,6 +133,48 @@ func TestAccLakekeeperNamespaceRoleAssignment_write(t *testing.T) {
 			// The same config must plan clean: write is read back, not revoked.
 			{Config: config, PlanOnly: true},
 			{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		},
+	})
+}
+
+// Revoking the grants outside Terraform leaves the assignment in state with no
+// grants, so the next plan grants them again.
+//
+// The namespace itself is not dropped here: under OpenFGA a deleted namespace
+// answers 403 to its lookup by ID, so the provider cannot tell it from lost
+// permissions and keeps the assignment in state (see namespaceScopeAdapter).
+func TestAccLakekeeperNamespaceRoleAssignment_revokedOutOfBand(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	role := testutil.CreateRole(t, project.ID)
+	address := "lakekeeper_namespace_role_assignment.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_namespace" "test" {
+						project_id     = "%s"
+						warehouse_name = "%s"
+						name           = "%s"
+					}
+					resource "lakekeeper_namespace_role_assignment" "test" {
+						project_id   = "%s"
+						namespace_id = lakekeeper_namespace.test.namespace_id
+						role_id      = "%s"
+						assignments  = ["select"]
+					}
+				`, project.ID, warehouse.Name, acctest.RandString(8), project.ID, role.ID),
+				Check: func(s *terraform.State) error {
+					namespaceID := s.RootModule().Resources[address].Primary.Attributes["namespace_id"]
+					return testutil.TestLakekeeperClient.UpdateNamespaceAssignments(context.Background(), project.ID, namespaceID, nil, []api.Assignment{
+						{Assignee: api.RoleAssignee(role.ID), Assignment: "select"},
+					})
+				},
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionUpdate, address),
+			},
 		},
 	})
 }

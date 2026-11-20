@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 var (
@@ -99,6 +101,9 @@ func (r *assignmentResource) description() string {
 		"Grants changed outside Terraform are corrected on the next apply. "+
 		"Failed reads, writes and deletes report an error and keep the resource in state.",
 		kind, scope, r.desc.idFormat(), per)
+	if r.desc.Scope.Name != "" {
+		text += fmt.Sprintf(" When Lakekeeper reports the %s itself as not found, the resource leaves state instead.", scope)
+	}
 	if r.desc.Notes != "" {
 		text += "\n\n" + r.desc.Notes
 	}
@@ -156,10 +161,37 @@ func (r *assignmentResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 	current, err := r.assigneeGrantTypes(ctx, target)
 	if err != nil {
+		// The scope itself is gone (for example its warehouse was deleted outside
+		// Terraform): so are its grants, and the next plan recreates them.
+		if r.scopeGone(ctx, target, err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(r.errorSummary("read"), err.Error())
 		return
 	}
 	resp.Diagnostics.Append(r.setGrants(ctx, &resp.State, current)...)
+}
+
+// scopeGone reports whether err, returned while listing the scope's grants,
+// means the scope object no longer exists. A 404 says so directly. A 403 is
+// what Lakekeeper answers under OpenFGA for a deleted object, but also for lost
+// permissions, so it counts only when the adapter can confirm the object is
+// gone; any other answer keeps the resource in state.
+func (r *assignmentResource) scopeGone(ctx context.Context, target assignmentTarget, err error) bool {
+	switch api.StatusCode(err) {
+	case http.StatusNotFound:
+		return true
+	case http.StatusForbidden:
+		checker, ok := r.adapter.(scopeExistenceChecker)
+		if !ok {
+			return false
+		}
+		exists, cerr := checker.ScopeExists(ctx, target.scope)
+		return cerr == nil && !exists
+	default:
+		return false
+	}
 }
 
 func (r *assignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -179,8 +211,9 @@ func (r *assignmentResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if resp.Diagnostics.Append(diags...); resp.Diagnostics.HasError() {
 		return
 	}
-	// On failure the state is kept, so the next apply retries the revoke.
-	if err := r.reconcile(ctx, target, nil); err != nil {
+	// On failure the state is kept, so the next apply retries the revoke. A scope
+	// that no longer exists holds no grants, so there is nothing left to revoke.
+	if err := r.reconcile(ctx, target, nil); err != nil && !r.scopeGone(ctx, target, err) {
 		resp.Diagnostics.AddError(r.errorSummary("delete"), err.Error())
 		return
 	}

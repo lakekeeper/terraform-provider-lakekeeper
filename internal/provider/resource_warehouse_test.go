@@ -698,6 +698,29 @@ func testAccWarehouseConfig(name, projectID string, protected bool) string {
 	`, name, projectID, protected, name)
 }
 
+// A warehouse deleted outside Terraform leaves state on refresh, so the next
+// plan recreates it instead of failing.
+func TestAccLakekeeperWarehouse_disappears(t *testing.T) {
+	rName := acctest.RandString(8)
+	project := testutil.CreateProject(t)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccWarehouseConfig(rName, project.ID, false),
+				Check: testAccDeleteOutOfBand("lakekeeper_warehouse.this", func(ctx context.Context, id string) error {
+					projectID, warehouseID := splitInternalID(types.StringValue(id))
+					return testutil.TestLakekeeperClient.DeleteWarehouse(ctx, projectID, warehouseID, false)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_warehouse.this"),
+			},
+		},
+	})
+}
+
 // A protected warehouse cannot be destroyed: protection has to be lifted with
 // an apply first.
 func TestAccLakekeeperWarehouse_protectedBlocksDestroy(t *testing.T) {

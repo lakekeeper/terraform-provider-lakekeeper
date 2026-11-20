@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"slices"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 )
 
 func TestAssignmentIDParse(t *testing.T) {
@@ -209,6 +211,62 @@ func TestAssignmentRead(t *testing.T) {
 			t.Fatal("want error")
 		}
 	})
+
+	// A vanished scope removes the resource; lost permissions never do.
+	for name, tc := range map[string]struct {
+		adapter     func(*memoryScopeAdapter) scopeAdapter
+		listErr     error
+		wantRemoved bool
+	}{
+		"404 removes state": {
+			adapter: func(m *memoryScopeAdapter) scopeAdapter { return m }, listErr: errTestNotFound, wantRemoved: true,
+		},
+		"403 without existence check keeps state": {
+			adapter: func(m *memoryScopeAdapter) scopeAdapter { return m }, listErr: errTestForbidden,
+		},
+		"403 on a confirmed missing scope removes state": {
+			adapter: func(m *memoryScopeAdapter) scopeAdapter { return &checkingScopeAdapter{m, false, nil} }, listErr: errTestForbidden, wantRemoved: true,
+		},
+		"403 on an existing scope keeps state": {
+			adapter: func(m *memoryScopeAdapter) scopeAdapter { return &checkingScopeAdapter{m, true, nil} }, listErr: errTestForbidden,
+		},
+		"403 with a failed existence check keeps state": {
+			adapter: func(m *memoryScopeAdapter) scopeAdapter { return &checkingScopeAdapter{m, false, errTestRead} }, listErr: errTestForbidden,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := newMemoryScopeAdapter()
+			m.listErr = tc.listErr
+			r := newTestAssignmentResource(tc.adapter(m))
+			resp := testRead(t, r, testState(t, r, "p/target", "p", "target", "select"))
+			if tc.wantRemoved {
+				if resp.Diagnostics.HasError() || !resp.State.Raw.IsNull() {
+					t.Fatalf("want state removed without error, diags %v, state %v", resp.Diagnostics, resp.State.Raw)
+				}
+				return
+			}
+			if !resp.Diagnostics.HasError() || resp.State.Raw.IsNull() {
+				t.Fatalf("want an error and state kept, diags %v, state %v", resp.Diagnostics, resp.State.Raw)
+			}
+		})
+	}
+}
+
+var (
+	errTestNotFound  = api.NewError(http.StatusNotFound, errors.New("404 not found"))
+	errTestForbidden = api.NewError(http.StatusForbidden, errors.New("403 forbidden"))
+)
+
+// checkingScopeAdapter is a memoryScopeAdapter that also answers whether its
+// scope exists, like the warehouse adapter.
+type checkingScopeAdapter struct {
+	*memoryScopeAdapter
+	exists bool
+	err    error
+}
+
+func (c *checkingScopeAdapter) ScopeExists(context.Context, assignmentScope) (bool, error) {
+	return c.exists, c.err
 }
 
 func TestAssignmentUpdate(t *testing.T) {
@@ -301,9 +359,20 @@ func TestAssignmentDelete(t *testing.T) {
 		}
 	})
 
+	t.Run("vanished scope removes state", func(t *testing.T) {
+		m := newMemoryScopeAdapter()
+		m.listErr = errTestNotFound
+		r := newTestAssignmentResource(m)
+		resp := testDelete(t, r, testState(t, r, "p/target", "p", "target", "select"))
+		if resp.Diagnostics.HasError() || !resp.State.Raw.IsNull() || len(m.applies) != 0 {
+			t.Fatalf("diags %v, writes %d, state %v", resp.Diagnostics, len(m.applies), resp.State.Raw)
+		}
+	})
+
 	for name, setup := range map[string]func(*memoryScopeAdapter){
-		"failed write keeps state": func(m *memoryScopeAdapter) { m.applyErr = errTestWrite },
-		"failed read keeps state":  func(m *memoryScopeAdapter) { m.listErr = errTestRead },
+		"failed write keeps state":   func(m *memoryScopeAdapter) { m.applyErr = errTestWrite },
+		"forbidden read keeps state": func(m *memoryScopeAdapter) { m.listErr = errTestForbidden },
+		"failed read keeps state":    func(m *memoryScopeAdapter) { m.listErr = errTestRead },
 	} {
 		t.Run(name, func(t *testing.T) {
 			m := newMemoryScopeAdapter(role("target", "select"))

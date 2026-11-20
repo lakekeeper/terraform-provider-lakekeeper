@@ -3,14 +3,14 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "System context: terraform-provider-lakekeeper",
-    "output": ".archify/architecture-system-context-20261110-141014/system-context.html",
+    "output": ".archify/architecture-system-context-20261119-132013/system-context.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "ba0f0b6579f42ee9543ab2be0320818ffdb74c34"
+      "revision": "c97fb219665e8d783cf6a92d2c60f5d8364724bb"
     }
   },
   "components": [
@@ -48,7 +48,7 @@
       "pos": [570, 120],
       "size": [150, 64],
       "sources": [
-        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 33, "label": "only package that uses the SDK" },
+        { "path": "internal/provider/api/client.go", "line": 1, "end_line": 36, "label": "only package that uses the SDK" },
         { "path": "internal/provider/api/config.go", "line": 37, "end_line": 104, "label": "OIDC token source and TLS" },
         { "path": "internal/provider/api/management.go", "line": 55, "end_line": 61, "label": "CreateProject calls the SDK" }
       ]

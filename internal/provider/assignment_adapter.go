@@ -30,6 +30,15 @@ type scopeAdapter interface {
 	ApplyGrants(ctx context.Context, scope assignmentScope, revokes, grants []assignmentGrant) error
 }
 
+// scopeExistenceChecker is implemented by scope adapters that can tell whether
+// their scope object still exists. With the OpenFGA authorization backend,
+// Lakekeeper answers the grants of a deleted object with 403, not 404, which
+// alone cannot be told apart from lost permissions. An adapter implements it
+// only when it has a lookup that answers a missing object with 404.
+type scopeExistenceChecker interface {
+	ScopeExists(ctx context.Context, scope assignmentScope) (bool, error)
+}
+
 // grantsFromAPI converts the assignments an api.Client method listed at a
 // scope into grants. The api layer rejects responses it cannot decode (no
 // assignments list, a grant with neither or both of role and user); this

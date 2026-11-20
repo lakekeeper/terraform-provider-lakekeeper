@@ -142,6 +142,21 @@ func (c *Client) GetRole(ctx context.Context, projectID, roleID string) (*Role, 
 	return roleFromSDK(r), nil
 }
 
+// RoleExists reports whether a role exists, in any project. It reads the
+// role's metadata, which is addressed by role ID alone and answers a missing
+// role with 404 under every authorization backend. GetRole cannot answer this
+// without the role's project: without one it looks in the default project.
+func (c *Client) RoleExists(ctx context.Context, roleID string) (bool, error) {
+	_, resp, err := c.sdk.RoleAPI.GetRoleMetadata(ctx, roleID).Execute()
+	if err := wrapGenErr("get role metadata", resp, err); err != nil {
+		if IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // UpdateRole replaces the writable fields of a role.
 func (c *Client) UpdateRole(ctx context.Context, projectID, roleID string, req RoleRequest) (*Role, error) {
 	body := managementv1.NewUpdateRoleRequest(req.Name)

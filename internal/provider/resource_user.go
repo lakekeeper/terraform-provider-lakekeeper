@@ -170,6 +170,10 @@ func (r *lakekeeperUserResource) Read(ctx context.Context, req resource.ReadRequ
 
 	user, err := r.client.GetUser(ctx, id)
 	if err != nil {
+		if api.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read user %s, %v", id, err))
 		return
 	}
@@ -254,7 +258,7 @@ func (r *lakekeeperUserResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	err := r.client.DeleteUser(ctx, id)
-	if err != nil {
+	if err != nil && !api.IsNotFound(err) {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete user %s, %v", id, err))
 		return
 	}

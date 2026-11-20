@@ -12,7 +12,10 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -160,6 +163,13 @@ func testAccCheckLakekeeperWarehouseRoleAssignmentDestroy(s *terraform.State) er
 
 		assignments, err := testutil.TestLakekeeperClient.GetWarehouseAssignments(context.Background(), warehouseID)
 		if err != nil {
+			// The warehouse is gone, and its grants with it. Under OpenFGA the
+			// assignments of a deleted warehouse answer 403, so ask the warehouse.
+			if _, werr := testutil.TestLakekeeperClient.GetWarehouse(context.Background(), "", warehouseID); api.IsNotFound(werr) {
+				continue
+			}
+		}
+		if err != nil {
 			return fmt.Errorf("could not list warehouse assignments to check destroy, %w", err)
 		}
 
@@ -171,6 +181,36 @@ func testAccCheckLakekeeperWarehouseRoleAssignmentDestroy(s *terraform.State) er
 	}
 
 	return nil
+}
+
+// When the warehouse is deleted outside Terraform, its grants go with it: the
+// assignment leaves state on refresh instead of failing every plan.
+func TestAccLakekeeperWarehouseRoleAssignment_scopeDisappears(t *testing.T) {
+	project := testutil.CreateProject(t)
+	role := testutil.CreateRole(t, project.ID)
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccWarehouseConfig(rName, project.ID, false) + fmt.Sprintf(`
+					resource "lakekeeper_warehouse_role_assignment" "test" {
+						warehouse_id = lakekeeper_warehouse.this.warehouse_id
+						role_id = "%s"
+						assignments = ["describe"]
+					}
+				`, role.ID),
+				Check: testAccDeleteOutOfBand("lakekeeper_warehouse.this", func(ctx context.Context, id string) error {
+					projectID, warehouseID := splitInternalID(types.StringValue(id))
+					return testutil.TestLakekeeperClient.DeleteWarehouse(ctx, projectID, warehouseID, false)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_warehouse.this", "lakekeeper_warehouse_role_assignment.test"),
+			},
+		},
+	})
 }
 
 // Lakekeeper 0.15 added the `write` privilege. It must be accepted, read back

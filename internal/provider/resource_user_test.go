@@ -140,6 +140,34 @@ func TestAccLakekeeperUser_invalidType(t *testing.T) {
 	})
 }
 
+// A user deleted outside Terraform leaves state on refresh, so the next plan
+// recreates it instead of failing.
+func TestAccLakekeeperUser_disappears(t *testing.T) {
+	rID := acctest.RandomWithPrefix("oidc~")
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperUserDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+				resource "lakekeeper_user" "foo" {
+				  id = "%s"
+				  name = "%s"
+				  user_type = "human"
+				}
+				`, rID, rName),
+				Check: testAccDeleteOutOfBand("lakekeeper_user.foo", func(ctx context.Context, id string) error {
+					return testutil.TestLakekeeperClient.DeleteUser(ctx, id)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_user.foo"),
+			},
+		},
+	})
+}
+
 // Changing a user's ID replaces it: the old user is deleted, not left behind
 // next to a second one.
 func TestAccLakekeeperUser_idChangeReplaces(t *testing.T) {

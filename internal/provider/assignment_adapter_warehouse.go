@@ -26,3 +26,14 @@ func (a warehouseScopeAdapter) ListGrants(ctx context.Context, scope assignmentS
 func (a warehouseScopeAdapter) ApplyGrants(ctx context.Context, scope assignmentScope, revokes, grants []assignmentGrant) error {
 	return a.client.UpdateWarehouseAssignments(ctx, scope[warehouseIDAttributeName], grantsToAPI(grants), grantsToAPI(revokes))
 }
+
+// ScopeExists reports whether the warehouse exists. Warehouse IDs are global,
+// and GetWarehouse answers a missing warehouse with 404 under every
+// authorization backend.
+func (a warehouseScopeAdapter) ScopeExists(ctx context.Context, scope assignmentScope) (bool, error) {
+	_, err := a.client.GetWarehouse(ctx, "", scope[warehouseIDAttributeName])
+	if api.IsNotFound(err) {
+		return false, nil
+	}
+	return err == nil, err
+}

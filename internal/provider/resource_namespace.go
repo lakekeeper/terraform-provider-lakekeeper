@@ -121,6 +121,10 @@ func (r *lakekeeperNamespaceResource) Create(ctx context.Context, req resource.C
 	warehouse_name := state.WarehouseName.ValueString()
 
 	cat, err := r.client.Catalog(ctx, project_id, warehouse_name)
+	if api.IsNotFound(err) {
+		resp.Diagnostics.AddAttributeError(path.Root("warehouse_name"), "Warehouse not found", fmt.Sprintf("Warehouse %q does not exist in project %s", warehouse_name, project_id))
+		return
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Could not create the Iceberg Catalog client", fmt.Sprintf("Unable to initialize the client, %v", err.Error()))
 		return
@@ -168,7 +172,9 @@ func (r *lakekeeperNamespaceResource) Read(ctx context.Context, req resource.Rea
 	}
 
 	if err := r.refreshNamespace(ctx, &state); err != nil {
-		if errors.Is(err, catalog.ErrNoSuchNamespace) {
+		// The namespace is gone, or so is its warehouse: Lakekeeper only
+		// deletes an empty warehouse, so its namespaces went first.
+		if errors.Is(err, catalog.ErrNoSuchNamespace) || api.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -226,6 +232,10 @@ func (r *lakekeeperNamespaceResource) Delete(ctx context.Context, req resource.D
 	warehouse_name := state.WarehouseName.ValueString()
 
 	cat, err := r.client.Catalog(ctx, project_id, warehouse_name)
+	if api.IsNotFound(err) {
+		// The warehouse is gone, and its namespaces with it.
+		return
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Could not create the Iceberg Catalog client", fmt.Sprintf("Unable to initialize the client, %v", err.Error()))
 		return
@@ -233,7 +243,7 @@ func (r *lakekeeperNamespaceResource) Delete(ctx context.Context, req resource.D
 
 	name := state.Name.ValueString()
 
-	if err := cat.DropNamespace(ctx, catalog.ToIdentifier(name)); err != nil {
+	if err := cat.DropNamespace(ctx, catalog.ToIdentifier(name)); err != nil && !errors.Is(err, catalog.ErrNoSuchNamespace) {
 		resp.Diagnostics.AddError("REST Catalog API error occurred", fmt.Sprintf("Unable to delete namespace %s, %v", name, err.Error()))
 		return
 	}
