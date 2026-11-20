@@ -122,7 +122,7 @@ func (r *lakekeeperNamespaceResource) Create(ctx context.Context, req resource.C
 
 	cat, err := r.client.Catalog(ctx, project_id, warehouse_name)
 	if api.IsNotFound(err) {
-		// The warehouse is gone, and its namespaces with it.
+		resp.Diagnostics.AddAttributeError(path.Root("warehouse_name"), "Warehouse not found", fmt.Sprintf("Warehouse %q does not exist in project %s", warehouse_name, project_id))
 		return
 	}
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -205,6 +206,28 @@ func TestAccLakekeeperNamespace_warehouseDisappears(t *testing.T) {
 				}),
 				ExpectNonEmptyPlan: true,
 				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_warehouse.this", "lakekeeper_namespace.this"),
+			},
+		},
+	})
+}
+
+func TestAccLakekeeperNamespace_missingWarehouse(t *testing.T) {
+	project := testutil.CreateProject(t)
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperNamespaceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+				resource "lakekeeper_namespace" "this" {
+					project_id = "%s"
+					warehouse_name = "missing-%s"
+					name = "%s"
+				}
+				`, project.ID, rName, rName),
+				ExpectError: regexp.MustCompile(`Warehouse not found`),
 			},
 		},
 	})
