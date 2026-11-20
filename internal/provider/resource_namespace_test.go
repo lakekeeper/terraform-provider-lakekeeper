@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -50,6 +51,60 @@ func TestAccLakekeeperNamespace_basic(t *testing.T) {
 				ResourceName:      "lakekeeper_namespace.this",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccLakekeeperNamespace_adoptExisting(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	rName := acctest.RandString(8)
+
+	// The namespace exists before Terraform creates it, as after it drops out of state.
+	cat, err := testutil.TestLakekeeperClient.Catalog(t.Context(), project.ID, warehouse.Name)
+	if err != nil {
+		t.Fatalf("could not create the Iceberg Catalog client: %v", err)
+	}
+	if err := cat.CreateNamespace(t.Context(), catalog.ToIdentifier(rName), nil); err != nil {
+		t.Fatalf("could not create namespace %s: %v", rName, err)
+	}
+	props, err := cat.LoadNamespaceProperties(t.Context(), catalog.ToIdentifier(rName))
+	if err != nil {
+		t.Fatalf("could not load namespace %s: %v", rName, err)
+	}
+
+	config := func(adopt string) string {
+		return fmt.Sprintf(`
+		resource "lakekeeper_namespace" "this" {
+			project_id     = "%s"
+			warehouse_name = "%s"
+			name           = "%s"
+			%s
+		}
+		`, project.ID, warehouse.Name, rName, adopt)
+	}
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperNamespaceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      config(""),
+				ExpectError: regexp.MustCompile(`already exist`),
+			},
+			{
+				Config: config("adopt_existing = true"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_namespace.this", "namespace_id", props["namespace_id"]),
+					resource.TestCheckResourceAttr("lakekeeper_namespace.this", "adopt_existing", "true"),
+				),
+			},
+			{
+				ResourceName:            "lakekeeper_namespace.this",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"adopt_existing"},
 			},
 		},
 	})

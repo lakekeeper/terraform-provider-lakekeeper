@@ -34,6 +34,7 @@ resource "lakekeeper_namespace" "example" {
 
 ### Optional
 
+- `adopt_existing` (Boolean) Take over a namespace with this name that already exists, instead of failing with a conflict. Use this when the namespace can exist before Terraform creates it, for example after it dropped out of state. Terraform then manages that namespace, and destroying the resource drops it. Defaults to `false`.
 - `managed_access` (Boolean) Centralize grants on descendants. Requires OpenFGA when set. Leaving this unset avoids the managed-access endpoint. Removing the setting preserves its remote value.
 
 ### Read-Only

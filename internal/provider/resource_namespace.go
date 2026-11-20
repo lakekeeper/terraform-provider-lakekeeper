@@ -49,6 +49,7 @@ type lakekeeperNamespaceResourceModel struct {
 	ID            types.String `tfsdk:"id"`
 	NamespaceID   types.String `tfsdk:"namespace_id"`
 	ManagedAccess types.Bool   `tfsdk:"managed_access"`
+	AdoptExisting types.Bool   `tfsdk:"adopt_existing"`
 	ProjectID     types.String `tfsdk:"project_id"`
 	WarehouseName types.String `tfsdk:"warehouse_name"`
 	Name          types.String `tfsdk:"name"`
@@ -70,6 +71,7 @@ func (r *lakekeeperNamespaceResource) Schema(ctx context.Context, req resource.S
 			},
 			"namespace_id":   schema.StringAttribute{Computed: true, MarkdownDescription: "Namespace UUID used by the permissions API."},
 			"managed_access": schema.BoolAttribute{Optional: true, MarkdownDescription: "Centralize grants on descendants. Requires OpenFGA when set. Leaving this unset avoids the managed-access endpoint. Removing the setting preserves its remote value."},
+			"adopt_existing": schema.BoolAttribute{Optional: true, MarkdownDescription: "Take over a namespace with this name that already exists, instead of failing with a conflict. Use this when the namespace can exist before Terraform creates it, for example after it dropped out of state. Terraform then manages that namespace, and destroying the resource drops it. Defaults to `false`."},
 			"project_id": schema.StringAttribute{
 				MarkdownDescription: "The internal ID of the project where the namespace is located.",
 				Required:            true,
@@ -124,8 +126,11 @@ func (r *lakekeeperNamespaceResource) Create(ctx context.Context, req resource.C
 	namespace := catalog.ToIdentifier(name)
 
 	if err := cat.CreateNamespace(ctx, namespace, nil); err != nil {
-		resp.Diagnostics.AddError("REST Catalog API error occurred", fmt.Sprintf("Unable to create namespace %s, %v", name, err.Error()))
-		return
+		if !state.AdoptExisting.ValueBool() || !errors.Is(err, catalog.ErrNamespaceAlreadyExists) {
+			resp.Diagnostics.AddError("REST Catalog API error occurred", fmt.Sprintf("Unable to create namespace %s, %v", name, err.Error()))
+			return
+		}
+		resp.Diagnostics.AddWarning("Adopted an existing namespace", fmt.Sprintf("Namespace %s already exists in warehouse %s, so Terraform now manages it instead of creating it.", name, warehouse_name))
 	}
 
 	state.ID = types.StringValue(fmt.Sprintf("%s/%s/%s", project_id, warehouse_name, name))
