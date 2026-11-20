@@ -34,6 +34,7 @@ var wireRoutes = map[string]string{
 	"POST /management/v1/project":                 `{"project-id":"p1"}`,
 	"GET /management/v1/project":                  `{"project-id":"p1","project-name":"proj"}`,
 	"POST /management/v1/role":                    roleJSON,
+	"GET /management/v1/role":                     `{"roles":[` + roleJSON + `],"next-page-token":"next"}`,
 	"GET /management/v1/role/r1":                  roleJSON,
 	"POST /management/v1/role/r1":                 roleJSON,
 	"PUT /management/v1/role/r1":                  roleJSON,
@@ -135,6 +136,8 @@ func TestWire(t *testing.T) {
 		return c.UpdateRole(ctx, "p1", "r1", RoleRequest{Name: "role", Description: new("desc")})
 	})
 	step("DeleteRole", func() (any, error) { return none(c.DeleteRole(ctx, "p1", "r1")) })
+	step("ListRoles", func() (any, error) { return c.ListRoles(ctx, "p1", nil) })
+	step("ListRoles with token", func() (any, error) { return c.ListRoles(ctx, "p1", new("next")) })
 
 	step("ProvisionUser", func() (any, error) {
 		return c.ProvisionUser(ctx, ProvisionUserRequest{ID: new("oidc~a/b"), Name: new("user"), Email: new("u@example.com"), UserType: new(UserTypeHuman), UpdateIfExists: true})

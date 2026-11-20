@@ -40,6 +40,14 @@
 ## DeleteRole
 > DELETE /management/v1/role/r1 [x-project-id: p1]
 
+## ListRoles
+> GET /management/v1/role [x-project-id: p1]
+< *api.RoleListResult {"Roles":[{"ID":"r1","ProjectID":"p1","Name":"role","Description":"desc","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z"}],"NextPageToken":"next"}
+
+## ListRoles with token
+> GET /management/v1/role?pageToken=next [x-project-id: p1]
+< *api.RoleListResult {"Roles":[{"ID":"r1","ProjectID":"p1","Name":"role","Description":"desc","CreatedAt":"2025-01-02T03:04:05.123456Z","UpdatedAt":"2025-02-03T04:05:06Z"}],"NextPageToken":"next"}
+
 ## ProvisionUser
 > POST /management/v1/user
   {"email":"u@example.com","id":"oidc~a/b","name":"user","update-if-exists":true,"user-type":"human"}

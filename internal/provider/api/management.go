@@ -158,6 +158,36 @@ func (c *Client) DeleteRole(ctx context.Context, projectID, roleID string) error
 	return wrapErr(c.sdk.Roles.Delete(ctx, roleID, lakekeeper.WithProject(projectID)))
 }
 
+// RoleListResult holds one page of roles and an optional continuation token.
+type RoleListResult struct {
+	Roles         []*Role
+	NextPageToken *string
+}
+
+// ListRoles returns one page of roles in a project.
+// Pass nextPageToken to fetch the next page.
+func (c *Client) ListRoles(ctx context.Context, projectID string, nextPageToken *string) (*RoleListResult, error) {
+	var opts *lakekeeper.ListRolesOptions
+	if nextPageToken != nil {
+		opts = &lakekeeper.ListRolesOptions{PageToken: *nextPageToken}
+	}
+	page, err := c.sdk.Roles.List(ctx, opts, lakekeeper.WithProject(projectID))
+	if err != nil {
+		return nil, wrapErr(err)
+	}
+	roles := make([]*Role, len(page.GetRoles()))
+	for i := range page.GetRoles() {
+		r := page.GetRoles()[i]
+		roles[i] = roleFromSDK(&r)
+	}
+	var token *string
+	if page.HasNextPageToken() && page.GetNextPageToken() != "" {
+		t := page.GetNextPageToken()
+		token = &t
+	}
+	return &RoleListResult{Roles: roles, NextPageToken: token}, nil
+}
+
 // ---------------------------------------------------------------------------
 // Users
 
