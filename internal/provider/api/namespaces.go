@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	managementv1 "github.com/lakekeeper/go-lakekeeper/pkg/apis/management/v1"
+	lakekeeper "github.com/lakekeeper/go-lakekeeper/pkg/client"
 )
 
 // Namespace permissions are addressed by namespace ID alone, so projectID is
@@ -95,4 +96,40 @@ func (c *Client) LoadNamespace(ctx context.Context, projectID, warehouseID strin
 		return nil, fmt.Errorf("%s: decode response: %w", op, err)
 	}
 	return &Namespace{Path: result.Namespace, Properties: result.Properties}, nil
+}
+
+// NamespaceExists reports whether a namespace exists, even one the caller
+// cannot see. A namespace load answers 404 both when the namespace is missing
+// and when the caller may not see it; a batch check with error-on-not-found
+// answers 404 only when it is missing. namespaceID selects the namespace when
+// set, otherwise path does.
+func (c *Client) NamespaceExists(ctx context.Context, projectID, warehouseName, namespaceID string, path []string) (bool, error) {
+	warehouses, err := c.sdk.Warehouses.List(ctx, nil, lakekeeper.WithProject(projectID))
+	if err != nil {
+		return false, wrapErr(err)
+	}
+	warehouseID := ""
+	for _, w := range warehouses.GetWarehouses() {
+		if w.GetName() == warehouseName {
+			warehouseID = w.GetId()
+		}
+	}
+	if warehouseID == "" {
+		return false, fmt.Errorf("check namespace: warehouse %q not found in project %s", warehouseName, projectID)
+	}
+	action := managementv1.LakekeeperNamespaceActionGetMetadataAsLakekeeperNamespaceAction(managementv1.NewLakekeeperNamespaceActionGetMetadata("get_metadata"))
+	check := managementv1.NewCatalogActionCheckOperationNamespace(*managementv1.NewCatalogActionCheckOperationNamespaceNamespace(namespaceID, warehouseID, path, action))
+	req := managementv1.NewCatalogActionsBatchCheckRequest([]managementv1.CatalogActionCheckItem{
+		*managementv1.NewCatalogActionCheckItem(managementv1.CatalogActionCheckOperationNamespaceAsCatalogActionCheckOperation(check)),
+	})
+	req.SetErrorOnNotFound(true)
+	_, resp, err := c.sdk.AuthorizationAPI.BatchCheckActions(ctx).CatalogActionsBatchCheckRequest(*req).XProjectId(projectID).Execute()
+	if err != nil {
+		err = wrapGenErr("check namespace", resp, err)
+		if IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

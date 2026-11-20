@@ -75,10 +75,10 @@ if api.IsNotFound(err) {
 The current code doesn't do this yet:
 
 - No resource calls `resp.State.RemoveResource` on `api.IsNotFound` in `Read`. `Read` in [`resource_role.go`](../internal/provider/resource_role.go), `resource_project.go`, `resource_user.go` and `resource_warehouse.go` adds an error for every failed call, including a 404.
-- [`resource_namespace.go`](../internal/provider/resource_namespace.go) is the only `Read` that removes a deleted object from state. It loads the namespace through the Iceberg REST catalog client from `Client.Catalog`, which returns an `iceberg-go` error rather than an `*api.Error`, so it checks `errors.Is(err, catalog.ErrNoSuchNamespace)`.
+- [`resource_namespace.go`](../internal/provider/resource_namespace.go) is the only `Read` that removes a deleted object from state. It loads the namespace through the Iceberg REST catalog client from `Client.Catalog`, which returns an `iceberg-go` error rather than an `*api.Error`, so it checks `errors.Is(err, catalog.ErrNoSuchNamespace)`. Lakekeeper gives the same 404 when the caller may not see the namespace, so `Read` first calls `Client.NamespaceExists`, a batch check with `error-on-not-found`, and removes the namespace only when that check answers 404 too. Otherwise it adds an error and keeps the namespace in state.
 - [`resource_warehouse.go`](../internal/provider/resource_warehouse.go) uses `api.IsNotFound` for a different meaning: the managed-access endpoints answer 404 when the server has no authorization backend, so it adds a warning and carries on.
 
-If your resource should remove a deleted object from state, use the snippet above in `Read`, and copy the shape of `Read` in `resource_namespace.go`.
+If your resource should remove a deleted object from state, use the snippet above in `Read`, and copy the shape of `Read` in `resource_namespace.go`. Check first whether Lakekeeper also answers 404 when the caller may not see the object: it does for namespaces, roles and warehouses ("not found or access denied"), and answers 403 for projects and users.
 
 ## Pitfalls
 

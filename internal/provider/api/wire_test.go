@@ -57,6 +57,8 @@ var wireRoutes = map[string]string{
 	"GET /management/v1/permissions/namespace/n1/assignments": `{"assignments":[{"type":"select","role":"r1"},{"type":"describe","user":"u1"}]}`,
 	"GET /management/v1/permissions/namespace/n1":             `{"managed-access":true,"managed-access-inherited":false}`,
 
+	"GET /management/v1/warehouse":                  `{"warehouses":[` + warehouseJSON + `]}`,
+	"POST /management/v1/action/batch-check":        `{"results":[{"allowed":false}]}`,
 	"GET /catalog/v1/w1/namespaces/sales\x1fbronze": `{"namespace":["sales","bronze"],"properties":{"owner":"me"}}`,
 }
 
@@ -225,6 +227,7 @@ func TestWire(t *testing.T) {
 	step("GetNamespaceManagedAccess", func() (any, error) { return c.GetNamespaceManagedAccess(ctx, "p1", "n1") })
 	step("SetNamespaceManagedAccess", func() (any, error) { return none(c.SetNamespaceManagedAccess(ctx, "p1", "n1", false)) })
 	step("LoadNamespace", func() (any, error) { return c.LoadNamespace(ctx, "p1", "w1", []string{"sales", "bronze"}) })
+	step("NamespaceExists", func() (any, error) { return c.NamespaceExists(ctx, "p1", "wh", "n1", []string{"sales", "bronze"}) })
 
 	golden := filepath.Join("testdata", "wire.golden")
 	if *updateGolden {

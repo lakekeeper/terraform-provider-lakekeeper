@@ -163,7 +163,7 @@ func (r *lakekeeperNamespaceResource) Read(ctx context.Context, req resource.Rea
 
 	if err := r.refreshNamespace(ctx, &state); err != nil {
 		if errors.Is(err, catalog.ErrNoSuchNamespace) {
-			resp.State.RemoveResource(ctx)
+			r.removeIfDeleted(ctx, &state, resp)
 			return
 		}
 		resp.Diagnostics.AddError("Cannot read namespace", err.Error())
@@ -252,6 +252,23 @@ func (r *lakekeeperNamespaceResource) ImportState(ctx context.Context, req resou
 	resp.State.SetAttribute(ctx, path.Root("name"), parts[2])
 
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// removeIfDeleted handles a namespace load that answered "not found". Lakekeeper
+// answers the same when the caller may not see the namespace, so a permission
+// check confirms the namespace is gone before it leaves state.
+func (r *lakekeeperNamespaceResource) removeIfDeleted(ctx context.Context, state *lakekeeperNamespaceResourceModel, resp *resource.ReadResponse) {
+	name := state.Name.ValueString()
+	exists, err := r.client.NamespaceExists(ctx, state.ProjectID.ValueString(), state.WarehouseName.ValueString(), state.NamespaceID.ValueString(), catalog.ToIdentifier(name))
+	if err != nil {
+		resp.Diagnostics.AddError("Cannot confirm that the namespace was deleted", fmt.Sprintf("Loading namespace %s answered not found, and checking whether it exists failed: %v", name, err))
+		return
+	}
+	if !exists {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	resp.Diagnostics.AddError("Namespace exists but cannot be read", fmt.Sprintf("Loading namespace %s answered not found, but a permission check shows it exists. The provider's identity has probably lost access to it, for example through a missing authorization tuple. Terraform keeps it in state; restore the access and run Terraform again.", name))
 }
 
 func (r *lakekeeperNamespaceResource) refreshNamespace(ctx context.Context, state *lakekeeperNamespaceResourceModel) error {

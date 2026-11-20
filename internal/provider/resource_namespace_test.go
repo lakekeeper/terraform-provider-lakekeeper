@@ -55,6 +55,45 @@ func TestAccLakekeeperNamespace_basic(t *testing.T) {
 	})
 }
 
+func TestAccLakekeeperNamespace_deletedOutsideTerraform(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	rName := acctest.RandString(8)
+	config := fmt.Sprintf(`
+	resource "lakekeeper_namespace" "this" {
+		project_id     = "%s"
+		warehouse_name = "%s"
+		name           = "%s"
+	}
+	`, project.ID, warehouse.Name, rName)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperNamespaceDestroy,
+		Steps: []resource.TestStep{
+			{Config: config},
+			{
+				// The existence check confirms the deletion, so the refresh removes the
+				// namespace from state and the plan creates it again.
+				PreConfig: func() {
+					cat, err := testutil.TestLakekeeperClient.Catalog(context.Background(), project.ID, warehouse.Name)
+					if err != nil {
+						t.Fatalf("could not create the Iceberg Catalog client: %v", err)
+					}
+					if err := cat.DropNamespace(context.Background(), catalog.ToIdentifier(rName)); err != nil {
+						t.Fatalf("could not drop namespace %s: %v", rName, err)
+					}
+				},
+				Config:             config,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+			},
+			// Applying creates it again.
+			{Config: config},
+		},
+	})
+}
+
 func testAccCheckLakekeeperNamespaceDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_namespace" {

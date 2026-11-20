@@ -269,3 +269,9 @@
 > GET /catalog/v1/w1/namespaces/sales%1Fbronze [x-project-id: p1]
 < *api.Namespace {"Path":["sales","bronze"],"Properties":{"owner":"me"}}
 
+## NamespaceExists
+> GET /management/v1/warehouse [x-project-id: p1]
+> POST /management/v1/action/batch-check [x-project-id: p1]
+  {"checks":[{"operation":{"namespace":{"action":{"action":"get_metadata"},"namespace":["sales","bronze"],"namespace-id":"n1","warehouse-id":"w1"}}}],"error-on-not-found":true}
+< bool true
+
