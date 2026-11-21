@@ -35,14 +35,14 @@ func TestAccLakekeeperWarehouse_basic(t *testing.T) {
 					storage_profile = {
 						s3 = {
 							bucket = "testacc"
-							endpoint = "http://minio:9000/"
+							endpoint = "http://objectstore:9000/"
 							region = "eu-west-1"
 							sts_enabled = false
 							remote_signing_url_style = "path"
 							credential = {
 								access_key = {
-									access_key_id = "minio-root-user"
-									secret_access_key = "minio-root-password"
+									access_key_id = "testacc-access-key"
+									secret_access_key = "testacc-secret-key"
 								}
 							}
 						}
@@ -58,12 +58,12 @@ func TestAccLakekeeperWarehouse_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "active", "true"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "managed_access", "false"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.bucket", "testacc"),
-					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.endpoint", "http://minio:9000/"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.endpoint", "http://objectstore:9000/"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.region", "eu-west-1"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.sts_enabled", "false"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.remote_signing_url_style", "path"),
-					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.access_key_id", "minio-root-user"),
-					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.secret_access_key", "minio-root-password"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.access_key_id", "testacc-access-key"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.secret_access_key", "testacc-secret-key"),
 					resource.TestCheckNoResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.aws_system_identity"),
 					resource.TestCheckNoResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.cloudflare_r2"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "delete_profile.type", "hard"),
@@ -86,15 +86,15 @@ func TestAccLakekeeperWarehouse_basic(t *testing.T) {
 					storage_profile = {
 						s3 = {
 							bucket = "testacc"
-							endpoint = "http://minio:9000/"
+							endpoint = "http://objectstore:9000/"
 							region = "eu-west-1"
 							sts_enabled = true
 							remote_signing_url_style = "virtual_host"
 							assume_role_arn = "arn:aws:iam::123456789012:role/AssumeRole"
 							credential = {
 								access_key = {
-									access_key_id = "minio-root-user"
-									secret_access_key = "minio-root-password-1"
+									access_key_id = "testacc-access-key"
+									secret_access_key = "testacc-secret-key-1"
 								}
 							}	
 						}
@@ -110,12 +110,12 @@ func TestAccLakekeeperWarehouse_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "active", "true"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "managed_access", "true"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.bucket", "testacc"),
-					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.endpoint", "http://minio:9000/"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.endpoint", "http://objectstore:9000/"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.region", "eu-west-1"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.sts_enabled", "true"),
 					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.remote_signing_url_style", "virtual_host"),
-					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.access_key_id", "minio-root-user"),
-					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.secret_access_key", "minio-root-password-1"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.access_key_id", "testacc-access-key"),
+					resource.TestCheckResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.access_key.secret_access_key", "testacc-secret-key-1"),
 					resource.TestCheckNoResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.aws_system_identity"),
 					resource.TestCheckNoResourceAttr("lakekeeper_warehouse.s3", "storage_profile.s3.credential.cloudflare_r2"),
 					resource.TestCheckNoResourceAttr("lakekeeper_warehouse.s3", "storage_profile.adls"),
@@ -435,13 +435,13 @@ func TestAccLakekeeperWarehouse_MultipleStorage(t *testing.T) {
 						}
 						s3 = {
 							bucket = "testacc"
-							endpoint = "http://minio:9000/"
+							endpoint = "http://objectstore:9000/"
 							region = "eu-west-1"
 							sts_enabled = false
 							credential = {
 								access_key = {
-									access_key_id = "minio-root-user"
-									secret_access_key = "minio-root-password"
+									access_key_id = "testacc-access-key"
+									secret_access_key = "testacc-secret-key"
 								}
 							}
 						}
@@ -472,13 +472,13 @@ func TestAccLakekeeperWarehouse_MultipleCreds(t *testing.T) {
 					storage_profile = {
 						s3 = {
 							bucket = "testacc"
-							endpoint = "http://minio:9000/"
+							endpoint = "http://objectstore:9000/"
 							region = "eu-west-1"
 							sts_enabled = false
 							credential = {
 								access_key = {
-									access_key_id = "minio-root-user"
-									secret_access_key = "minio-root-password"
+									access_key_id = "testacc-access-key"
+									secret_access_key = "testacc-secret-key"
 								}
 								aws_system_identity = {
 									external_id = "test"
@@ -512,7 +512,7 @@ func TestAccLakekeeperWarehouse_IncorrectStorageFamily(t *testing.T) {
 					storage_profile = {
 						s3 = {
 							bucket = "testacc"
-							endpoint = "http://minio:9000/"
+							endpoint = "http://objectstore:9000/"
 							region = "eu-west-1"
 							sts_enabled = false
 							credential = {
@@ -624,13 +624,13 @@ func TestAccLakekeeperWarehouse_DeleteProfileRemoved(t *testing.T) {
 			storage_profile = {
 				s3 = {
 					bucket = "testacc"
-					endpoint = "http://minio:9000/"
+					endpoint = "http://objectstore:9000/"
 					region = "eu-west-1"
 					sts_enabled = false
 					credential = {
 						access_key = {
-							access_key_id = "minio-root-user"
-							secret_access_key = "minio-root-password"
+							access_key_id = "testacc-access-key"
+							secret_access_key = "testacc-secret-key"
 						}
 					}
 				}
