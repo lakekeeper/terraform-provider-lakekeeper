@@ -31,11 +31,47 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      objectstore-init:
+        condition: service_completed_successfully
     ports:
       - "8181:8181"
     networks:
       iceberg_net:
   
+  # S3-compatible object storage for the acceptance tests. Warehouses in the
+  # tests use http://objectstore:9000 as their endpoint.
+  objectstore:
+    image: docker.io/rustfs/rustfs:1.0.5
+    command: ["/data"]
+    environment:
+      - RUSTFS_ACCESS_KEY=testacc-access-key
+      - RUSTFS_SECRET_KEY=testacc-secret-key
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/health/live" ]
+      interval: 1s
+      timeout: 10s
+      retries: 3
+      start_period: 3s
+    networks:
+      iceberg_net:
+
+  objectstore-init:
+    image: docker.io/amazon/aws-cli:latest
+    depends_on:
+      objectstore:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=testacc-access-key
+      - AWS_SECRET_ACCESS_KEY=testacc-secret-key
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_EC2_METADATA_DISABLED=true
+    entrypoint:
+      - /bin/sh
+      - -c
+      - aws s3api head-bucket --bucket testacc --endpoint-url http://objectstore:9000 || aws s3api create-bucket --bucket testacc --endpoint-url http://objectstore:9000
+    networks:
+      iceberg_net:
+
   migrate:
     image: quay.io/lakekeeper/catalog:${LAKEKEEPER_VERSION:-latest-main}
     pull_policy: *lakekeeper-pull-policy

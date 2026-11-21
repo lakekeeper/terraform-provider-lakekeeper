@@ -2,9 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -66,33 +63,19 @@ type Namespace struct {
 // The SDK's catalog client addresses warehouses by name, so this is a plain
 // request sent through the SDK's authenticated HTTP client.
 func (c *Client) LoadNamespace(ctx context.Context, projectID, warehouseID string, path []string) (*Namespace, error) {
-	const op = "load namespace"
-	u := c.sdk.BaseURL()
-	u.Path = strings.TrimSuffix(u.Path, "/") + "/catalog/v1/" + warehouseID + "/namespaces/" + strings.Join(path, "\x1f")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("x-project-id", projectID)
-	resp, err := c.sdk.GetConfig().HTTPClient.Do(req)
-	if err != nil {
-		return nil, &Error{err: fmt.Errorf("%s: %w", op, err)}
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, &Error{StatusCode: resp.StatusCode, err: fmt.Errorf("%s: %w", op, err)}
-	}
-	if resp.StatusCode >= 300 {
-		return nil, &Error{StatusCode: resp.StatusCode, err: fmt.Errorf("%s: %s: %s", op, resp.Status, strings.TrimSpace(string(body)))}
-	}
 	var result struct {
 		Namespace  []string          `json:"namespace"`
 		Properties map[string]string `json:"properties"`
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("%s: decode response: %w", op, err)
+	err := c.do(ctx, rawCall{
+		op:        "load namespace",
+		method:    http.MethodGet,
+		path:      "/catalog/v1/" + warehouseID + "/namespaces/" + strings.Join(path, "\x1f"),
+		projectID: projectID,
+		out:       &result,
+	})
+	if err != nil {
+		return nil, err
 	}
 	return &Namespace{Path: result.Namespace, Properties: result.Properties}, nil
 }

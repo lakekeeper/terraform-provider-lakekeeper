@@ -17,9 +17,15 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/apache/iceberg-go/catalog/rest"
 	lakekeeper "github.com/lakekeeper/go-lakekeeper/pkg/client"
@@ -90,4 +96,71 @@ func wrapErr(err error) error {
 // return the raw response and error. op names the operation in the message.
 func wrapGenErr(op string, resp *http.Response, err error) error {
 	return wrapErr(lakekeeper.WrapAPIError(op, err, resp))
+}
+
+// rawCall describes a request to an endpoint the SDK does not wrap. path is
+// appended to the configured base URL and may contain the multi-level
+// namespace separator (\x1f). out, when non-nil, receives the decoded JSON
+// response.
+type rawCall struct {
+	op        string
+	method    string
+	path      string
+	query     url.Values
+	projectID string
+	body      any
+	out       any
+}
+
+// do sends a rawCall through the SDK's authenticated HTTP client and wraps
+// failures like the generated client's, so callers can still use IsNotFound
+// and StatusCode.
+func (c *Client) do(ctx context.Context, call rawCall) error {
+	var body io.Reader
+	if call.body != nil {
+		b, err := json.Marshal(call.body)
+		if err != nil {
+			return fmt.Errorf("%s: encode request: %w", call.op, err)
+		}
+		body = bytes.NewReader(b)
+	}
+
+	u := c.sdk.BaseURL()
+	u.Path = strings.TrimSuffix(u.Path, "/") + call.path
+	if call.query != nil {
+		u.RawQuery = call.query.Encode()
+	}
+
+	req, err := http.NewRequestWithContext(ctx, call.method, u.String(), body)
+	if err != nil {
+		return &Error{err: fmt.Errorf("%s: %w", call.op, err)}
+	}
+	req.Header.Set("Accept", "application/json")
+	if call.projectID != "" {
+		req.Header.Set("x-project-id", call.projectID)
+	}
+	if call.body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := c.sdk.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return &Error{err: fmt.Errorf("%s: %w", call.op, err)}
+	}
+	defer resp.Body.Close()
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &Error{StatusCode: resp.StatusCode, err: fmt.Errorf("%s: %w", call.op, err)}
+	}
+	if resp.StatusCode >= 300 {
+		return &Error{StatusCode: resp.StatusCode, err: fmt.Errorf("%s: %s: %s", call.op, resp.Status, strings.TrimSpace(string(b)))}
+	}
+	if call.out == nil {
+		return nil
+	}
+	if err := json.Unmarshal(b, call.out); err != nil {
+		return fmt.Errorf("%s: decode response: %w", call.op, err)
+	}
+	return nil
 }
