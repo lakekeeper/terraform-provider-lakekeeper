@@ -13,7 +13,7 @@ var namespaceRoleAssignment = assignmentDescriptor{
 	AssigneeKind: roleAssignee,
 	Assignee:     uuidAttribute("role_id", "The ID of the role."),
 	// The api package has no namespace grant type constants.
-	GrantTypes: []string{"ownership", "pass_grants", "manage_grants", "describe", "select", "create", "write", "modify"},
+	GrantTypes: []string{"ownership", "pass_grants", "manage_grants", "describe", "select", "create", "write", "modify", "manage_tags"},
 	Notes: "Requires Lakekeeper's OpenFGA authorization backend. " +
 		"Namespace grants apply to descendants according to Lakekeeper's authorization model. " +
 		"A missing permissions endpoint is an error, including with allow-all.",

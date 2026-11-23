@@ -12,8 +12,41 @@ import (
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
+
+// The tag grant `tag_creator` must be accepted on a project, read back and stay
+// stable across plans.
+func TestAccLakekeeperProjectRoleAssignment_tagCreator(t *testing.T) {
+	project := testutil.CreateProject(t)
+	role := testutil.CreateRole(t, project.ID)
+	address := "lakekeeper_project_role_assignment.test"
+
+	config := fmt.Sprintf(`
+		resource "lakekeeper_project_role_assignment" "test" {
+			project_id = "%s"
+			role_id = "%s"
+			assignments = ["describe", "tag_creator"]
+		}
+	`, project.ID, role.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperProjectRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(address, "assignments.#", "2"),
+					resource.TestCheckTypeSetElemAttr(address, "assignments.*", "tag_creator"),
+				),
+			},
+			{Config: config, PlanOnly: true},
+			{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		},
+	})
+}
 
 func TestAccLakekeeperProjectRoleAssignment_basic(t *testing.T) {
 
@@ -210,4 +243,38 @@ func testAccCheckLakekeeperProjectRoleAssignmentDestroy(s *terraform.State) erro
 	}
 
 	return nil
+}
+
+// Revoking the grants outside Terraform leaves the assignment in state with no
+// grants, so the next plan grants them again.
+//
+// The project itself is not deleted here: under OpenFGA a deleted project
+// answers 403 to every lookup, so the provider cannot tell it from lost
+// permissions and keeps the assignment in state (see projectScopeAdapter).
+func TestAccLakekeeperProjectRoleAssignment_revokedOutOfBand(t *testing.T) {
+	project := testutil.CreateProject(t)
+	assignee := testutil.CreateRole(t, project.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperProjectRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_project_role_assignment" "test" {
+						project_id = "%s"
+						role_id = "%s"
+						assignments = ["describe"]
+					}
+				`, project.ID, assignee.ID),
+				Check: func(*terraform.State) error {
+					return testutil.TestLakekeeperClient.UpdateProjectAssignments(context.Background(), project.ID, nil, []api.Assignment{
+						{Assignee: api.RoleAssignee(assignee.ID), Assignment: api.ProjectAssignmentDescribe},
+					})
+				},
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionUpdate, "lakekeeper_project_role_assignment.test"),
+			},
+		},
+	})
 }

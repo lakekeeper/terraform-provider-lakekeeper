@@ -671,6 +671,84 @@ func TestAccLakekeeperWarehouse_DeleteProfileRemoved(t *testing.T) {
 	})
 }
 
+// testAccWarehouseConfig is a minimal S3 warehouse on the local stack's MinIO.
+func testAccWarehouseConfig(name, projectID string, protected bool) string {
+	return fmt.Sprintf(`
+	resource "lakekeeper_warehouse" "this" {
+		name = "%s"
+		project_id = "%s"
+		protected = %t
+		storage_profile = {
+			s3 = {
+				bucket = "testacc"
+				endpoint = "http://minio:9000/"
+				region = "eu-west-1"
+				sts_enabled = false
+				remote_signing_url_style = "path"
+				key_prefix = "%s"
+				credential = {
+					access_key = {
+						access_key_id = "minio-root-user"
+						secret_access_key = "minio-root-password"
+					}
+				}
+			}
+		}
+	}
+	`, name, projectID, protected, name)
+}
+
+// A warehouse deleted outside Terraform leaves state on refresh, so the next
+// plan recreates it instead of failing.
+func TestAccLakekeeperWarehouse_disappears(t *testing.T) {
+	rName := acctest.RandString(8)
+	project := testutil.CreateProject(t)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccWarehouseConfig(rName, project.ID, false),
+				Check: testAccDeleteOutOfBand("lakekeeper_warehouse.this", func(ctx context.Context, id string) error {
+					projectID, warehouseID := splitInternalID(types.StringValue(id))
+					return testutil.TestLakekeeperClient.DeleteWarehouse(ctx, projectID, warehouseID, false)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_warehouse.this"),
+			},
+		},
+	})
+}
+
+// A protected warehouse cannot be destroyed: protection has to be lifted with
+// an apply first.
+func TestAccLakekeeperWarehouse_protectedBlocksDestroy(t *testing.T) {
+	rName := acctest.RandString(8)
+	project := testutil.CreateProject(t)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperWarehouseDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccWarehouseConfig(rName, project.ID, true),
+				Check:  resource.TestCheckResourceAttr("lakekeeper_warehouse.this", "protected", "true"),
+			},
+			{
+				Config:      testAccWarehouseConfig(rName, project.ID, true),
+				Destroy:     true,
+				ExpectError: regexp.MustCompile(`Unable to delete warehouse`),
+			},
+			// Lift the protection so the test's final destroy succeeds.
+			{
+				Config: testAccWarehouseConfig(rName, project.ID, false),
+				Check:  resource.TestCheckResourceAttr("lakekeeper_warehouse.this", "protected", "false"),
+			},
+		},
+	})
+}
+
 func testAccCheckLakekeeperWarehouseDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_warehouse" {

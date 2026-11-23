@@ -11,8 +11,10 @@ import (
 
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -183,6 +185,11 @@ func testAccCheckLakekeeperRoleUserAssignmentDestroy(s *terraform.State) error {
 
 		assignments, err := testutil.TestLakekeeperClient.GetRoleAssignments(context.Background(), roleID)
 		if err != nil {
+			// The role is gone, and its grants with it. Under OpenFGA the
+			// assignments of a deleted role answer 403, so ask the role.
+			if exists, rerr := testutil.TestLakekeeperClient.RoleExists(context.Background(), roleID); rerr == nil && !exists {
+				continue
+			}
 			return fmt.Errorf("could not list role assignments to check destroy, %w", err)
 		}
 
@@ -194,4 +201,38 @@ func testAccCheckLakekeeperRoleUserAssignmentDestroy(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+// When the role is deleted outside Terraform, its grants go with it: the
+// assignment leaves state on refresh instead of failing every plan.
+func TestAccLakekeeperRoleUserAssignment_scopeDisappears(t *testing.T) {
+	project := testutil.CreateProject(t)
+	assignee := testutil.CreateUser(t, fmt.Sprintf("oidc~%s", acctest.RandString(32)))
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperRoleUserAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_role" "scope" {
+						name = "%s"
+						project_id = "%s"
+					}
+					resource "lakekeeper_role_user_assignment" "test" {
+						role_id = lakekeeper_role.scope.role_id
+						user_id = "%s"
+						assignments = ["ownership"]
+					}
+				`, rName, project.ID, assignee.ID),
+				Check: testAccDeleteOutOfBand("lakekeeper_role.scope", func(ctx context.Context, id string) error {
+					projectID, roleID := splitInternalID(types.StringValue(id))
+					return testutil.TestLakekeeperClient.DeleteRole(ctx, projectID, roleID)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_role.scope", "lakekeeper_role_user_assignment.test"),
+			},
+		},
+	})
 }

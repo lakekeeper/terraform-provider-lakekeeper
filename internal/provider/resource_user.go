@@ -50,8 +50,11 @@ func (r *lakekeeperUserResource) Schema(ctx context.Context, req resource.Schema
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: `The ID of the user. The id must be identical to the subject in JWT tokens, prefixed with` + "`<idp-identifier>~`" + `. For example: ` + "`oidc~1234567890`" + " for OIDC users or `kubernetes~1234567890` for Kubernetes users.",
+				MarkdownDescription: `The ID of the user. The id must be identical to the subject in JWT tokens, prefixed with` + "`<idp-identifier>~`" + `. For example: ` + "`oidc~1234567890`" + " for OIDC users or `kubernetes~1234567890` for Kubernetes users. Changing it replaces the user.",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
 						regexp.MustCompile("^[^~]+~.+"),
@@ -167,6 +170,10 @@ func (r *lakekeeperUserResource) Read(ctx context.Context, req resource.ReadRequ
 
 	user, err := r.client.GetUser(ctx, id)
 	if err != nil {
+		if api.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read user %s, %v", id, err))
 		return
 	}
@@ -251,7 +258,7 @@ func (r *lakekeeperUserResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	err := r.client.DeleteUser(ctx, id)
-	if err != nil {
+	if err != nil && !api.IsNotFound(err) {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete user %s, %v", id, err))
 		return
 	}

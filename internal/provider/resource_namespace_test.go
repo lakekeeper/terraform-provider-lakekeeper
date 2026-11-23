@@ -6,14 +6,18 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/apache/iceberg-go/catalog"
+	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -55,6 +59,62 @@ func TestAccLakekeeperNamespace_basic(t *testing.T) {
 	})
 }
 
+func TestAccLakekeeperNamespace_warehouseChangeReplaces(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	newWarehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+
+	rName := acctest.RandString(8)
+
+	config := func(warehouseName string) string {
+		return fmt.Sprintf(`
+		resource "lakekeeper_namespace" "this" {
+			project_id = "%s"
+			warehouse_name = "%s"
+			name = "%s"
+		}
+		`, project.ID, warehouseName, rName)
+	}
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperNamespaceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config(warehouse.Name),
+				Check:  resource.TestCheckResourceAttr("lakekeeper_namespace.this", "warehouse_name", warehouse.Name),
+			},
+			{
+				Config: config(newWarehouse.Name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("lakekeeper_namespace.this", plancheck.ResourceActionReplace),
+					},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("lakekeeper_namespace.this", "id", fmt.Sprintf("%s/%s/%s", project.ID, newWarehouse.Name, rName)),
+					resource.TestCheckResourceAttr("lakekeeper_namespace.this", "warehouse_name", newWarehouse.Name),
+					func(*terraform.State) error {
+						ctx := context.Background()
+						cat, err := testutil.TestLakekeeperClient.Catalog(ctx, project.ID, warehouse.Name)
+						if err != nil {
+							return fmt.Errorf("could not create the Iceberg Catalog client, %w", err)
+						}
+						exists, err := cat.CheckNamespaceExists(ctx, catalog.ToIdentifier(rName))
+						if err != nil {
+							return fmt.Errorf("could not check if namespace exists, %w", err)
+						}
+						if exists {
+							return fmt.Errorf("the namespace %s was left behind in warehouse %s after its warehouse changed", rName, warehouse.Name)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckLakekeeperNamespaceDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "lakekeeper_namespace" {
@@ -69,6 +129,10 @@ func testAccCheckLakekeeperNamespaceDestroy(s *terraform.State) error {
 		ctx := context.Background()
 
 		cat, err := testutil.TestLakekeeperClient.Catalog(ctx, projectID, warehouseName)
+		if api.IsNotFound(err) {
+			// The warehouse is gone, and its namespaces with it.
+			continue
+		}
 		if err != nil {
 			return fmt.Errorf("could not create the Iceberg Catalog client, %w", err)
 		}
@@ -83,4 +147,98 @@ func testAccCheckLakekeeperNamespaceDestroy(s *terraform.State) error {
 		return nil
 	}
 	return nil
+}
+
+// A namespace dropped outside Terraform leaves state on refresh, so the next
+// plan recreates it instead of failing.
+func TestAccLakekeeperNamespace_disappears(t *testing.T) {
+	project := testutil.CreateProject(t)
+	warehouse := testutil.CreateWarehouse(t, project.ID, fmt.Sprintf("key-prefix-%d", rand.Int()))
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperNamespaceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+				resource "lakekeeper_namespace" "this" {
+					project_id = "%s"
+					warehouse_name = "%s"
+					name = "%s"
+				}
+				`, project.ID, warehouse.Name, rName),
+				Check: testAccDeleteOutOfBand("lakekeeper_namespace.this", func(ctx context.Context, _ string) error {
+					return testAccDropNamespace(ctx, project.ID, warehouse.Name, rName)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_namespace.this"),
+			},
+		},
+	})
+}
+
+// When the warehouse is deleted outside Terraform, its namespaces are gone too
+// (Lakekeeper only deletes an empty warehouse): the namespace leaves state on
+// refresh instead of failing on the missing warehouse.
+func TestAccLakekeeperNamespace_warehouseDisappears(t *testing.T) {
+	project := testutil.CreateProject(t)
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperNamespaceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccWarehouseConfig(rName, project.ID, false) + fmt.Sprintf(`
+				resource "lakekeeper_namespace" "this" {
+					project_id = "%s"
+					warehouse_name = lakekeeper_warehouse.this.name
+					name = "%s"
+				}
+				`, project.ID, rName),
+				Check: testAccDeleteOutOfBand("lakekeeper_warehouse.this", func(ctx context.Context, id string) error {
+					projectID, warehouseID := splitInternalID(types.StringValue(id))
+					if err := testAccDropNamespace(ctx, projectID, rName, rName); err != nil {
+						return err
+					}
+					return testutil.TestLakekeeperClient.DeleteWarehouse(ctx, projectID, warehouseID, false)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_warehouse.this", "lakekeeper_namespace.this"),
+			},
+		},
+	})
+}
+
+func TestAccLakekeeperNamespace_missingWarehouse(t *testing.T) {
+	project := testutil.CreateProject(t)
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperNamespaceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+				resource "lakekeeper_namespace" "this" {
+					project_id = "%s"
+					warehouse_name = "missing-%s"
+					name = "%s"
+				}
+				`, project.ID, rName, rName),
+				ExpectError: regexp.MustCompile(`Warehouse not found`),
+			},
+		},
+	})
+}
+
+// testAccDropNamespace drops a namespace through the Iceberg REST catalog,
+// outside Terraform.
+func testAccDropNamespace(ctx context.Context, projectID, warehouseName, name string) error {
+	cat, err := testutil.TestLakekeeperClient.Catalog(ctx, projectID, warehouseName)
+	if err != nil {
+		return err
+	}
+	return cat.DropNamespace(ctx, catalog.ToIdentifier(name))
 }

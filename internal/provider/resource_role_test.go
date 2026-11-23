@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -178,6 +179,69 @@ func TestAccLakekeeperRole_project(t *testing.T) {
 				ResourceName:      "lakekeeper_role.toto",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// A role deleted outside Terraform leaves state on refresh, so the next plan
+// recreates it instead of failing.
+func TestAccLakekeeperRole_disappears(t *testing.T) {
+	rName := acctest.RandString(8)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperRoleDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+				data "lakekeeper_default_project" "default" {}
+				resource "lakekeeper_role" "foo" {
+				  name = "%s"
+				  project_id = data.lakekeeper_default_project.default.id
+				}
+				`, rName),
+				Check: testAccDeleteOutOfBand("lakekeeper_role.foo", func(ctx context.Context, id string) error {
+					projectID, roleID := splitInternalID(types.StringValue(id))
+					return testutil.TestLakekeeperClient.DeleteRole(ctx, projectID, roleID)
+				}),
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionCreate, "lakekeeper_role.foo"),
+			},
+		},
+	})
+}
+
+// Moving a role to another project replaces it: the API cannot move a role.
+func TestAccLakekeeperRole_projectChangeReplaces(t *testing.T) {
+	rName := acctest.RandString(8)
+	project := testutil.CreateProject(t)
+
+	config := func(projectID string) string {
+		return fmt.Sprintf(`
+		resource "lakekeeper_role" "foo" {
+		  name = "%s"
+		  project_id = "%s"
+		}
+		`, rName, projectID)
+	}
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperRoleDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config("00000000-0000-0000-0000-000000000000"),
+				Check:  resource.TestCheckResourceAttr("lakekeeper_role.foo", "project_id", "00000000-0000-0000-0000-000000000000"),
+			},
+			{
+				Config: config(project.ID),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("lakekeeper_role.foo", plancheck.ResourceActionReplace),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("lakekeeper_role.foo", "project_id", project.ID),
 			},
 		},
 	})

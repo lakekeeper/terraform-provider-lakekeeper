@@ -31,4 +31,5 @@ var projectGrantTypes = []string{
 	api.ProjectAssignmentCreate,
 	api.ProjectAssignmentWrite,
 	api.ProjectAssignmentModify,
+	api.ProjectAssignmentTagCreator,
 }

@@ -29,8 +29,8 @@ resource "lakekeeper_namespace" "example" {
 ### Required
 
 - `name` (String) The name of the namespace.
-- `project_id` (String) The internal ID of the project where the namespace is located.
-- `warehouse_name` (String) The name of the warehouse where the namespace is located.
+- `project_id` (String) The internal ID of the project where the namespace is located. Changing it replaces the namespace.
+- `warehouse_name` (String) The name of the warehouse where the namespace is located. Changing it replaces the namespace.
 
 ### Optional
 

@@ -33,7 +33,7 @@ resource "lakekeeper_role" "editors" {
 ### Required
 
 - `name` (String) The name of the role.
-- `project_id` (String) The ID of the project the role belongs to.
+- `project_id` (String) The ID of the project the role belongs to. Changing it replaces the role.
 
 ### Optional
 

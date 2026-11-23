@@ -11,6 +11,7 @@ import (
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/testutil"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -129,4 +130,33 @@ func testAccCheckLakekeeperServerRoleAssignmentDestroy(s *terraform.State) error
 	}
 
 	return nil
+}
+
+// Revoking the grants outside Terraform leaves the assignment in state with no
+// grants, so the next plan grants them again.
+func TestAccLakekeeperServerRoleAssignment_revokedOutOfBand(t *testing.T) {
+	project := testutil.CreateProject(t)
+	role := testutil.CreateRole(t, project.ID)
+
+	resource.ParallelTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLakekeeperServerRoleAssignmentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "lakekeeper_server_role_assignment" "test" {
+						role_id = "%s"
+						assignments = ["operator"]
+					}
+				`, role.ID),
+				Check: func(*terraform.State) error {
+					return testutil.TestLakekeeperClient.UpdateServerAssignments(context.Background(), nil, []api.Assignment{
+						{Assignee: api.RoleAssignee(role.ID), Assignment: api.ServerAssignmentOperator},
+					})
+				},
+				ExpectNonEmptyPlan: true,
+				ConfigPlanChecks:   testAccExpectAfterRefresh(plancheck.ResourceActionUpdate, "lakekeeper_server_role_assignment.test"),
+			},
+		},
+	})
 }

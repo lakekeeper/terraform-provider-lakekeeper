@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the direct grants of one user on the project. Grants that other users and roles hold on the project are left untouched. Use one resource per project and user.
   Create fails if the user already holds any direct grant on the project. Bring existing grants under Terraform with terraform import first, using the ID {{project_id}}/{{user_id}}.
-  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the project itself as not found, the resource leaves state instead.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_project_assignments
 ---
 
@@ -15,7 +15,7 @@ Manages the direct grants of one user on the project. Grants that other users an
 
 Create fails if the user already holds any direct grant on the project. Bring existing grants under Terraform with `terraform import` first, using the ID `{{project_id}}/{{user_id}}`.
 
-Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the project itself as not found, the resource leaves state instead.
 
 **Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_project_assignments)
 
@@ -34,7 +34,7 @@ resource "lakekeeper_project_user_assignment" "john_doe" {
 
 ### Required
 
-- `assignments` (Set of String) The direct grants of the user on the project. Allowed values: `project_admin`, `security_admin`, `data_admin`, `role_creator`, `describe`, `select`, `create`, `write`, `modify`. An empty set revokes all of them.
+- `assignments` (Set of String) The direct grants of the user on the project. Allowed values: `project_admin`, `security_admin`, `data_admin`, `role_creator`, `describe`, `select`, `create`, `write`, `modify`, `tag_creator`. An empty set revokes all of them.
 - `project_id` (String) The ID of the project.
 - `user_id` (String) The ID of the user, in the form `<idp>~<subject>`.
 

@@ -19,7 +19,10 @@ package api
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/apache/iceberg-go/catalog/rest"
 	lakekeeper "github.com/lakekeeper/go-lakekeeper/pkg/client"
@@ -43,8 +46,38 @@ func NewStaticTokenClient(ctx context.Context, baseURL, token string) (*Client, 
 }
 
 // Catalog returns an Iceberg REST catalog client for the given warehouse.
+//
+// Creating the client fetches the catalog config of the warehouse. On failure
+// the error is an *Error, so IsNotFound reports a warehouse that does not
+// exist (Lakekeeper answers 404 NoSuchWarehouseException).
 func (c *Client) Catalog(ctx context.Context, projectID, warehouseName string) (*rest.Catalog, error) {
-	return c.sdk.CatalogV1(ctx, projectID, warehouseName)
+	cat, err := c.sdk.CatalogV1(ctx, projectID, warehouseName)
+	if err != nil {
+		return nil, &Error{StatusCode: c.catalogConfigStatus(ctx, projectID, warehouseName), err: err}
+	}
+	return cat, nil
+}
+
+// catalogConfigStatus returns the HTTP status of the catalog config request
+// for a warehouse, or 0 if no response was received. iceberg-go keeps the
+// status of a failed request in an unexported type, so Catalog sends the
+// request again as a plain request to learn it.
+func (c *Client) catalogConfigStatus(ctx context.Context, projectID, warehouseName string) int {
+	u := c.sdk.BaseURL()
+	u.Path = strings.TrimSuffix(u.Path, "/") + "/catalog/v1/config"
+	u.RawQuery = url.Values{"warehouse": {projectID + "/" + warehouseName}}.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return 0
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.sdk.GetConfig().HTTPClient.Do(req)
+	if err != nil {
+		return 0
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return resp.StatusCode
 }
 
 // Error is returned by Client methods when a Lakekeeper API call fails.
@@ -54,6 +87,12 @@ type Error struct {
 	// response was received.
 	StatusCode int
 	err        error
+}
+
+// NewError returns an *Error carrying statusCode, for code outside this package
+// that has to produce one, such as tests of how callers react to a status.
+func NewError(statusCode int, err error) error {
+	return &Error{StatusCode: statusCode, err: err}
 }
 
 func (e *Error) Error() string { return e.err.Error() }

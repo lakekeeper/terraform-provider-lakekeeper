@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the direct grants of one user on the role. Grants that other users and roles hold on the role are left untouched. Use one resource per role and user.
   Create fails if the user already holds any direct grant on the role. Bring existing grants under Terraform with terraform import first, using the ID {{role_id}}/{{user_id}}.
-  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+  Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the role itself as not found, the resource leaves state instead.
   Upstream API: Lakekeeper REST API docs https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments
 ---
 
@@ -15,7 +15,7 @@ Manages the direct grants of one user on the role. Grants that other users and r
 
 Create fails if the user already holds any direct grant on the role. Bring existing grants under Terraform with `terraform import` first, using the ID `{{role_id}}/{{user_id}}`.
 
-Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state.
+Every create, update and delete compares the desired grants with the grants Lakekeeper holds, and sends the difference as one request that Lakekeeper applies atomically. Grants changed outside Terraform are corrected on the next apply. Failed reads, writes and deletes report an error and keep the resource in state. When Lakekeeper reports the role itself as not found, the resource leaves state instead.
 
 **Upstream API**: [Lakekeeper REST API docs](https://docs.lakekeeper.io/docs/nightly/api/management/#tag/permissions/operation/update_role_assignments)
 

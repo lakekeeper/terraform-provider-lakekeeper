@@ -73,10 +73,10 @@ func (r *lakekeeperRoleResource) Schema(ctx context.Context, req resource.Schema
 				},
 			},
 			"project_id": schema.StringAttribute{
-				MarkdownDescription: `The ID of the project the role belongs to.`,
+				MarkdownDescription: `The ID of the project the role belongs to. Changing it replaces the role.`,
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"name": schema.StringAttribute{
@@ -165,6 +165,10 @@ func (r *lakekeeperRoleResource) Read(ctx context.Context, req resource.ReadRequ
 
 	role, err := r.client.GetRole(ctx, projectID, roleID)
 	if err != nil {
+		if api.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to read role %s in project %s, %v", roleID, projectID, err))
 		return
 	}
@@ -245,7 +249,7 @@ func (r *lakekeeperRoleResource) Delete(ctx context.Context, req resource.Delete
 	projectID, roleID := splitInternalID(state.ID)
 
 	err := r.client.DeleteRole(ctx, projectID, roleID)
-	if err != nil {
+	if err != nil && !api.IsNotFound(err) {
 		resp.Diagnostics.AddError("Lakekeeper API error occurred", fmt.Sprintf("Unable to delete role %s in project %s, %v", roleID, projectID, err))
 		return
 	}
