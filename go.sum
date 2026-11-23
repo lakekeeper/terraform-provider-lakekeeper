@@ -599,6 +599,8 @@ github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261120111807-2a69eb957e53 h1:9jTb
 github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261120111807-2a69eb957e53/go.mod h1:zKK6b1IcSmsn8Ohnt+cANg3GUOq4rt6mFTS4kBBRkFQ=
 github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261123051541-83955af2737d h1:a1OVDsaWqYSz2XFw5hvzjKjC7J9Pz5vknU40RKUMdRo=
 github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261123051541-83955af2737d/go.mod h1:zKK6b1IcSmsn8Ohnt+cANg3GUOq4rt6mFTS4kBBRkFQ=
+github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261123175945-655f4a3a7578 h1:mzL70RLu6Un9DiL2wv7lL3YYOCEcEWn2CJXZZSd+0H4=
+github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261123175945-655f4a3a7578/go.mod h1:zKK6b1IcSmsn8Ohnt+cANg3GUOq4rt6mFTS4kBBRkFQ=
 github.com/ldez/exptostd v0.4.5 h1:kv2ZGUVI6VwRfp/+bcQ6Nbx0ghFWcGIKInkG/oFn1aQ=
 github.com/ldez/exptostd v0.4.5/go.mod h1:QRjHRMXJrCTIm9WxVNH6VW7oN7KrGSht69bIRwvdFsM=
 github.com/ldez/gomoddirectives v0.10.0 h1:Zb23rfMMkG21B6pZ9OfESzemByP5Qr7YvWcXQZE/S3Q=
