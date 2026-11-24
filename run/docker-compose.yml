@@ -41,7 +41,7 @@ services:
   # S3-compatible object storage for the acceptance tests. Warehouses in the
   # tests use http://objectstore:9000 as their endpoint.
   objectstore:
-    image: docker.io/rustfs/rustfs:1.0.5
+    image: docker.io/rustfs/rustfs:1.0.6
     command: ["/data"]
     environment:
       - RUSTFS_ACCESS_KEY=testacc-access-key
