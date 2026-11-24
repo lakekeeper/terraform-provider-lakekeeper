@@ -120,7 +120,7 @@ func (c *Client) ListNamespaces(ctx context.Context, warehouseID string, parentP
 			return nil, err
 		}
 		if len(page.NamespaceUUIDs) != len(page.Namespaces) {
-			return nil, fmt.Errorf("%s: catalog returned %d namespace UUIDs for %d namespaces", op, len(page.NamespaceUUIDs), len(page.Namespaces))
+			return nil, &Error{err: fmt.Errorf("%s: catalog returned %d namespace UUIDs for %d namespaces", op, len(page.NamespaceUUIDs), len(page.Namespaces))}
 		}
 		for i, parts := range page.Namespaces {
 			namespaces = append(namespaces, NamespaceListItem{
@@ -132,7 +132,7 @@ func (c *Client) ListNamespaces(ctx context.Context, warehouseID string, parentP
 			break
 		}
 		if seen[*page.NextPageToken] {
-			return nil, fmt.Errorf("%s: repeated page token", op)
+			return nil, &Error{err: fmt.Errorf("%s: repeated page token", op)}
 		}
 		seen[*page.NextPageToken] = true
 		q.Set("pageToken", *page.NextPageToken)
@@ -157,7 +157,7 @@ func (c *Client) catalogGet(ctx context.Context, op, projectID, warehouseID, esc
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return err
+		return &Error{err: fmt.Errorf("%s: %w", op, err)}
 	}
 	req.Header.Set("Accept", "application/json")
 	if projectID != "" {
@@ -176,7 +176,7 @@ func (c *Client) catalogGet(ctx context.Context, op, projectID, warehouseID, esc
 		return &Error{StatusCode: resp.StatusCode, err: fmt.Errorf("%s: %s: %s", op, resp.Status, strings.TrimSpace(string(body)))}
 	}
 	if err := json.Unmarshal(body, out); err != nil {
-		return fmt.Errorf("%s: decode response: %w", op, err)
+		return &Error{StatusCode: resp.StatusCode, err: fmt.Errorf("%s: decode response: %w", op, err)}
 	}
 	return nil
 }
@@ -218,7 +218,7 @@ func (c *Client) NamespaceExists(ctx context.Context, projectID, warehouseName, 
 		}
 	}
 	if warehouseID == "" {
-		return false, fmt.Errorf("check namespace: warehouse %q is not in the warehouse list of project %s", warehouseName, projectID)
+		return false, &Error{err: fmt.Errorf("check namespace: warehouse %q is not in the warehouse list of project %s", warehouseName, projectID)}
 	}
 	action := managementv1.LakekeeperNamespaceActionGetMetadataAsLakekeeperNamespaceAction(managementv1.NewLakekeeperNamespaceActionGetMetadata("get_metadata"))
 	check := managementv1.NewCatalogActionCheckOperationNamespace(*managementv1.NewCatalogActionCheckOperationNamespaceNamespace(namespaceID, warehouseID, path, action))

@@ -10,6 +10,10 @@
 // Conventions:
 //   - Every method returns errors whose message is the SDK's message, wrapped
 //     so callers can test for an HTTP status with IsNotFound / StatusCode.
+//     An error about a response the method cannot use (a missing field, a
+//     body that does not decode) is an *Error too, with the status when it is
+//     known and 0 otherwise. Only a request-side error, such as invalid input
+//     rejected before anything is sent, is a plain error.
 //   - Optional values are pointers; nil means "not set" (omitted on writes,
 //     absent on reads).
 //   - Enum values are plain string constants defined in this package. Their
@@ -83,8 +87,9 @@ func (c *Client) catalogConfigStatus(ctx context.Context, projectID, warehouseNa
 	return resp.StatusCode
 }
 
-// Error is returned by Client methods when a Lakekeeper API call fails.
-// Its message is the underlying SDK error message.
+// Error is returned by Client methods when a Lakekeeper API call fails or
+// its response cannot be used. Its message is the underlying SDK error
+// message, or the API client layer's own message for an unusable response.
 type Error struct {
 	// StatusCode is the HTTP status of the failed response, or 0 if no
 	// response was received.

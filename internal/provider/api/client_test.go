@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -185,6 +186,17 @@ func TestErrorsCarryStatusCode(t *testing.T) {
 	}
 }
 
+func TestCatalogDecodeErrorCarriesStatusCode(t *testing.T) {
+	c := cannedServer(t, http.StatusOK, `not json`)
+	_, err := c.LoadNamespace(t.Context(), "p", "w", []string{"n"})
+	if err == nil {
+		t.Fatal("LoadNamespace accepted a body that is not JSON")
+	}
+	if got := StatusCode(err); got != http.StatusOK {
+		t.Errorf("StatusCode(%v) = %d, want %d", err, got, http.StatusOK)
+	}
+}
+
 func TestNamespaceAssignmentsWireFormat(t *testing.T) {
 	var body map[string]any
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -254,9 +266,13 @@ func TestGetAssignmentsRejectsMalformedResponses(t *testing.T) {
 			c := cannedServer(t, http.StatusOK, tc.body)
 			if got, err := c.GetProjectAssignments(t.Context(), "p"); err == nil {
 				t.Errorf("GetProjectAssignments accepted it: %+v", got)
+			} else if _, ok := errors.AsType[*Error](err); !ok {
+				t.Errorf("GetProjectAssignments: %T is not an *Error", err)
 			}
 			if got, err := c.GetNamespaceAssignments(t.Context(), "p", "n"); err == nil {
 				t.Errorf("GetNamespaceAssignments accepted it: %+v", got)
+			} else if _, ok := errors.AsType[*Error](err); !ok {
+				t.Errorf("GetNamespaceAssignments: %T is not an *Error", err)
 			}
 		})
 	}
