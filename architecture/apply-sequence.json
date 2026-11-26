@@ -3,14 +3,14 @@
   "diagram_type": "sequence",
   "meta": {
     "title": "Apply sequence: one terraform apply through the provider",
-    "output": ".archify/sequence-apply-sequence-20261124-160553/apply-sequence.html",
+    "output": ".archify/sequence-apply-sequence-20261126-082249/apply-sequence.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "2b9a53fd9886cbeb15c9616c1a573649005c3bfb"
+      "revision": "2c24bd082c8abd4f1fb91c293a32d80d637be693"
     }
   },
   "participants": [
@@ -100,8 +100,8 @@
         },
         {
           "path": "internal/provider/api/client.go",
-          "line": 86,
-          "end_line": 129,
+          "line": 90,
+          "end_line": 134,
           "label": "api.Error, IsNotFound, wrapErr"
         }
       ]

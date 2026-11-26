@@ -3,14 +3,14 @@
   "diagram_type": "workflow",
   "meta": {
     "title": "Development workflow: from edit to release",
-    "output": ".archify/workflow-development-workflow-20261124-160600/development-workflow.html",
+    "output": ".archify/workflow-development-workflow-20261126-082301/development-workflow.html",
     "quality_profile": "showcase",
     "locale": "en",
     "repository": {
       "url": "git@github.com:lakekeeper/terraform-provider-lakekeeper.git",
       "provider": "github",
       "link_mode": "local-only",
-      "revision": "2b9a53fd9886cbeb15c9616c1a573649005c3bfb"
+      "revision": "2c24bd082c8abd4f1fb91c293a32d80d637be693"
     },
     "legend": {
       "entries": {
@@ -175,8 +175,8 @@
         },
         {
           "path": "run/docker-compose.yml",
-          "line": 166,
-          "end_line": 167,
+          "line": 168,
+          "end_line": 169,
           "label": "Keycloak"
         },
         {
