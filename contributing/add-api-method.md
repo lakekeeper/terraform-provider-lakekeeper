@@ -24,6 +24,7 @@ Check first that the method doesn't already exist. The package is split by area:
 | [`storage.go`](../internal/provider/api/storage.go) | storage profile, storage credential and delete profile conversions |
 | [`permissions.go`](../internal/provider/api/permissions.go) | assignments, access checks and managed access for server, project, warehouse and role |
 | [`namespaces.go`](../internal/provider/api/namespaces.go) | namespace permissions; `LoadNamespace` and `ListNamespaces`, raw Iceberg REST requests sent through `catalogGet`; `EncodeNamespacePath`, which escapes namespace levels for them; and `NamespaceExists`, a batch check that tells a missing namespace from a hidden one |
+| [`protection.go`](../internal/provider/api/protection.go) | protection flags for tables, views and generic tables |
 | [`generic_tables.go`](../internal/provider/api/generic_tables.go) | generic-table create and delete, raw requests because the SDK has no generic-table client |
 | [`constants.go`](../internal/provider/api/constants.go) | enum constants |
 | [`config.go`](../internal/provider/api/config.go) | client construction (OIDC, TLS) |

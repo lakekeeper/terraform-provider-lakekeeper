@@ -210,6 +210,33 @@
 > POST /management/v1/warehouse/w1/protection
   {"protected":true}
 
+## GetTableProtection
+> GET /management/v1/warehouse/w1/table/t1/protection
+< bool true
+
+## SetTableProtection
+> POST /management/v1/warehouse/w1/table/t1/protection
+  {"protected":false}
+< bool false
+
+## GetViewProtection
+> GET /management/v1/warehouse/w1/view/v1/protection
+< bool true
+
+## SetViewProtection
+> POST /management/v1/warehouse/w1/view/v1/protection
+  {"protected":false}
+< bool false
+
+## GetGenericTableProtection
+> GET /management/v1/warehouse/w1/generic-table/g1/protection
+< bool true
+
+## SetGenericTableProtection
+> POST /management/v1/warehouse/w1/generic-table/g1/protection
+  {"protected":false}
+< bool false
+
 ## CreateGenericTable
 > POST /lakekeeper/v1/w1/namespaces/sales%1Fbronze/generic-tables [x-project-id: p1]
   {"base-location":"s3://b/p","doc":"a doc","format":"lance","name":"gt","properties":{"owner":"me"},"schema":{"type":"struct"}}

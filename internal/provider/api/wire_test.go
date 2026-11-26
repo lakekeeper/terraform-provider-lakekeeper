@@ -49,6 +49,12 @@ var wireRoutes = map[string]string{
 	"POST /management/v1/warehouse/w1/rename":     warehouseJSON,
 	"POST /management/v1/warehouse/w1/protection": `{"protected":true}`,
 
+	"GET /management/v1/warehouse/w1/table/t1/protection":               `{"protected":true}`,
+	"POST /management/v1/warehouse/w1/table/t1/protection":              `{"protected":false}`,
+	"GET /management/v1/warehouse/w1/view/v1/protection":                `{"protected":true}`,
+	"POST /management/v1/warehouse/w1/view/v1/protection":               `{"protected":false}`,
+	"GET /management/v1/warehouse/w1/generic-table/g1/protection":       `{"protected":true}`,
+	"POST /management/v1/warehouse/w1/generic-table/g1/protection":      `{"protected":false}`,
 	"POST /lakekeeper/v1/w1/namespaces/sales%1Fbronze/generic-tables":   `{"table":{"name":"gt","format":"lance","base-location":"s3://b/p","doc":"a doc","properties":{"owner":"me"},"protected":false}}`,
 	"GET /lakekeeper/v1/w1/namespaces/sales%1Fbronze/generic-tables":    `{"identifiers":[{"namespace":["sales","bronze"],"name":"gt","id":"g1","format":"lance"}]}`,
 	"GET /lakekeeper/v1/w1/namespaces/sales%1Fbronze/generic-tables/gt": `{"table":{"name":"gt","format":"lance","base-location":"s3://b/p","doc":"a doc","properties":{"owner":"me"},"protected":false}}`,
@@ -210,6 +216,12 @@ func TestWire(t *testing.T) {
 	step("DeactivateWarehouse", func() (any, error) { return none(c.DeactivateWarehouse(ctx, "p1", "w1")) })
 	step("RenameWarehouse", func() (any, error) { return none(c.RenameWarehouse(ctx, "p1", "w1", "new")) })
 	step("SetWarehouseProtection", func() (any, error) { return none(c.SetWarehouseProtection(ctx, "p1", "w1", true)) })
+	step("GetTableProtection", func() (any, error) { return c.GetTableProtection(ctx, "w1", "t1") })
+	step("SetTableProtection", func() (any, error) { return c.SetTableProtection(ctx, "w1", "t1", false) })
+	step("GetViewProtection", func() (any, error) { return c.GetViewProtection(ctx, "w1", "v1") })
+	step("SetViewProtection", func() (any, error) { return c.SetViewProtection(ctx, "w1", "v1", false) })
+	step("GetGenericTableProtection", func() (any, error) { return c.GetGenericTableProtection(ctx, "w1", "g1") })
+	step("SetGenericTableProtection", func() (any, error) { return c.SetGenericTableProtection(ctx, "w1", "g1", false) })
 	step("CreateGenericTable", func() (any, error) {
 		return c.CreateGenericTable(ctx, "p1", "w1", []string{"sales", "bronze"}, GenericTableRequest{
 			Name:         "gt",

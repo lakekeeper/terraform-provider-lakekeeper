@@ -240,12 +240,12 @@ func (c *Client) ResolveGenericTableID(ctx context.Context, projectID, warehouse
 	for _, table := range tables {
 		if table.Name == name && slices.Equal(table.Namespace, namespace) {
 			if table.ID == "" {
-				return "", fmt.Errorf("generic table %q has no ID in the namespace listing", name)
+				return "", &Error{err: fmt.Errorf("generic table %q has no ID in the namespace listing", name)}
 			}
 			return table.ID, nil
 		}
 	}
-	return "", fmt.Errorf("generic table %q is missing from the namespace listing", name)
+	return "", &Error{err: fmt.Errorf("generic table %q is missing from the namespace listing", name)}
 }
 
 func genericTableFromData(data genericTableData) *GenericTable {

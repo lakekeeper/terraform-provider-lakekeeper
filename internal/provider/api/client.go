@@ -156,7 +156,7 @@ func (c *Client) do(ctx context.Context, call rawCall) error {
 	if call.body != nil {
 		b, err := json.Marshal(call.body)
 		if err != nil {
-			return fmt.Errorf("%s: encode request: %w", call.op, err)
+			return &Error{err: fmt.Errorf("%s: encode request: %w", call.op, err)}
 		}
 		body = bytes.NewReader(b)
 	}
@@ -196,7 +196,7 @@ func (c *Client) do(ctx context.Context, call rawCall) error {
 		return nil
 	}
 	if err := json.Unmarshal(b, call.out); err != nil {
-		return fmt.Errorf("%s: decode response: %w", call.op, err)
+		return &Error{err: fmt.Errorf("%s: decode response: %w", call.op, err)}
 	}
 	return nil
 }

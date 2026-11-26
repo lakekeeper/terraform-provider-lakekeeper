@@ -50,8 +50,10 @@ services:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/health/live" ]
       interval: 1s
       timeout: 10s
-      retries: 3
-      start_period: 3s
+      # GitHub runners can be slow to start the container and its health
+      # endpoint, so allow a long start period and several retries.
+      retries: 10
+      start_period: 30s
     networks:
       iceberg_net:
 

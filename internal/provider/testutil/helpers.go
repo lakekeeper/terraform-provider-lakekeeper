@@ -10,9 +10,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/iceberg-go"
 	"github.com/apache/iceberg-go/catalog"
+	"github.com/apache/iceberg-go/view"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/lakekeeper/terraform-provider-lakekeeper/internal/provider/api"
+)
+
+// testTableSchema is a minimal schema that is valid for tables and views.
+var testTableSchema = iceberg.NewSchemaWithIdentifiers(1, []int{1},
+	iceberg.NestedField{ID: 1, Name: "id", Type: iceberg.PrimitiveTypes.Int64, Required: true},
+	iceberg.NestedField{ID: 2, Name: "data", Type: iceberg.PrimitiveTypes.String},
 )
 
 var testLakekeeperConfig = api.Config{
@@ -184,6 +192,78 @@ func CreateNamespace(t *testing.T, projectID string, warehouse *api.Warehouse, p
 			t.Errorf("could not cleanup test namespace: %v", err)
 		}
 	})
+}
+
+// CreateTable is a test helper for creating an Iceberg table. It returns the
+// table's UUID, which the management API uses. Cleanup clears protection and
+// drops the table.
+func CreateTable(t *testing.T, projectID string, warehouse *api.Warehouse, namespace, name string) string {
+	t.Helper()
+
+	cat, err := TestLakekeeperClient.Catalog(t.Context(), projectID, warehouse.Name)
+	if err != nil {
+		t.Fatalf("could not create test catalog client: %v", err)
+	}
+
+	ident := catalog.ToIdentifier(namespace, name)
+	tbl, err := cat.CreateTable(t.Context(), ident, testTableSchema)
+	if err != nil {
+		t.Fatalf("could not create test table: %v", err)
+	}
+	id := tbl.Metadata().TableUUID().String()
+
+	t.Cleanup(func() {
+		ctx := context.Background()
+		if _, err := TestLakekeeperClient.SetTableProtection(ctx, warehouse.ID, id, false); err != nil {
+			if api.IsNotFound(err) {
+				// The test dropped the table outside Terraform.
+				return
+			}
+			t.Errorf("could not unprotect test table: %v", err)
+		}
+		if err := cat.DropTable(ctx, ident); err != nil {
+			t.Errorf("could not cleanup test table: %v", err)
+		}
+	})
+
+	return id
+}
+
+// CreateView is a test helper for creating a view. It returns the view's UUID,
+// which the management API uses. Cleanup clears protection and drops the view.
+func CreateView(t *testing.T, projectID string, warehouse *api.Warehouse, namespace, name string) string {
+	t.Helper()
+
+	cat, err := TestLakekeeperClient.Catalog(t.Context(), projectID, warehouse.Name)
+	if err != nil {
+		t.Fatalf("could not create test catalog client: %v", err)
+	}
+
+	version, err := view.NewVersion(1, 1,
+		[]view.Representation{view.NewRepresentation("SELECT 1", "trino")},
+		catalog.ToIdentifier(namespace))
+	if err != nil {
+		t.Fatalf("could not build test view version: %v", err)
+	}
+
+	ident := catalog.ToIdentifier(namespace, name)
+	v, err := cat.CreateView(t.Context(), ident, version, testTableSchema)
+	if err != nil {
+		t.Fatalf("could not create test view: %v", err)
+	}
+	id := v.Metadata().ViewUUID().String()
+
+	t.Cleanup(func() {
+		ctx := context.Background()
+		if _, err := TestLakekeeperClient.SetViewProtection(ctx, warehouse.ID, id, false); err != nil {
+			t.Errorf("could not unprotect test view: %v", err)
+		}
+		if err := cat.DropView(ctx, ident); err != nil {
+			t.Errorf("could not cleanup test view: %v", err)
+		}
+	})
+
+	return id
 }
 
 // CreateGenericTable is a test helper for creating a generic table. It returns
