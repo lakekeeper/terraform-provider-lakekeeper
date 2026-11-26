@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-log v0.11.0
 	github.com/hashicorp/terraform-plugin-testing v1.16.0
-	github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261125011749-896775977682
+	github.com/lakekeeper/go-lakekeeper v0.1.1-0.20261126064646-7bc94e6a9222
 	github.com/terraform-community-providers/terraform-plugin-framework-utils v0.4.0
 	golang.org/x/oauth2 v0.38.0
 )
