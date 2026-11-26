@@ -58,14 +58,14 @@ func assignmentsToSDK[S any](in []Assignment) ([]S, error) {
 // of role and user.
 func assignmentsFromSDK[S any](entity string, in []S) ([]Assignment, error) {
 	if in == nil {
-		return nil, fmt.Errorf("%s assignments response has no assignments list", entity)
+		return nil, &Error{err: fmt.Errorf("%s assignments response has no assignments list", entity)}
 	}
 	out := make([]Assignment, len(in))
 	for i, a := range in {
 		// Every assignment union has the wire shape {type, user | role}.
 		b, err := json.Marshal(a)
 		if err != nil {
-			return nil, fmt.Errorf("%s assignments response: %w", entity, err)
+			return nil, &Error{err: fmt.Errorf("%s assignments response: %w", entity, err)}
 		}
 		var w struct {
 			Type string `json:"type"`
@@ -73,7 +73,7 @@ func assignmentsFromSDK[S any](entity string, in []S) ([]Assignment, error) {
 			Role string `json:"role"`
 		}
 		if err := json.Unmarshal(b, &w); err != nil {
-			return nil, fmt.Errorf("%s assignments response: %w", entity, err)
+			return nil, &Error{err: fmt.Errorf("%s assignments response: %w", entity, err)}
 		}
 		switch {
 		case w.Role != "" && w.User == "":
@@ -81,7 +81,7 @@ func assignmentsFromSDK[S any](entity string, in []S) ([]Assignment, error) {
 		case w.User != "" && w.Role == "":
 			out[i] = Assignment{Assignee: UserAssignee(w.User), Assignment: w.Type}
 		default:
-			return nil, fmt.Errorf("%s assignments response has an assignment without exactly one role or user: %s", entity, b)
+			return nil, &Error{err: fmt.Errorf("%s assignments response has an assignment without exactly one role or user: %s", entity, b)}
 		}
 	}
 	return out, nil

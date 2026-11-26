@@ -68,11 +68,11 @@ func (c *Client) GetWarehouse(ctx context.Context, projectID, warehouseID string
 	}
 	sp, err := storageProfileFromSDK(w.StorageProfile)
 	if err != nil {
-		return nil, err
+		return nil, &Error{err: err}
 	}
 	dp, err := deleteProfileFromSDK(w.DeleteProfile)
 	if err != nil {
-		return nil, err
+		return nil, &Error{err: err}
 	}
 	return &Warehouse{
 		ID:             w.Id,
