@@ -22,6 +22,7 @@ const (
 	warehouseIDAttributeName = "warehouse_id"
 	namespaceIDAttributeName = "namespace_id"
 	roleIDAttributeName      = "role_id"
+	tagIDAttributeName       = "tag_definition_id"
 )
 
 var uuidValidator = stringvalidator.RegexMatches(

@@ -126,3 +126,26 @@ const (
 	RemoteSigningURLStylePath        = "path"
 	RemoteSigningURLStyleVirtualHost = "virtual_host"
 )
+
+// Tag definition scopes and attachment target types.
+const (
+	TagScopeWarehouse    = "warehouse"
+	TagScopeNamespace    = "namespace"
+	TagScopeTable        = "table"
+	TagScopeView         = "view"
+	TagScopeGenericTable = "generic-table"
+	TagScopeColumn       = "column"
+)
+
+// Tag value kinds.
+const (
+	TagValueKindMarker     = "marker"
+	TagValueKindFreeText   = "free-text"
+	TagValueKindEnumerated = "enumerated"
+)
+
+// Tag assignments.
+const (
+	TagAssignmentOwnership = "ownership"
+	TagAssignmentApply     = "apply"
+)
